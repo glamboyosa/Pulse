@@ -1,0 +1,1 @@
+ALTER TABLE "feedback" ADD COLUMN "audio_key" text;
