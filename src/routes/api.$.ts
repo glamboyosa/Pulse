@@ -127,7 +127,7 @@ const app = new Elysia({
       await uploadAudioChunk(chunkKey, audioBuffer, mimeType)
 
       // Transcribe chunk
-      const chunkTranscript = await transcribeAudioChunk(audioData, mimeType)
+      const chunkTranscript = await transcribeAudioChunk(audioBuffer, mimeType)
 
       // If this is the last chunk, create feedback record with full processing
       if (isLastChunk) {

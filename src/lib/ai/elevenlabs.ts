@@ -27,11 +27,15 @@ export async function transcribeAudioWithElevenLabs(
     // The ElevenLabs SDK expects a File or Blob, but in Node.js we can pass the buffer directly
     // as a File object with the buffer as the content
     const { File } = await import('node:buffer')
-    
+
     // Create a File from the buffer (Node.js 20+)
-    const audioFile = new File([audioBuffer], `audio.${mimeType.split('/')[1] || 'mp3'}`, {
-      type: mimeType,
-    })
+    const audioFile = new File(
+      [audioBuffer],
+      `audio.${mimeType.split('/')[1] || 'mp3'}`,
+      {
+        type: mimeType,
+      },
+    )
 
     // Call ElevenLabs Speech-to-Text API
     const transcription = await elevenlabs.speechToText.convert({
@@ -43,15 +47,43 @@ export async function transcribeAudioWithElevenLabs(
     })
 
     const transcriptionDuration = Date.now() - transcriptionStartTime
-    const transcriptText = transcription.text || ''
+    const transcriptText = (() => {
+      if ('text' in transcription && typeof transcription.text === 'string') {
+        return transcription.text
+      }
 
-    console.log(`[ElevenLabs] Transcription completed in ${transcriptionDuration}ms`, {
-      transcriptLength: transcriptText.length,
-      languageCode: transcription.language_code,
-      languageProbability: transcription.language_probability,
-      wordCount: transcription.words?.length || 0,
-      transcriptPreview: transcriptText.substring(0, 200),
-    })
+      if (
+        'transcripts' in transcription &&
+        Array.isArray(transcription.transcripts)
+      ) {
+        return transcription.transcripts
+          .map((chunk) => chunk.text)
+          .filter(Boolean)
+          .join(' ')
+      }
+
+      return ''
+    })()
+
+    console.log(
+      `[ElevenLabs] Transcription completed in ${transcriptionDuration}ms`,
+      {
+        transcriptLength: transcriptText.length,
+        languageCode:
+          'languageCode' in transcription
+            ? transcription.languageCode
+            : undefined,
+        languageProbability:
+          'languageProbability' in transcription
+            ? transcription.languageProbability
+            : undefined,
+        wordCount:
+          'words' in transcription && Array.isArray(transcription.words)
+            ? transcription.words.length
+            : 0,
+        transcriptPreview: transcriptText.substring(0, 200),
+      },
+    )
 
     return transcriptText
   } catch (error) {
@@ -78,4 +110,3 @@ export async function transcribeAudioFileWithElevenLabs(
   const audioBuffer = await fs.readFile(filePath)
   return transcribeAudioWithElevenLabs(audioBuffer, mimeType)
 }
-

@@ -23,9 +23,32 @@ const rampartOne = Rampart_One({
   variable: '--font-rampart',
 })
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pulseapp.click'
+const title = "Pulse — Hear your customers, don't just read them"
+const description =
+  'QR-based voice feedback with instant transcription and saved audio. Limited time: 3 free pulses for new businesses.'
+
 export const metadata: Metadata = {
-  title: 'Pulse - Voice Feedback Platform',
-  description: 'Collect authentic voice feedback from your customers',
+  metadataBase: new URL(appUrl),
+  title: {
+    default: title,
+    template: '%s | Pulse',
+  },
+  description,
+  openGraph: {
+    title,
+    description,
+    url: '/',
+    siteName: 'Pulse',
+    type: 'website',
+    images: ['/opengraph-image'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title,
+    description,
+    images: ['/twitter-image'],
+  },
 }
 
 export default function RootLayout({
@@ -46,4 +69,3 @@ export default function RootLayout({
     </html>
   )
 }
-

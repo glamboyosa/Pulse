@@ -20,24 +20,24 @@ function App() {
             <span className="text-2xl font-bold tracking-tight">PULSE</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6">
-            <Link
-              to="#features"
+            <a
+              href="/#features"
               className="font-semibold hover:text-primary transition-colors"
             >
               Features
-            </Link>
-            <Link
-              to="#how-it-works"
+            </a>
+            <a
+              href="/#how-it-works"
               className="font-semibold hover:text-primary transition-colors"
             >
               How It Works
-            </Link>
-            <Link
-              to="#pricing"
+            </a>
+            <a
+              href="/#pricing"
               className="font-semibold hover:text-primary transition-colors"
             >
               Pricing
-            </Link>
+            </a>
           </nav>
           <div className="flex items-center gap-3">
             <Button
@@ -64,7 +64,7 @@ function App() {
             <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-6 text-balance">
               {'HEAR YOUR CUSTOMERS'}
               <br />
-              {'DON\'T JUST READ THEM'}
+              {"DON'T JUST READ THEM"}
             </h1>
             <p className="text-xl md:text-2xl font-semibold mb-10 leading-relaxed text-balance">
               {
@@ -85,7 +85,7 @@ function App() {
                 className="text-lg font-bold border-4 border-foreground bg-background shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] hover:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all"
                 asChild
               >
-                <Link to="#demo">Watch Demo</Link>
+                <a href="/#demo">Watch Demo</a>
               </Button>
             </div>
           </div>
@@ -299,28 +299,28 @@ function App() {
               <h4 className="font-black mb-4">Product</h4>
               <ul className="space-y-2 font-medium">
                 <li>
-                  <Link
-                    to="#features"
+                  <a
+                    href="/#features"
                     className="hover:text-primary transition-colors"
                   >
                     Features
-                  </Link>
+                  </a>
                 </li>
                 <li>
-                  <Link
-                    to="#pricing"
+                  <a
+                    href="/#pricing"
                     className="hover:text-primary transition-colors"
                   >
                     Pricing
-                  </Link>
+                  </a>
                 </li>
                 <li>
-                  <Link
-                    to="#demo"
+                  <a
+                    href="/#demo"
                     className="hover:text-primary transition-colors"
                   >
                     Demo
-                  </Link>
+                  </a>
                 </li>
               </ul>
             </div>
@@ -336,20 +336,20 @@ function App() {
                   </Link>
                 </li>
                 <li>
-                  <Link
-                    to="/contact"
+                  <a
+                    href="/contact"
                     className="hover:text-primary transition-colors"
                   >
                     Contact
-                  </Link>
+                  </a>
                 </li>
                 <li>
-                  <Link
-                    to="/blog"
+                  <a
+                    href="/blog"
                     className="hover:text-primary transition-colors"
                   >
                     Blog
-                  </Link>
+                  </a>
                 </li>
               </ul>
             </div>
