@@ -59,6 +59,15 @@ export const otpCodes = pgTable('otp_codes', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// Rate limiting table (simple fixed-window counters)
+export const rateLimits = pgTable('rate_limits', {
+  key: text('key').primaryKey(),
+  count: integer('count').default(0).notNull(),
+  resetAt: timestamp('reset_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 // Types for TypeScript
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
@@ -68,3 +77,5 @@ export type PulsePurchase = typeof pulsePurchases.$inferSelect
 export type NewPulsePurchase = typeof pulsePurchases.$inferInsert
 export type OtpCode = typeof otpCodes.$inferSelect
 export type NewOtpCode = typeof otpCodes.$inferInsert
+export type RateLimit = typeof rateLimits.$inferSelect
+export type NewRateLimit = typeof rateLimits.$inferInsert

@@ -19,6 +19,8 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
   const router = useRouter()
+  const pulsesRemaining = user.pulsesRemaining || 0
+  const isLowPulse = pulsesRemaining <= 3
 
   const handleLogout = async () => {
     await logoutAction()
@@ -41,9 +43,13 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
               >
                 <Zap className="w-4 h-4 mr-2" fill="currentColor" />
                 <span className="hidden sm:inline">
-                  {user.pulsesRemaining || 0} Pulses
+                  {isLowPulse
+                    ? `Buy More (${pulsesRemaining} left)`
+                    : `${pulsesRemaining} Pulses`}
                 </span>
-                <span className="sm:hidden">{user.pulsesRemaining || 0}</span>
+                <span className="sm:hidden">
+                  {isLowPulse ? 'Buy' : pulsesRemaining}
+                </span>
               </Button>
             </Link>
             <div className="hidden md:block text-right">

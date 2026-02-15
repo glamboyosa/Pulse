@@ -92,6 +92,9 @@ export function LoginForm() {
               <p className="text-sm font-medium text-muted-foreground">
                 We sent a 6-digit code to {email}
               </p>
+              <p className="text-xs font-medium text-muted-foreground mt-2">
+                If you do not see it within a minute, check spam or promotions.
+              </p>
             </div>
 
             <div className="space-y-2">

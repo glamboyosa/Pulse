@@ -65,7 +65,7 @@ export async function loginAction(
       .values({
         email: email.toLowerCase(),
         isVerified: false,
-        pulsesRemaining: 0,
+        pulsesRemaining: 3,
       })
       .returning()
 

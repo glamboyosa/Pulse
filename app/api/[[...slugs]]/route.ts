@@ -9,11 +9,18 @@ import type {
   ResendWebhookEvent,
 } from '@/types/resend'
 import { db } from '@/db/index'
-import { feedback, otpCodes, pulsePurchases, users } from '@/db/schema'
+import {
+  feedback,
+  otpCodes,
+  pulsePurchases,
+  rateLimits,
+  users,
+} from '@/db/schema'
 import { env } from '@/env'
 import { analyzeSentiment, extractNameFromTranscript } from '@/lib/ai/gemini'
 import { transcribeAudioWithElevenLabs } from '@/lib/ai/elevenlabs'
 import { sendOTPEmail } from '@/lib/email'
+import { sendFeedbackReceivedEmail } from '@/lib/email/feedback-received'
 import { sendLowPulseEmail } from '@/lib/email/low-pulse'
 import { generateOTP } from '@/lib/otp'
 import {
@@ -25,15 +32,171 @@ import {
 import { getUserFromSession } from '@/lib/auth-helpers'
 import { getResendClient } from '@/lib/utils/resend'
 
+const resolveCustomerExternalId = (order: any) =>
+  order?.customer?.externalId ||
+  order?.customer?.external_id ||
+  order?.customer_external_id ||
+  order?.customerExternalId ||
+  order?.customer?.externalID ||
+  null
+
+const resolveCustomerEmail = (order: any) =>
+  order?.customer?.email ||
+  order?.customer_email ||
+  order?.customerEmail ||
+  order?.email ||
+  null
+
+const parsePulseAmountFromLabel = (label?: string | null) => {
+  if (!label) return null
+  const match = label.match(/(\d+)\s*pulses?/i)
+  if (!match) return null
+  const parsed = Number.parseInt(match[1], 10)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
+const extractPulseAmountFromOrder = (
+  order: any,
+  productPulseMap: Record<string, number>,
+): number => {
+  let totalPulses = 0
+
+  if (order.items && Array.isArray(order.items)) {
+    for (const item of order.items) {
+      const quantity = item.quantity || 1
+      if (item.metadata?.pulseAmount) {
+        totalPulses += Number.parseInt(item.metadata.pulseAmount) * quantity
+        continue
+      }
+
+      const productId = item.product?.id || item.product_id
+      if (productId && productPulseMap[productId]) {
+        totalPulses += productPulseMap[productId] * quantity
+        continue
+      }
+
+      const labelPulseAmount = parsePulseAmountFromLabel(
+        item.label || item.product?.name || item.name,
+      )
+      if (labelPulseAmount) {
+        totalPulses += labelPulseAmount * quantity
+      }
+    }
+  } else if (order.product?.id || order.product_id) {
+    if (order.metadata?.pulseAmount) {
+      totalPulses = Number.parseInt(order.metadata.pulseAmount)
+    } else if (order.product?.id && productPulseMap[order.product.id]) {
+      totalPulses = productPulseMap[order.product.id]
+    } else if (order.product_id && productPulseMap[order.product_id]) {
+      totalPulses = productPulseMap[order.product_id]
+    } else {
+      const labelPulseAmount = parsePulseAmountFromLabel(
+        order.product?.name || order.description,
+      )
+      if (labelPulseAmount) {
+        totalPulses = labelPulseAmount
+      }
+    }
+  }
+
+  return totalPulses
+}
+
+const OTP_EMAIL_LIMIT = 5
+const OTP_IP_LIMIT = 10
+const OTP_WINDOW_MS = 60 * 60 * 1000
+
+const getClientIp = (request: Request) => {
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  if (forwardedFor) {
+    return forwardedFor.split(',')[0]?.trim() || 'unknown'
+  }
+
+  return request.headers.get('x-real-ip') || 'unknown'
+}
+
+const enforceRateLimit = async (
+  key: string,
+  limit: number,
+  windowMs: number,
+) => {
+  const now = new Date()
+  const resetAt = new Date(now.getTime() + windowMs)
+  const existing = await db
+    .select()
+    .from(rateLimits)
+    .where(eq(rateLimits.key, key))
+    .limit(1)
+
+  if (existing.length === 0) {
+    await db.insert(rateLimits).values({
+      key,
+      count: 1,
+      resetAt,
+      createdAt: now,
+      updatedAt: now,
+    })
+    return
+  }
+
+  const record = existing[0]
+  if (record.resetAt <= now) {
+    await db
+      .update(rateLimits)
+      .set({
+        count: 1,
+        resetAt,
+        updatedAt: now,
+      })
+      .where(eq(rateLimits.key, key))
+    return
+  }
+
+  if (record.count >= limit) {
+    throw new Error('Too many OTP requests. Please wait and try again.')
+  }
+
+  await db
+    .update(rateLimits)
+    .set({
+      count: record.count + 1,
+      updatedAt: now,
+    })
+    .where(eq(rateLimits.key, key))
+}
+
 const app = new Elysia({ prefix: '/api' })
   .get('/', 'Hello Elysia!')
   // Auth routes
   .post(
     '/auth/send-otp',
-    async ({ body }) => {
+    async ({ body, request }) => {
       console.log('[API] /auth/send-otp called', { body })
       const { email } = body
       console.log('[API] Email received:', email)
+
+      try {
+        const clientIp = getClientIp(request)
+        await enforceRateLimit(
+          `otp:email:${email.toLowerCase()}`,
+          OTP_EMAIL_LIMIT,
+          OTP_WINDOW_MS,
+        )
+        await enforceRateLimit(
+          `otp:ip:${clientIp}`,
+          OTP_IP_LIMIT,
+          OTP_WINDOW_MS,
+        )
+      } catch (rateLimitError) {
+        console.error('[API] OTP rate limit hit:', rateLimitError)
+        return {
+          success: false,
+          error:
+            rateLimitError instanceof Error
+              ? rateLimitError.message
+              : 'Too many requests. Please try again later.',
+        }
+      }
 
       // Generate 6-digit OTP
       const code = generateOTP()
@@ -205,6 +368,7 @@ const app = new Elysia({ prefix: '/api' })
         let fullTranscript: string | null = providedTranscript || null
         let sentiment: 'positive' | 'neutral' | 'negative' | null =
           normalizeSentiment(providedSentiment)
+        let finalCustomerName: string | null = customerName || null
 
         if (!isLastChunk) {
           console.log(
@@ -407,7 +571,6 @@ const app = new Elysia({ prefix: '/api' })
             )
           }
 
-          let finalCustomerName = customerName || null
           if (!finalCustomerName && fullTranscript) {
             console.log(`[API] Extracting name from transcript...`)
             try {
@@ -459,6 +622,23 @@ const app = new Elysia({ prefix: '/api' })
             `[API] Transcription/analysis failed (feedback still saved):`,
             transcriptionError,
           )
+        }
+
+        try {
+          if (user[0].email) {
+            await sendFeedbackReceivedEmail({
+              to: user[0].email,
+              businessName: user[0].businessName || user[0].email.split('@')[0],
+              feedbackId,
+              customerName: finalCustomerName,
+              duration: duration || 0,
+              sentiment,
+              transcript: fullTranscript,
+            })
+            console.log(`[API] Feedback notification email sent`)
+          }
+        } catch (emailError: unknown) {
+          console.error(`[API] Failed to send feedback email:`, emailError)
         }
 
         // Deduct one pulse (only if user has pulses remaining)
@@ -1053,22 +1233,32 @@ const app = new Elysia({ prefix: '/api' })
       onOrderPaid: async (payload) => {
         // When an order is paid, add pulses to the user's account
         const order = payload.data as any
-        const customerExternalId = order.customer?.external_id
+        const customerExternalId = resolveCustomerExternalId(order)
+        const customerEmail = resolveCustomerEmail(order)
 
-        if (!customerExternalId) {
-          console.error('No customer external ID found in order')
-          return
+        let user = [] as Array<typeof users.$inferSelect>
+        if (customerExternalId) {
+          user = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, customerExternalId))
+            .limit(1)
         }
 
-        // Find user by external ID (which is their user ID)
-        const user = await db
-          .select()
-          .from(users)
-          .where(eq(users.id, customerExternalId))
-          .limit(1)
+        if (user.length === 0 && customerEmail) {
+          user = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, customerEmail.toLowerCase()))
+            .limit(1)
+        }
 
         if (user.length === 0) {
-          console.error(`User not found: ${customerExternalId}`)
+          console.error('User not found for order', {
+            customerExternalId,
+            customerEmail,
+            orderId: order.id,
+          })
           return
         }
 
@@ -1081,38 +1271,7 @@ const app = new Elysia({ prefix: '/api' })
         }
 
         // Calculate total pulses from order items
-        let totalPulses = 0
-
-        // Handle order items (could be array or single product)
-        if (order.items && Array.isArray(order.items)) {
-          // Multiple items
-          for (const item of order.items) {
-            const productId = item.product?.id || item.product_id
-
-            // Check if it's a custom product (check metadata)
-            if (item.metadata?.pulseAmount) {
-              totalPulses +=
-                Number.parseInt(item.metadata.pulseAmount) *
-                (item.quantity || 1)
-            } else if (productId && productPulseMap[productId]) {
-              totalPulses += productPulseMap[productId] * (item.quantity || 1)
-            }
-          }
-        } else if (order.product?.id) {
-          // Single product - check metadata first for custom products
-          if (order.metadata?.pulseAmount) {
-            totalPulses = Number.parseInt(order.metadata.pulseAmount)
-          } else {
-            totalPulses = productPulseMap[order.product.id] || 0
-          }
-        } else if (order.product_id) {
-          // Product ID directly - check metadata first
-          if (order.metadata?.pulseAmount) {
-            totalPulses = Number.parseInt(order.metadata.pulseAmount)
-          } else {
-            totalPulses = productPulseMap[order.product_id] || 0
-          }
-        }
+        const totalPulses = extractPulseAmountFromOrder(order, productPulseMap)
 
         if (totalPulses === 0) {
           console.error('No pulses found for order:', order.id)
@@ -1126,28 +1285,22 @@ const app = new Elysia({ prefix: '/api' })
             pulsesRemaining: user[0].pulsesRemaining + totalPulses,
             updatedAt: new Date(),
           })
-          .where(eq(users.id, customerExternalId))
+          .where(eq(users.id, user[0].id))
 
         // Create purchase record
         await db.insert(pulsePurchases).values({
-          userId: customerExternalId,
+          userId: user[0].id,
           amount: totalPulses,
           price: order.amount_total || 0, // Price in cents
           stripePaymentId: order.id, // Using Polar order ID
           status: 'completed',
         })
 
-        console.log(`Added ${totalPulses} pulses to user ${customerExternalId}`)
+        console.log(`Added ${totalPulses} pulses to user ${user[0].id}`)
       },
       onOrderRefunded: async (payload) => {
         // When an order is refunded, deduct pulses from the user's account
         const order = payload.data as any
-        const customerExternalId = order.customer?.external_id
-
-        if (!customerExternalId) {
-          console.error('No customer external ID found in refund order')
-          return
-        }
 
         // Find the purchase record
         const purchase = await db
@@ -1167,11 +1320,11 @@ const app = new Elysia({ prefix: '/api' })
         const user = await db
           .select()
           .from(users)
-          .where(eq(users.id, customerExternalId))
+          .where(eq(users.id, purchase[0].userId))
           .limit(1)
 
         if (user.length === 0) {
-          console.error(`User not found: ${customerExternalId}`)
+          console.error(`User not found: ${purchase[0].userId}`)
           return
         }
 
@@ -1184,7 +1337,7 @@ const app = new Elysia({ prefix: '/api' })
             pulsesRemaining: newBalance,
             updatedAt: new Date(),
           })
-          .where(eq(users.id, customerExternalId))
+          .where(eq(users.id, purchase[0].userId))
 
         // Update purchase status
         await db
@@ -1193,7 +1346,7 @@ const app = new Elysia({ prefix: '/api' })
           .where(eq(pulsePurchases.id, purchase[0].id))
 
         console.log(
-          `Refunded ${pulsesToDeduct} pulses from user ${customerExternalId}`,
+          `Refunded ${pulsesToDeduct} pulses from user ${purchase[0].userId}`,
         )
       },
       // eslint-disable-next-line @typescript-eslint/require-await

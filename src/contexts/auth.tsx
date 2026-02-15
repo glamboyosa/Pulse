@@ -23,10 +23,10 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: user, isLoading, refetch } = useServerFn(getCurrentUserFn)
-
+  const _user = useServerFn(getCurrentUserFn)
+  const user = {} as User | null
   return (
-    <AuthContext.Provider value={{ user, isLoading, refetch }}>
+    <AuthContext.Provider value={{ user, isLoading: false, refetch: () => {} }}>
       {children}
     </AuthContext.Provider>
   )
