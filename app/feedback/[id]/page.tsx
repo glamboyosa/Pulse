@@ -3,18 +3,15 @@ import Link from 'next/link'
 import { eq } from 'drizzle-orm'
 import { after } from 'next/server'
 
+import { getCurrentUser } from '../../actions/auth'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { AudioPlayer } from '@/components/audio-player'
 import { FeedbackTranscript } from '@/components/feedback-transcript'
-import { getCurrentUser } from '../../actions/auth'
 import { db } from '@/db/index'
 import { feedback } from '@/db/schema'
-import {
-  transcribeAudioChunk,
-  analyzeSentiment,
-  extractNameFromTranscript,
-} from '@/lib/ai/gemini'
+import { analyzeSentiment, extractNameFromTranscript } from '@/lib/ai/gemini'
+import { transcribeAudioWithElevenLabs } from '@/lib/ai/elevenlabs'
 import { downloadAudioChunk } from '@/lib/storage/r2'
 
 interface FeedbackPageProps {
@@ -49,8 +46,8 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
 
   // If no transcript, trigger transcription on-demand
   let transcript = feedbackData.transcript
-  let sentiment = feedbackData.sentiment
-  let customerName = feedbackData.customerName
+  const sentiment = feedbackData.sentiment
+  const customerName = feedbackData.customerName
 
   if (!transcript && feedbackData.audioKey) {
     // Trigger transcription asynchronously using after()
@@ -66,31 +63,32 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
           `[FeedbackPage] Downloaded audio, size: ${audioBuffer.length} bytes`,
         )
 
-        // Determine MIME type from extension (OGG is Gemini-supported, no conversion!)
+        // Determine MIME type from extension
         const audioKey = feedbackData.audioKey
         if (!audioKey) {
           throw new Error('Audio key is missing for this feedback')
         }
-        
+
         let transcriptionMimeType: string
         if (audioKey.endsWith('.ogg')) {
           transcriptionMimeType = 'audio/ogg'
         } else if (audioKey.endsWith('.wav')) {
           transcriptionMimeType = 'audio/wav'
-        } else if (audioKey.endsWith('.mp3')) {
-          transcriptionMimeType = 'audio/mp3'
+        } else if (audioKey.endsWith('.mp3') || audioKey.endsWith('.mpeg')) {
+          transcriptionMimeType = 'audio/mpeg'
         } else if (audioKey.endsWith('.aac')) {
           transcriptionMimeType = 'audio/aac'
+        } else if (audioKey.endsWith('.mp4') || audioKey.endsWith('.m4a')) {
+          transcriptionMimeType = 'audio/mp4'
         } else {
-          transcriptionMimeType = 'audio/ogg' // Default to OGG
+          transcriptionMimeType = 'audio/ogg'
         }
 
         console.log(
-          `[FeedbackPage] Transcribing audio (${transcriptionMimeType}), no conversion needed`,
+          `[FeedbackPage] Transcribing audio (${transcriptionMimeType}) with ElevenLabs`,
         )
 
-        // Transcribe using Files API (writes to /tmp)
-        const newTranscript = await transcribeAudioChunk(
+        const newTranscript = await transcribeAudioWithElevenLabs(
           audioBuffer,
           transcriptionMimeType,
         )
@@ -230,4 +228,3 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
     </div>
   )
 }
-

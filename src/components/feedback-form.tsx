@@ -34,6 +34,7 @@ export function FeedbackForm({ businessId }: FeedbackFormProps) {
   const chunkIndexRef = useRef<number>(0)
   const streamIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const selectedMimeTypeRef = useRef<string | null>(null)
+  const finalAudioBase64Ref = useRef<string | null>(null)
 
   useEffect(() => {
     return () => {
@@ -52,6 +53,8 @@ export function FeedbackForm({ businessId }: FeedbackFormProps) {
     customerName?: string,
     providedTranscript?: string,
     providedSentiment?: string,
+    finalAudioData?: string,
+    finalAudioMimeType?: string,
   ) => {
     if (!feedbackIdRef.current) {
       console.error('[FeedbackForm] No feedbackId, cannot stream chunk')
@@ -105,6 +108,10 @@ export function FeedbackForm({ businessId }: FeedbackFormProps) {
         duration: isLast ? recordingTime : undefined,
         transcript: isLast ? providedTranscript || undefined : undefined,
         sentiment: isLast ? providedSentiment || undefined : undefined,
+        finalAudioData: isLast ? finalAudioData || undefined : undefined,
+        finalAudioMimeType: isLast
+          ? finalAudioMimeType || selectedMimeTypeRef.current || undefined
+          : undefined,
       })
 
       console.log(
@@ -237,14 +244,6 @@ export function FeedbackForm({ businessId }: FeedbackFormProps) {
           totalChunks: audioChunksRef.current.length,
           totalDuration: recordingTime,
         })
-        // Stream the final chunk if there's any remaining data
-        // Note: customerName will be sent when user clicks submit
-        if (audioChunksRef.current.length > 0) {
-          const lastChunk =
-            audioChunksRef.current[audioChunksRef.current.length - 1]
-          // Don't mark as last chunk yet - wait for user to submit
-          await streamChunk(lastChunk, false)
-        }
 
         const recordedBlob = new Blob(audioChunksRef.current, {
           type: selectedMimeTypeRef.current || 'audio/mpeg', // Use the same MIME type we recorded with
@@ -268,6 +267,7 @@ export function FeedbackForm({ businessId }: FeedbackFormProps) {
             reader.onloadend = () => {
               const base64String = reader.result as string
               const base64Data = base64String.split(',')[1] || base64String
+              finalAudioBase64Ref.current = base64Data
               resolve(base64Data)
             }
             reader.onerror = reject
@@ -399,6 +399,7 @@ export function FeedbackForm({ businessId }: FeedbackFormProps) {
     feedbackIdRef.current = null
     chunkIndexRef.current = 0
     selectedMimeTypeRef.current = null
+    finalAudioBase64Ref.current = null
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -418,12 +419,35 @@ export function FeedbackForm({ businessId }: FeedbackFormProps) {
     setIsSubmitting(true)
 
     try {
+      let finalAudioBase64 = finalAudioBase64Ref.current
+      if (!finalAudioBase64) {
+        const reader = new FileReader()
+        finalAudioBase64 = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = () => {
+            const base64String = reader.result as string
+            const base64Data = base64String.split(',')[1] || base64String
+            resolve(base64Data)
+          }
+          reader.onerror = reject
+          reader.readAsDataURL(audioBlob)
+        })
+        finalAudioBase64Ref.current = finalAudioBase64
+      }
+
       // Send the final chunk with isLastChunk=true and customer name
       // This will create the feedback record with sentiment analysis
       const lastChunk =
         audioChunksRef.current[audioChunksRef.current.length - 1] || audioBlob
       console.log('[FeedbackForm] Sending final chunk for processing...')
-      await streamChunk(lastChunk, true, name || undefined)
+      await streamChunk(
+        lastChunk,
+        true,
+        name || undefined,
+        transcript || undefined,
+        sentiment || undefined,
+        finalAudioBase64 || undefined,
+        selectedMimeTypeRef.current || audioBlob.type || undefined,
+      )
 
       console.log('[FeedbackForm] Feedback submitted successfully!')
       setRecordingState('submitted')

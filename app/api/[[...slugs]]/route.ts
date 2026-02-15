@@ -11,10 +11,7 @@ import type {
 import { db } from '@/db/index'
 import { feedback, otpCodes, pulsePurchases, users } from '@/db/schema'
 import { env } from '@/env'
-import {
-  analyzeSentiment,
-  extractNameFromTranscript,
-} from '@/lib/ai/gemini'
+import { analyzeSentiment, extractNameFromTranscript } from '@/lib/ai/gemini'
 import { transcribeAudioWithElevenLabs } from '@/lib/ai/elevenlabs'
 import { sendOTPEmail } from '@/lib/email'
 import { sendLowPulseEmail } from '@/lib/email/low-pulse'
@@ -100,7 +97,34 @@ const app = new Elysia({ prefix: '/api' })
         duration,
         transcript: providedTranscript,
         sentiment: providedSentiment,
+        finalAudioData,
+        finalAudioMimeType,
       } = body
+
+      const normalizeMimeType = (
+        value?: string,
+        fallback: string = 'audio/ogg',
+      ) => (value || fallback).split(';')[0].trim().toLowerCase()
+
+      const extensionFromMimeType = (value: string) => {
+        const extensionMap: Record<string, string> = {
+          'audio/mpeg': 'mp3',
+          'audio/mp3': 'mp3',
+          'audio/mp4': 'mp4',
+          'audio/aac': 'aac',
+          'audio/ogg': 'ogg',
+          'audio/webm': 'webm',
+          'audio/wav': 'wav',
+          'audio/flac': 'flac',
+        }
+
+        return extensionMap[value] || value.split('/')[1] || 'ogg'
+      }
+
+      const normalizeSentiment = (value?: string) =>
+        value === 'positive' || value === 'neutral' || value === 'negative'
+          ? value
+          : null
 
       try {
         console.log(
@@ -142,39 +166,45 @@ const app = new Elysia({ prefix: '/api' })
           throw new Error('No pulses remaining. Please purchase more pulses.')
         }
 
-        // Convert base64 to buffer
-        console.log(
-          `[API] Converting base64 audio to buffer for chunk ${chunkIndex}...`,
-        )
-        const audioBuffer = Buffer.from(audioData, 'base64')
-        console.log(`[API] Buffer created, size: ${audioBuffer.length} bytes`)
-
-        // Upload chunk to R2
-        const chunkKey = generateFeedbackAudioKey(
-          user[0].id,
-          feedbackId,
-          chunkIndex,
-        )
-        console.log(`[API] Uploading chunk ${chunkIndex} to S3 (R2)...`, {
-          chunkKey,
-        })
         const uploadStartTime = Date.now()
-        await uploadAudioChunk(chunkKey, audioBuffer, mimeType)
-        const uploadDuration = Date.now() - uploadStartTime
-        console.log(
-          `[API] Chunk ${chunkIndex} uploaded to S3 successfully in ${uploadDuration}ms`,
-          {
+        const shouldUploadChunk = !isLastChunk || !finalAudioData
+
+        if (shouldUploadChunk) {
+          // Convert base64 to buffer
+          console.log(
+            `[API] Converting base64 audio to buffer for chunk ${chunkIndex}...`,
+          )
+          const audioBuffer = Buffer.from(audioData, 'base64')
+          console.log(`[API] Buffer created, size: ${audioBuffer.length} bytes`)
+
+          // Upload chunk to R2
+          const chunkKey = generateFeedbackAudioKey(
+            user[0].id,
+            feedbackId,
+            chunkIndex,
+          )
+          console.log(`[API] Uploading chunk ${chunkIndex} to S3 (R2)...`, {
             chunkKey,
-            size: audioBuffer.length,
-          },
-        )
+          })
+          await uploadAudioChunk(chunkKey, audioBuffer, mimeType)
+          const uploadDuration = Date.now() - uploadStartTime
+          console.log(
+            `[API] Chunk ${chunkIndex} uploaded to S3 successfully in ${uploadDuration}ms`,
+            {
+              chunkKey,
+              size: audioBuffer.length,
+            },
+          )
+        } else {
+          console.log(
+            `[API] Skipping chunk upload for final chunk ${chunkIndex} (final audio provided)`,
+          )
+        }
 
         // Skip transcription during streaming - we'll use provided transcript or transcribe the full audio on the last chunk
         let fullTranscript: string | null = providedTranscript || null
-        let sentiment: 'positive' | 'neutral' | 'negative' | null = null
-        if (providedSentiment) {
-          sentiment = providedSentiment as 'positive' | 'neutral' | 'negative'
-        }
+        let sentiment: 'positive' | 'neutral' | 'negative' | null =
+          normalizeSentiment(providedSentiment)
 
         if (!isLastChunk) {
           console.log(
@@ -197,44 +227,69 @@ const app = new Elysia({ prefix: '/api' })
         const totalChunks = chunkIndex + 1
         console.log(`[API] Total chunks to combine: ${totalChunks}`)
 
+        const normalizedChunkMimeType = normalizeMimeType(mimeType, 'audio/ogg')
+        const normalizedFinalMimeType = normalizeMimeType(
+          finalAudioMimeType || mimeType,
+          'audio/ogg',
+        )
+        const finalAudioBase64 = finalAudioData
+          ? finalAudioData.includes(',')
+            ? finalAudioData.split(',')[1] || ''
+            : finalAudioData
+          : null
+        const finalAudioBuffer = finalAudioBase64
+          ? Buffer.from(finalAudioBase64, 'base64')
+          : null
+
         // STEP 1: Download and combine chunks (with error handling)
         let combinedAudioBuffer: Buffer | null = null
         let audioKey: string | null = null
         let audioUrl: string | null = null
 
         try {
-          // Download and combine all chunks from R2
-          console.log(
-            `[API] ===== STEP 1: Downloading and combining chunks =====`,
-          )
-          console.log(`[API] User ID: ${user[0].id}`)
-          console.log(`[API] Feedback ID: ${feedbackId}`)
-          console.log(`[API] Total chunks: ${totalChunks}`)
-          const combineStartTime = Date.now()
-          combinedAudioBuffer = await downloadAndCombineChunks(
-            user[0].id,
-            feedbackId,
-            totalChunks,
-          )
-          const combineDuration = Date.now() - combineStartTime
-          console.log(
-            `[API] ✓ Combined ${totalChunks} chunks in ${combineDuration}ms`,
-            {
-              totalSize: combinedAudioBuffer.length,
-              totalSizeMB: (combinedAudioBuffer.length / 1024 / 1024).toFixed(
-                2,
-              ),
-            },
-          )
+          if (!finalAudioBuffer) {
+            // Download and combine all chunks from R2
+            console.log(
+              `[API] ===== STEP 1: Downloading and combining chunks =====`,
+            )
+            console.log(`[API] User ID: ${user[0].id}`)
+            console.log(`[API] Feedback ID: ${feedbackId}`)
+            console.log(`[API] Total chunks: ${totalChunks}`)
+            const combineStartTime = Date.now()
+            combinedAudioBuffer = await downloadAndCombineChunks(
+              user[0].id,
+              feedbackId,
+              totalChunks,
+            )
+            const combineDuration = Date.now() - combineStartTime
+            console.log(
+              `[API] ✓ Combined ${totalChunks} chunks in ${combineDuration}ms`,
+              {
+                totalSize: combinedAudioBuffer.length,
+                totalSizeMB: (combinedAudioBuffer.length / 1024 / 1024).toFixed(
+                  2,
+                ),
+              },
+            )
+          } else {
+            console.log(`[API] Using final audio from client`, {
+              size: finalAudioBuffer.length,
+              sizeMB: (finalAudioBuffer.length / 1024 / 1024).toFixed(2),
+              format: normalizedFinalMimeType,
+            })
+          }
 
-          // Normalize MIME type (ElevenLabs supports all major audio formats)
-          const normalizedMimeType = (mimeType || 'audio/ogg')
-            .split(';')[0]
-            .trim()
-            .toLowerCase()
-          const extension = normalizedMimeType.split('/')[1] || 'ogg'
+          const audioBufferToUpload = finalAudioBuffer || combinedAudioBuffer
+          if (!audioBufferToUpload) {
+            throw new Error('No combined or final audio available to upload')
+          }
 
-          // Upload the combined audio file to R2 (OGG format, no conversion!)
+          const uploadMimeType = finalAudioBuffer
+            ? normalizedFinalMimeType
+            : normalizedChunkMimeType
+          const extension = extensionFromMimeType(uploadMimeType)
+
+          // Upload the combined audio file to R2 (no conversion)
           console.log(
             `[API] ===== STEP 2: Uploading combined audio to R2 =====`,
           )
@@ -246,22 +301,18 @@ const app = new Elysia({ prefix: '/api' })
           )
           audioKey = finalAudioKey
           console.log(
-            `[API] Audio key: ${audioKey} (format: ${normalizedMimeType})`,
+            `[API] Audio key: ${audioKey} (format: ${uploadMimeType})`,
           )
           const finalUploadStartTime = Date.now()
-          await uploadAudioChunk(
-            audioKey,
-            combinedAudioBuffer,
-            normalizedMimeType,
-          )
+          await uploadAudioChunk(audioKey, audioBufferToUpload, uploadMimeType)
           const finalUploadDuration = Date.now() - finalUploadStartTime
           console.log(
             `[API] ✓ Audio uploaded to R2 in ${finalUploadDuration}ms`,
             {
               key: audioKey,
-              format: normalizedMimeType,
-              size: combinedAudioBuffer.length,
-              sizeMB: (combinedAudioBuffer.length / 1024 / 1024).toFixed(2),
+              format: uploadMimeType,
+              size: audioBufferToUpload.length,
+              sizeMB: (audioBufferToUpload.length / 1024 / 1024).toFixed(2),
             },
           )
 
@@ -285,6 +336,7 @@ const app = new Elysia({ prefix: '/api' })
         console.log(`[API] Creating feedback record in database...`)
         const dbInsertStartTime = Date.now()
         await db.insert(feedback).values({
+          id: feedbackId,
           userId: user[0].id,
           customerName: customerName || null,
           audioUrl: audioUrl || null,
@@ -301,37 +353,35 @@ const app = new Elysia({ prefix: '/api' })
         })
 
         // STEP 3: Use provided transcript/sentiment OR transcribe (with error handling - won't fail feedback save)
-        if (providedTranscript && providedSentiment) {
-          // Use pre-transcribed transcript and sentiment from client
-          console.log(
-            `[API] ===== STEP 4: Using pre-transcribed transcript and sentiment =====`,
-          )
-          fullTranscript = providedTranscript
-          sentiment = providedSentiment as 'positive' | 'neutral' | 'negative'
-          console.log(
-            `[API] Using provided transcript (length: ${fullTranscript.length})`,
-          )
-          console.log(`[API] Using provided sentiment: ${sentiment}`)
-        } else if (combinedAudioBuffer && audioKey) {
-          // Fallback: Transcribe on server if not provided
-          try {
-            // Transcribe the full combined audio using ElevenLabs
+        try {
+          if (providedTranscript) {
+            console.log(
+              `[API] Using provided transcript (length: ${providedTranscript.length})`,
+            )
+          }
+          if (sentiment) {
+            console.log(`[API] Using provided sentiment: ${sentiment}`)
+          }
+
+          const transcriptionAudioBuffer =
+            finalAudioBuffer || combinedAudioBuffer
+          const transcriptionMimeType = finalAudioBuffer
+            ? normalizedFinalMimeType
+            : normalizedChunkMimeType
+
+          if (!fullTranscript && transcriptionAudioBuffer) {
             console.log(
               `[API] ===== STEP 4: Transcribing audio with ElevenLabs =====`,
             )
-            const normalizedMimeType = (mimeType || 'audio/ogg')
-              .split(';')[0]
-              .trim()
-              .toLowerCase()
             console.log(
-              `[API] Audio buffer size: ${combinedAudioBuffer.length} bytes`,
+              `[API] Audio buffer size: ${transcriptionAudioBuffer.length} bytes`,
             )
             console.log(`[API] Audio key: ${audioKey}`)
-            console.log(`[API] Transcription format: ${normalizedMimeType}`)
+            console.log(`[API] Transcription format: ${transcriptionMimeType}`)
             const transcriptionStartTime = Date.now()
             fullTranscript = await transcribeAudioWithElevenLabs(
-              combinedAudioBuffer,
-              normalizedMimeType,
+              transcriptionAudioBuffer,
+              transcriptionMimeType,
             )
             const transcriptionDuration = Date.now() - transcriptionStartTime
             console.log(
@@ -344,77 +394,70 @@ const app = new Elysia({ prefix: '/api' })
                 fullTranscript: fullTranscript || 'EMPTY TRANSCRIPT',
               },
             )
+          }
 
-            // Analyze sentiment from full transcript (only if not provided)
-            if (!providedSentiment) {
-              console.log(`[API] Analyzing sentiment from transcript...`)
-              const sentimentStartTime = Date.now()
-              sentiment = await analyzeSentiment(fullTranscript)
-              const sentimentDuration = Date.now() - sentimentStartTime
+          if (fullTranscript && !sentiment) {
+            console.log(`[API] Analyzing sentiment from transcript...`)
+            const sentimentStartTime = Date.now()
+            sentiment = await analyzeSentiment(fullTranscript)
+            const sentimentDuration = Date.now() - sentimentStartTime
+            console.log(
+              `[API] Sentiment analyzed in ${sentimentDuration}ms:`,
+              sentiment,
+            )
+          }
+
+          let finalCustomerName = customerName || null
+          if (!finalCustomerName && fullTranscript) {
+            console.log(`[API] Extracting name from transcript...`)
+            try {
+              const extractedName =
+                await extractNameFromTranscript(fullTranscript)
+              finalCustomerName = extractedName
               console.log(
-                `[API] Sentiment analyzed in ${sentimentDuration}ms:`,
-                sentiment,
+                `[API] Extracted name: ${extractedName || 'None found'}`,
               )
+            } catch (nameError) {
+              console.error(`[API] Name extraction failed:`, nameError)
             }
+          } else if (finalCustomerName) {
+            console.log(
+              `[API] Using provided customer name: ${finalCustomerName}`,
+            )
+          }
 
-            // Extract name from transcript if not provided
-            let finalCustomerName = customerName || null
-            if (!finalCustomerName && fullTranscript) {
-              console.log(`[API] Extracting name from transcript...`)
-              try {
-                const extractedName =
-                  await extractNameFromTranscript(fullTranscript)
-                finalCustomerName = extractedName
-                console.log(
-                  `[API] Extracted name: ${extractedName || 'None found'}`,
-                )
-              } catch (nameError) {
-                console.error(`[API] Name extraction failed:`, nameError)
-                // Continue without extracted name
-              }
-            } else {
-              console.log(
-                `[API] Using provided customer name: ${finalCustomerName || 'None'}`,
-              )
-            }
+          const updatePayload: {
+            transcript?: string
+            sentiment?: 'positive' | 'neutral' | 'negative'
+            customerName?: string | null
+          } = {}
 
-            // Update feedback record with transcription and analysis
+          if (fullTranscript && fullTranscript.trim().length > 0) {
+            updatePayload.transcript = fullTranscript
+          }
+          if (sentiment) {
+            updatePayload.sentiment = sentiment
+          }
+          if (finalCustomerName) {
+            updatePayload.customerName = finalCustomerName
+          }
+
+          if (Object.keys(updatePayload).length > 0) {
             console.log(`[API] Updating feedback record with transcription...`)
             await db
               .update(feedback)
-              .set({
-                transcript: fullTranscript,
-                sentiment,
-                customerName: finalCustomerName,
-              })
+              .set(updatePayload)
               .where(eq(feedback.id, feedbackId))
             console.log(`[API] Feedback record updated with transcription`)
-          } catch (transcriptionError: unknown) {
-            console.error(
-              `[API] Transcription/analysis failed (feedback still saved):`,
-              transcriptionError,
+          } else {
+            console.warn(
+              `[API] Skipping feedback update - no transcript or sentiment available`,
             )
-            // Feedback is already saved, so this is fine - can transcribe later
           }
-        } else if (fullTranscript && sentiment) {
-          // Update feedback record with provided transcript/sentiment
-          console.log(
-            `[API] Updating feedback record with provided transcript/sentiment...`,
-          )
-          await db
-            .update(feedback)
-            .set({
-              transcript: fullTranscript,
-              sentiment,
-              customerName: customerName || null,
-            })
-            .where(eq(feedback.id, feedbackId))
-          console.log(
-            `[API] Feedback record updated with provided transcript/sentiment`,
-          )
-        } else {
-          console.warn(
-            `[API] Skipping transcription - no combined audio available and no provided transcript`,
+        } catch (transcriptionError: unknown) {
+          console.error(
+            `[API] Transcription/analysis failed (feedback still saved):`,
+            transcriptionError,
           )
         }
 
@@ -517,6 +560,8 @@ const app = new Elysia({ prefix: '/api' })
         duration: t.Optional(t.Number()),
         transcript: t.Optional(t.String()), // Pre-transcribed transcript from client
         sentiment: t.Optional(t.String()), // Pre-analyzed sentiment from client
+        finalAudioData: t.Optional(t.String()), // Base64 of full recording for reliable storage
+        finalAudioMimeType: t.Optional(t.String()),
       }),
     },
   )
