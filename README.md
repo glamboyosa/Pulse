@@ -7,7 +7,7 @@
 ## Features
 
 - 🎤 **Voice Feedback Collection** - Customers record voice messages via QR code scanning
-- 📝 **Automatic Transcription** - Powered by Google Gemini AI
+- 📝 **Automatic Transcription** - Powered by ElevenLabs Speech-to-Text
 - 😊 **Sentiment Analysis** - Automatically categorizes feedback as positive, neutral, or negative
 - 📊 **Real-Time Dashboard** - View all feedback with audio playback and transcripts
 - 🔗 **Unique QR Codes** - Each business gets a custom QR code for feedback collection
@@ -18,10 +18,9 @@
 ## Tech Stack
 
 ### Frontend
-- **[TanStack Start](https://tanstack.com/start)** - Full-stack React framework with SSR
-- **[TanStack Router](https://tanstack.com/router)** - Type-safe routing
-- **[TanStack Query](https://tanstack.com/query)** - Data fetching and state management
+- **[Next.js](https://nextjs.org/)** - Full-stack React framework with App Router and SSR
 - **[React](https://react.dev/)** - UI library
+- **[TanStack Query](https://tanstack.com/query)** - Data fetching and state management
 - **[Tailwind CSS](https://tailwindcss.com/)** - Styling
 - **[Shadcn UI](https://ui.shadcn.com/)** - UI components
 - **[Lucide React](https://lucide.dev/)** - Icons
@@ -33,14 +32,15 @@
 - **[Drizzle ORM](https://orm.drizzle.team/)** - TypeScript ORM
 - **[Neon Database](https://neon.tech/)** - Serverless PostgreSQL
 - **[Resend](https://resend.com/)** - Transactional emails
-- **[Google Gemini AI](https://ai.google.dev/)** - Audio transcription and sentiment analysis
+- **[ElevenLabs](https://elevenlabs.io/)** - Speech-to-text transcription
+- **[Google Gemini AI](https://ai.google.dev/)** - Sentiment analysis and name extraction
 - **[Cloudflare R2](https://www.cloudflare.com/products/r2/)** - Object storage for audio files
 
 ### Development Tools
-- **[Vite](https://vitejs.dev/)** - Build tool
+- **[Next.js Compiler](https://nextjs.org/docs/architecture/nextjs-compiler)** - Application build and bundling
 - **[TypeScript](https://www.typescriptlang.org/)** - Type safety
 - **[Zod](https://zod.dev/)** - Schema validation
-- **[T3 Env](https://env.t3.gg/)** - Type-safe environment variables
+- **[T3 Env](https://env.t3.gg/)** - Type-safe environment variables for Next.js
 - **[Vitest](https://vitest.dev/)** - Testing framework
 - **[ESLint](https://eslint.org/)** & **[Prettier](https://prettier.io/)** - Code quality
 
@@ -104,6 +104,9 @@ SERVER_RESEND_API_KEY=your-resend-api-key
 # AI (Google Gemini)
 SERVER_GEMINI_API_KEY=your-gemini-api-key
 
+# Speech-to-text (ElevenLabs)
+ELEVEN_LABS_API_KEY=your-elevenlabs-api-key
+
 # Storage (Cloudflare R2)
 CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
 CLOUDFLARE_ACCESS_KEY_ID=your-r2-access-key-id
@@ -114,8 +117,8 @@ CLOUDFLARE_R2_BUCKET_NAME=your-bucket-name
 POLAR_API_KEY=your-polar-api-key
 
 # Client
-VITE_APP_TITLE=Pulse
-VITE_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_TITLE=Pulse
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 ## Database Setup
@@ -138,27 +141,26 @@ bun run db:migrate
 bun run db:studio
 ```
 
-### Auto-Setup with Neon
+### Neon Setup
 
-When running `bun run dev`, the `@neondatabase/vite-plugin-postgres` will automatically detect if there's no database setup and create a claimable database for you (similar to [Neon Launchpad](https://neon.new)).
-
-> ⚠️ **Important:** Claimable databases expire in 72 hours. Make sure to claim your database and update your `DATABASE_URL`.
+Create a Neon Postgres database, copy the connection string into `DATABASE_URL`, then run `bun run db:push` to apply the Drizzle schema.
 
 ## Project Structure
 
 ```
 pulse/
+├── app/
+│   ├── api/[[...slugs]]/   # Elysia API mounted inside Next.js
+│   ├── dashboard/          # Business dashboard
+│   ├── f/[id]/             # Public QR-code feedback page
+│   ├── login/              # OTP login page
+│   └── ...                 # Other App Router routes
 ├── src/
 │   ├── components/          # React components
 │   │   ├── ui/             # Shadcn UI components
 │   │   └── ...
-│   ├── routes/             # TanStack Router file-based routes
-│   │   ├── _authed/        # Protected routes
-│   │   ├── api.$/          # Elysia API routes
-│   │   └── ...
 │   ├── lib/                # Utility libraries
-│   │   ├── ai/             # AI integrations (Gemini)
-│   │   ├── server-functions/# TanStack Start server functions
+│   │   ├── ai/             # AI integrations (ElevenLabs + Gemini)
 │   │   ├── storage/        # Storage utilities (R2)
 │   │   └── utils/          # Helper utilities
 │   ├── db/                 # Database schema and migrations
@@ -177,7 +179,7 @@ bun run dev              # Start dev server on port 3000
 
 # Building
 bun run build           # Build for production
-bun run serve           # Preview production build
+bun run start           # Start production server
 
 # Database
 bun run db:generate     # Generate migrations
@@ -190,8 +192,8 @@ bun run lint            # Run ESLint
 bun run format          # Format with Prettier
 bun run check           # Format and lint
 
-# Testing
-bun run test            # Run tests with Vitest
+# Tunnels
+bun run dev:tunnel      # Expose local app with ngrok
 ```
 
 ## Key Features Implementation
@@ -199,14 +201,14 @@ bun run test            # Run tests with Vitest
 ### Authentication
 - OTP-based email authentication
 - Session management with HTTP-only cookies
-- Protected routes with `_authed` layout
+- Protected dashboard routes via server-side auth checks
 
 ### Voice Feedback
 - Real-time audio streaming (WhatsApp-like experience)
 - Chunks uploaded every 2 seconds during recording
-- Automatic transcription with Google Gemini
-- Sentiment analysis (positive/neutral/negative)
-- Customer name extraction from transcripts
+- Automatic transcription with ElevenLabs Speech-to-Text
+- Sentiment analysis with Google Gemini (positive/neutral/negative)
+- Customer name extraction from transcripts with Google Gemini
 
 ### Storage
 - Audio files stored in Cloudflare R2
@@ -237,8 +239,7 @@ pnpx shadcn@latest add card
 
 ## Learn More
 
-- [TanStack Start Documentation](https://tanstack.com/start)
-- [TanStack Router Documentation](https://tanstack.com/router)
+- [Next.js Documentation](https://nextjs.org/docs)
 - [ElysiaJS Documentation](https://elysiajs.com/)
 - [Drizzle ORM Documentation](https://orm.drizzle.team/)
 - [Neon Documentation](https://neon.tech/docs)
