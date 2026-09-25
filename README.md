@@ -1,6 +1,6 @@
 # Pulse
 
-**Pulse** is a SaaS platform that helps businesses collect authentic voice feedback from customers through simple QR codes. Instead of traditional text surveys, customers scan a QR code and leave voice messages that are automatically transcribed, analyzed for sentiment, and displayed in a real-time dashboard.
+**Pulse** is a AI SaaS platform that helps businesses collect authentic voice feedback from customers through simple QR codes. Instead of traditional text surveys, customers scan a QR code and leave voice messages that are automatically transcribed, analyzed for sentiment, and displayed in a real-time dashboard.
 
 🌐 **Live at:** [pulseapp.click](https://pulseapp.click)
 
