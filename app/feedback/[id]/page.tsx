@@ -10,7 +10,10 @@ import { AudioPlayer } from '@/components/audio-player'
 import { FeedbackTranscript } from '@/components/feedback-transcript'
 import { db } from '@/db/index'
 import { feedback } from '@/db/schema'
-import { analyzeSentiment, extractNameFromTranscript } from '@/lib/ai/gemini'
+import {
+  analyzeSentiment,
+  extractNameFromTranscript,
+} from '@/lib/ai/text-analysis'
 import { transcribeAudioWithElevenLabs } from '@/lib/ai/elevenlabs'
 import { downloadAudioChunk } from '@/lib/storage/r2'
 

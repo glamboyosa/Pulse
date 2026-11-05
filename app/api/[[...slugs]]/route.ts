@@ -17,7 +17,10 @@ import {
   users,
 } from '@/db/schema'
 import { env } from '@/env'
-import { analyzeSentiment, extractNameFromTranscript } from '@/lib/ai/gemini'
+import {
+  analyzeSentiment,
+  extractNameFromTranscript,
+} from '@/lib/ai/text-analysis'
 import { transcribeAudioWithElevenLabs } from '@/lib/ai/elevenlabs'
 import { sendOTPEmail } from '@/lib/email'
 import { sendFeedbackReceivedEmail } from '@/lib/email/feedback-received'
