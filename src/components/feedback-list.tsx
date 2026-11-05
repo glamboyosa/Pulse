@@ -450,6 +450,14 @@ export function FeedbackList({
             >
               NEUTRAL
             </Button>
+            <Button
+              variant={filter === 'negative' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('negative')}
+              className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            >
+              NEGATIVE
+            </Button>
           </div>
         </div>
         <EmptyState
@@ -489,6 +497,14 @@ export function FeedbackList({
             className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
           >
             NEUTRAL
+          </Button>
+          <Button
+            variant={filter === 'negative' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('negative')}
+            className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+          >
+            NEGATIVE
           </Button>
         </div>
       </div>
