@@ -32,6 +32,7 @@ export const listFeedback = async (
           ? { id: f.spotId, name: spotName, removed: spotArchived !== null }
           : null,
       duration: f.duration ?? 0,
+      typed: f.source === 'text',
       transcript: f.transcript ?? '',
       sentiment: f.sentiment as Feedback['sentiment'],
       summary: f.summary,

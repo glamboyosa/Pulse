@@ -26,6 +26,7 @@ import {
   SubmissionError,
   processFeedback,
   submitFeedback,
+  submitTypedFeedback,
 } from '@/server/feedback-submission'
 import { listFeedback } from '@/server/feedback-queries'
 import { SpotError, archiveSpot, createSpot, listSpots } from '@/server/spots'
@@ -129,7 +130,7 @@ const app = new Elysia({ prefix: '/api' })
           buffer: Buffer.from(await body.audio.arrayBuffer()),
           type: body.audio.type.split(';')[0],
         }
-        after(() => processFeedback(feedbackId, business, audio))
+        after(() => processFeedback(feedbackId, business, { audio }))
         return { success: true, feedbackId }
       } catch (error) {
         if (error instanceof SubmissionError) {
@@ -143,6 +144,39 @@ const app = new Elysia({ prefix: '/api' })
         code: t.String({ minLength: 1, maxLength: 64 }),
         audio: t.File(),
         duration: t.Numeric({ minimum: 0 }),
+        customerName: t.Optional(t.String({ maxLength: 200 })),
+        spot: t.Optional(t.String({ maxLength: 64 })),
+      }),
+    },
+  )
+  .post(
+    '/feedback/submit-text',
+    async ({ body, request }) => {
+      const ip = clientIp(request)
+      // The same limits as recordings: one pulse per submission either way.
+      await enforceRateLimit(`submit:ip:${ip}:${body.code}`, 10, 10 * 60 * 1000)
+      await enforceRateLimit(`submit:business:${body.code}`, 120, HOUR_MS)
+
+      try {
+        const { feedbackId, business } = await submitTypedFeedback({
+          code: body.code,
+          text: body.text,
+          customerName: body.customerName?.trim().slice(0, 80) || null,
+          spot: body.spot,
+        })
+        after(() => processFeedback(feedbackId, business, { typed: true }))
+        return { success: true, feedbackId }
+      } catch (error) {
+        if (error instanceof SubmissionError) {
+          return json(error.status, { error: error.message })
+        }
+        throw error
+      }
+    },
+    {
+      body: t.Object({
+        code: t.String({ minLength: 1, maxLength: 64 }),
+        text: t.String({ maxLength: 5000 }),
         customerName: t.Optional(t.String({ maxLength: 200 })),
         spot: t.Optional(t.String({ maxLength: 64 })),
       }),
@@ -266,7 +300,11 @@ const app = new Elysia({ prefix: '/api' })
     if (!url) return json(404, { error: 'No logo' })
     return new Response(null, {
       status: 302,
-      headers: { location: url, 'cache-control': 'public, max-age=3000' },
+      // s-maxage lets Vercel's CDN answer repeat views without running this.
+      headers: {
+        location: url,
+        'cache-control': 'public, max-age=3000, s-maxage=3000',
+      },
     })
   })
   .put(

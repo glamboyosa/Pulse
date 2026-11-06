@@ -57,6 +57,23 @@ describe('feedback email', () => {
   })
 })
 
+describe('typed feedback email', () => {
+  it('says the feedback was typed instead of showing a duration', async () => {
+    await sendFeedbackReceivedEmail({
+      to: 'owner@example.test',
+      businessName: 'Test Cafe 130',
+      feedbackId: 'f-3',
+      sentiment: 'neutral',
+      transcript: 'Music too loud.',
+      duration: null,
+      typed: true,
+    })
+    const email = sent()
+    expect(email.text).toContain('Typed rather than recorded')
+    expect(email.text).not.toContain('Duration')
+  })
+})
+
 describe('weekly digest email', () => {
   it('escapes everything the model and the owner wrote, and sends once per key', async () => {
     await sendWeeklyDigestEmail({

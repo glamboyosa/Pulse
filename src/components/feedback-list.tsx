@@ -15,6 +15,8 @@ export interface Feedback {
   /** The spot whose QR code the customer scanned, if any. */
   spot: { id: string; name: string; removed: boolean } | null
   duration: number // seconds
+  /** Typed rather than recorded: no audio, no duration. */
+  typed: boolean
   transcript: string
   sentiment: 'positive' | 'neutral' | 'negative' | null
   summary: string | null
@@ -88,7 +90,7 @@ export function FeedbackList({
   const feedbackList = feedbackData.feedback.map((f) => ({
     ...f,
     date: formatRelativeTime(f.createdAt),
-    formattedDuration: formatDuration(f.duration),
+    formattedDuration: f.typed ? null : formatDuration(f.duration),
     displayName: f.customerName || 'Anonymous',
   }))
 
@@ -324,21 +326,30 @@ export function FeedbackList({
             onClick={() => handleViewFeedback(item.id)}
           >
             <div className="flex items-start gap-4">
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={(e) => togglePlay(e, item)}
-                aria-label={
-                  playingId === item.id ? 'Pause recording' : 'Play recording'
-                }
-                className="shrink-0 w-12 h-12 border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                {playingId === item.id ? (
-                  <Pause className="w-5 h-5" fill="currentColor" />
-                ) : (
-                  <Play className="w-5 h-5" fill="currentColor" />
-                )}
-              </Button>
+              {!item.typed ? (
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={(e) => togglePlay(e, item)}
+                  aria-label={
+                    playingId === item.id ? 'Pause recording' : 'Play recording'
+                  }
+                  className="shrink-0 w-12 h-12 border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-primary hover:text-primary-foreground transition-colors"
+                >
+                  {playingId === item.id ? (
+                    <Pause className="w-5 h-5" fill="currentColor" />
+                  ) : (
+                    <Play className="w-5 h-5" fill="currentColor" />
+                  )}
+                </Button>
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="shrink-0 flex w-12 h-12 items-center justify-center border-4 border-foreground"
+                >
+                  <FileText className="w-5 h-5" />
+                </span>
+              )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
@@ -352,8 +363,12 @@ export function FeedbackList({
                     </div>
                     <div className="flex items-center gap-3 text-sm font-semibold text-muted-foreground">
                       <span>{item.date}</span>
-                      <span>•</span>
-                      <span>{item.formattedDuration}</span>
+                      {item.formattedDuration && (
+                        <>
+                          <span>•</span>
+                          <span>{item.formattedDuration}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -388,8 +403,16 @@ export function FeedbackList({
                     </p>
                   )}
                 </div>
-                {(item.themes.length > 0 || item.language || item.spot) && (
+                {(item.themes.length > 0 ||
+                  item.language ||
+                  item.spot ||
+                  item.typed) && (
                   <ul className="mt-3 flex flex-wrap gap-2">
+                    {item.typed && (
+                      <li className="border-2 border-foreground px-2 py-0.5 text-xs font-bold uppercase">
+                        Typed
+                      </li>
+                    )}
                     {item.spot && (
                       <li className="border-2 border-foreground bg-foreground text-background px-2 py-0.5 text-xs font-bold uppercase">
                         {item.spot.removed

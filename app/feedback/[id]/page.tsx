@@ -47,7 +47,10 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
   const customerName = feedbackData.customerName
 
   // retryAnalysis decides whether this recording gets another try.
-  if (!transcript) {
+  if (
+    feedbackData.status !== 'ready' ||
+    (!transcript && feedbackData.audioKey)
+  ) {
     after(() => retryAnalysis(feedbackId))
   }
 
@@ -109,7 +112,11 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
               <div className="flex items-center gap-4 text-sm font-semibold text-muted-foreground">
                 <span>{formatDate(feedbackData.createdAt)}</span>
                 <span>•</span>
-                <span>{formatDuration(feedbackData.duration)}</span>
+                <span>
+                  {feedbackData.source === 'text'
+                    ? 'Typed'
+                    : formatDuration(feedbackData.duration)}
+                </span>
               </div>
             </div>
           </div>

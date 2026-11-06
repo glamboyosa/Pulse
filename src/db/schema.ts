@@ -57,6 +57,8 @@ export const feedback = pgTable('feedback', {
     .references(() => users.id)
     .notNull(),
   spotId: uuid('spot_id').references(() => spots.id),
+  // 'voice' for recordings; 'text' when the customer couldn't record and typed.
+  source: text('source').default('voice').notNull(),
   customerName: text('customer_name'),
   audioUrl: text('audio_url'), // Presigned URL to stored audio file (expires)
   audioKey: text('audio_key'), // R2 key for the audio file (permanent, can regenerate URLs)

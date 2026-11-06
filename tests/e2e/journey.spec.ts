@@ -110,8 +110,8 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     ).toHaveCount(2)
     // A recording from the main QR code, with no spot.
     await db.query(
-      `insert into feedback (user_id, status, customer_name, transcript)
-       select id, 'ready', 'Tunde', 'Good food.' from users where email = $1`,
+      `insert into feedback (user_id, status, customer_name, transcript, audio_key)
+       select id, 'ready', 'Tunde', 'Good food.', 'dev/e2e/none.webm' from users where email = $1`,
       [email],
     )
     await page.reload()
@@ -134,6 +134,39 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     )
     expect(rows[0].themes.length).toBeGreaterThan(0)
     await expect(page.getByText(rows[0].summary)).toBeVisible()
+  })
+
+  await test.step('a customer whose microphone is blocked can type instead', async () => {
+    const customer = await browser.newContext()
+    const feedbackPage = await customer.newPage()
+    await feedbackPage.goto(`/f/${code}`)
+    // Voice first: typing is offered only once the microphone is refused.
+    await expect(
+      feedbackPage.getByRole('button', { name: 'Prefer to type?' }),
+    ).toHaveCount(0)
+    await feedbackPage.evaluate(() => {
+      navigator.mediaDevices.getUserMedia = () =>
+        Promise.reject(new DOMException('Denied', 'NotAllowedError'))
+    })
+    await feedbackPage.getByRole('button', { name: 'START RECORDING' }).click()
+    await feedbackPage.getByRole('button', { name: 'Prefer to type?' }).click()
+    await feedbackPage
+      .getByLabel('Your feedback')
+      .fill('Music was far too loud to talk over.')
+    await feedbackPage.getByRole('button', { name: 'SEND FEEDBACK' }).click()
+    await expect(feedbackPage.getByText('THANK YOU!')).toBeVisible()
+    await customer.close()
+
+    await page.goto('/dashboard')
+    await expect(async () => {
+      await page.reload()
+      await expect(page.getByText(/far too loud/).first()).toBeVisible({
+        timeout: 2000,
+      })
+    }).toPass({ timeout: 60_000, intervals: [3000] })
+    await expect(
+      page.getByRole('listitem').filter({ hasText: /^Typed$/ }),
+    ).toHaveCount(1)
   })
 
   await test.step('a business with no pulses left stops taking recordings', async () => {

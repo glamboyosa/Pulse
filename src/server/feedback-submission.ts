@@ -94,6 +94,54 @@ export type SubmissionInput = {
   spot?: string | null
 }
 
+export const MIN_TYPED_LENGTH = 3
+export const MAX_TYPED_LENGTH = 2000
+
+/**
+ * Stores typed feedback, spending one pulse. The text is saved straight away;
+ * analysis runs afterwards in `processFeedback`.
+ */
+export const submitTypedFeedback = async (input: {
+  code: string
+  text: string
+  customerName: string | null
+  spot?: string | null
+}): Promise<{ feedbackId: string; business: Business }> => {
+  const text = input.text.trim()
+  if (text.length < MIN_TYPED_LENGTH) {
+    throw new SubmissionError('Write a little more first', 400)
+  }
+  if (text.length > MAX_TYPED_LENGTH) {
+    throw new SubmissionError(
+      `Keep it under ${MAX_TYPED_LENGTH} characters`,
+      413,
+    )
+  }
+
+  const business = await claimPulse(input.code)
+  if (!business) {
+    throw new SubmissionError('This business is not accepting feedback', 402)
+  }
+
+  const feedbackId = crypto.randomUUID()
+  try {
+    const spot = await findSpot(business.id, input.spot)
+    await db.insert(feedback).values({
+      id: feedbackId,
+      userId: business.id,
+      spotId: spot?.id ?? null,
+      customerName: input.customerName,
+      source: 'text',
+      transcript: text,
+      status: 'processing',
+    })
+  } catch (error) {
+    await returnPulse(business.id)
+    throw error
+  }
+  return { feedbackId, business }
+}
+
 /**
  * Stores a recording and its feedback row, spending one pulse. Transcription
  * runs afterwards in `processFeedback`; the row stays 'processing' until then.
@@ -144,14 +192,19 @@ export const submitFeedback = async (
   return { feedbackId, business }
 }
 
+/** A recording to transcribe, or feedback the customer typed (already stored). */
+export type FeedbackSource =
+  | { audio: { buffer: Buffer; type: string } }
+  | { typed: true }
+
 /**
- * Transcribes and analyses a stored recording. A transcript is kept even if
- * analysis fails, so the owner can still read it. Returns the saved row, or
- * null if it no longer exists.
+ * Transcribes a recording, or takes the typed text, and analyses it. A
+ * transcript is kept even if analysis fails, so the owner can still read it.
+ * Returns the saved row, or null if it no longer exists.
  */
 export const analyseFeedback = async (
   feedbackId: string,
-  audio: { buffer: Buffer; type: string },
+  source: FeedbackSource,
 ) => {
   const rows = await db
     .select()
@@ -162,11 +215,18 @@ export const analyseFeedback = async (
   if (!row) return null
 
   let transcript: string | null = null
-  try {
-    transcript =
-      (await transcribeAudioWithElevenLabs(audio.buffer, audio.type)) || null
-  } catch (error) {
-    console.error('[feedback] transcription failed', { feedbackId, error })
+  if ('typed' in source) {
+    transcript = row.transcript
+  } else {
+    try {
+      transcript =
+        (await transcribeAudioWithElevenLabs(
+          source.audio.buffer,
+          source.audio.type,
+        )) || null
+    } catch (error) {
+      console.error('[feedback] transcription failed', { feedbackId, error })
+    }
   }
 
   const analysis = transcript
@@ -212,9 +272,9 @@ export const analyseFeedback = async (
 export const processFeedback = async (
   feedbackId: string,
   business: Business,
-  audio: { buffer: Buffer; type: string },
+  source: FeedbackSource,
 ): Promise<void> => {
-  const saved = await analyseFeedback(feedbackId, audio)
+  const saved = await analyseFeedback(feedbackId, source)
   if (!saved) return
 
   const ownerName = business.businessName || business.email.split('@')[0]
@@ -224,6 +284,7 @@ export const processFeedback = async (
     feedbackId,
     customerName: saved.customerName,
     duration: saved.duration,
+    typed: saved.source === 'text',
     sentiment: saved.sentiment,
     transcript: saved.translation ?? saved.transcript,
     summary: saved.summary,
@@ -250,9 +311,9 @@ export const MAX_ANALYSIS_RETRIES = 3
 const STUCK_AFTER = sql`interval '10 minutes'`
 
 /**
- * Re-runs analysis for a recording with no transcript: one that failed, one
- * stuck in 'processing' for over 10 minutes, or one that predates background
- * processing. Claiming the row and counting the attempt happen in one
+ * Re-runs analysis for feedback that isn't 'ready': a recording that failed,
+ * or any submission stuck in 'processing' for over 10 minutes (for example a
+ * run killed by a redeploy). Claiming the row and counting the attempt happen in one
  * statement, so page reloads can't start two runs, and retries stop after
  * MAX_ANALYSIS_RETRIES.
  */
@@ -264,22 +325,30 @@ export const retryAnalysis = async (feedbackId: string): Promise<void> => {
       and analysis_attempts >= ${MAX_ANALYSIS_RETRIES}
       and analysis_started_at < now() - ${STUCK_AFTER}
   `)
-  const claimed = await db.execute<{ audio_key: string }>(sql`
+  const claimed = await db.execute<{ audio_key: string | null }>(sql`
     update feedback set
       status = 'processing',
       analysis_attempts = analysis_attempts + 1,
       analysis_started_at = now()
-    where id = ${feedbackId} and transcript is null
-      and audio_key is not null
+    where id = ${feedbackId}
+      -- Not analysed yet, or a recording from before statuses existed that
+      -- never got a transcript.
+      and (status <> 'ready' or (transcript is null and audio_key is not null))
+      and (audio_key is not null or transcript is not null)
       and analysis_attempts < ${MAX_ANALYSIS_RETRIES}
       and (status <> 'processing' or analysis_started_at < now() - ${STUCK_AFTER})
     returning audio_key
   `)
-  const audioKey = claimed.rows[0]?.audio_key
-  if (!audioKey) return
+  const claim = claimed.rows.at(0)
+  if (!claim) return
 
   try {
-    await analyseFeedback(feedbackId, await downloadAudio(audioKey))
+    await analyseFeedback(
+      feedbackId,
+      claim.audio_key
+        ? { audio: await downloadAudio(claim.audio_key) }
+        : { typed: true },
+    )
   } catch (error) {
     console.error('[feedback] retry failed', { feedbackId, error })
     await db

@@ -8,6 +8,8 @@ interface SendFeedbackReceivedEmailParams {
   feedbackId: string
   customerName?: string | null
   duration?: number | null
+  /** Typed rather than recorded, so there is no duration. */
+  typed?: boolean
   sentiment?: string | null
   transcript?: string | null
   summary?: string | null
@@ -31,6 +33,7 @@ export async function sendFeedbackReceivedEmail({
   feedbackId,
   customerName,
   duration,
+  typed = false,
   sentiment,
   transcript,
   summary,
@@ -76,7 +79,7 @@ export async function sendFeedbackReceivedEmail({
           ${summary ? `<p style="margin: 0 0 16px 0; font-size: 18px; font-weight: bold;">${escapeHtml(summary)}</p>` : ''}
           <div style="border: 2px solid #111; padding: 16px; margin-bottom: 16px;">
             <p style="margin: 0 0 8px 0;"><strong>From:</strong> ${escapeHtml(displayName)}</p>
-            <p style="margin: 0 0 8px 0;"><strong>Duration:</strong> ${formatDuration(duration)}</p>
+            <p style="margin: 0 0 8px 0;"><strong>${typed ? 'Typed</strong> rather than recorded' : 'Duration:</strong> ' + formatDuration(duration)}</p>
             <p style="margin: 0 0 8px 0;"><strong>Sentiment:</strong> ${sentimentText}</p>
             <p style="margin: 12px 0 8px 0;"><strong>${escapeHtml(transcriptLabel)}:</strong></p>
             <p style="margin: 0; background: #f5f5f5; padding: 12px;">${escapeHtml(transcriptPreview)}</p>
@@ -94,7 +97,7 @@ export async function sendFeedbackReceivedEmail({
 ${heading}
 ${summary ? `\n${summary}\n` : ''}
 From: ${displayName}
-Duration: ${formatDuration(duration)}
+${typed ? 'Typed rather than recorded' : `Duration: ${formatDuration(duration)}`}
 Sentiment: ${sentimentText}
 
 ${transcriptLabel}:

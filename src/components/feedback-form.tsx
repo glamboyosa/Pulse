@@ -22,7 +22,6 @@ const RECORDING_TYPES = [
 type Stage =
   | { name: 'loading' }
   | { name: 'not-accepting' }
-  | { name: 'unsupported' }
   | { name: 'idle' }
   | { name: 'asking' }
   | { name: 'denied' }
@@ -61,6 +60,12 @@ export function FeedbackForm({
   const [elapsed, setElapsed] = useState(0)
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // Pulse is voice first. Typing appears only when voice can't work: the
+  // browser can't record, or the customer blocked the microphone.
+  const [canRecord, setCanRecord] = useState(true)
+  const [typing, setTyping] = useState(false)
+  const [text, setText] = useState('')
+  const [sendingText, setSendingText] = useState(false)
 
   const recorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -71,8 +76,8 @@ export function FeedbackForm({
       typeof MediaRecorder === 'undefined' ||
       !('mediaDevices' in navigator)
     ) {
-      setStage({ name: 'unsupported' })
-      return
+      setCanRecord(false)
+      setTyping(true)
     }
     fetch(`/api/businesses/${encodeURIComponent(businessId)}/status`)
       .then((response) => (response.ok ? response.json() : { accepting: true }))
@@ -126,7 +131,11 @@ export function FeedbackForm({
       recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
     } catch {
       releaseMicrophone()
-      setError("This browser can't record audio. Try another browser.")
+      setCanRecord(false)
+      setTyping(true)
+      setError(
+        "This browser can't record audio, so type your feedback instead.",
+      )
       setStage({ name: 'idle' })
       return
     }
@@ -158,7 +167,9 @@ export function FeedbackForm({
       recorder.start()
     } catch {
       releaseMicrophone()
-      setError("Recording couldn't start. Check your microphone and try again.")
+      setCanRecord(false)
+      setTyping(true)
+      setError("Recording couldn't start here, so type your feedback instead.")
       setStage({ name: 'idle' })
       return
     }
@@ -171,8 +182,43 @@ export function FeedbackForm({
     setStage({ name: 'idle' })
   }
 
+  const submitText = async () => {
+    if (text.trim().length < 3 || sendingText) return
+    setError(null)
+    setSendingText(true)
+    const response = await fetch('/api/feedback/submit-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: businessId,
+        text,
+        ...(name.trim() && { customerName: name.trim() }),
+        ...(spot && { spot }),
+      }),
+    }).catch(() => null)
+    if (response?.ok) {
+      setStage({ name: 'sent' })
+      return
+    }
+    if (response?.status === 402) {
+      setStage({ name: 'not-accepting' })
+      return
+    }
+    setError(
+      response?.status === 429
+        ? 'Lots of feedback from this connection just now. Please try again in a few minutes.'
+        : "Your feedback didn't send. Please try again.",
+    )
+    // Leave the stage as it was, so a refused microphone keeps the toggle.
+    setSendingText(false)
+  }
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
+    if (typing) {
+      await submitText()
+      return
+    }
     if (stage.name !== 'recorded') return
     setError(null)
     setStage({ ...stage, name: 'sending' })
@@ -255,19 +301,6 @@ export function FeedbackForm({
     )
   }
 
-  if (stage.name === 'unsupported') {
-    return (
-      <Card className={`${cardClass} text-center`}>
-        <h2 className="text-2xl font-black mb-3">
-          THIS BROWSER CAN&apos;T RECORD
-        </h2>
-        <p className="font-semibold text-muted-foreground">
-          Open this page in Safari, Chrome or Firefox to leave voice feedback.
-        </p>
-      </Card>
-    )
-  }
-
   const recorded = stage.name === 'recorded' || stage.name === 'sending'
 
   return (
@@ -290,108 +323,170 @@ export function FeedbackForm({
             />
           </div>
 
-          <div
-            className="bg-secondary border-4 border-foreground p-8 text-center"
-            aria-live="polite"
-          >
-            {stage.name === 'recording' ? (
-              <>
-                <Mic
-                  className="w-16 h-16 mx-auto mb-4 text-destructive animate-pulse"
-                  strokeWidth={2}
+          {typing ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="typed" className="text-sm font-bold uppercase">
+                  Your feedback
+                </Label>
+                <textarea
+                  id="typed"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  maxLength={2000}
+                  rows={6}
+                  placeholder="What went well, and what could be better?"
+                  aria-describedby="typed-hint"
+                  className="w-full border-4 border-foreground bg-background p-3 text-base font-semibold"
                 />
-                <p className="text-3xl font-black mb-2 text-destructive tabular-nums">
-                  {formatTime(elapsed)}
-                </p>
-                <p className="text-sm font-semibold text-muted-foreground">
-                  Recording… stops on its own at {formatTime(MAX_SECONDS)}
-                </p>
-              </>
-            ) : recorded ? (
-              <>
-                <p className="text-sm font-bold uppercase mb-3">
-                  Listen back before you send
-                </p>
-                <audio
-                  src={stage.url}
-                  controls
-                  className="w-full"
-                  aria-label="Your recording"
-                />
-              </>
-            ) : stage.name === 'denied' ? (
-              <>
-                <MicOff className="w-16 h-16 mx-auto mb-4" strokeWidth={2} />
-                <p className="text-lg font-bold mb-2">Microphone is blocked</p>
-                <p className="text-sm font-semibold text-muted-foreground">
-                  Allow microphone access for this site in your browser
-                  settings, then try again.
-                </p>
-              </>
-            ) : (
-              <>
-                <Mic
-                  className="w-16 h-16 mx-auto mb-4 text-primary"
-                  strokeWidth={2}
-                />
-                <p className="text-lg font-bold mb-2">
-                  {stage.name === 'asking'
-                    ? 'Allow the microphone to start'
-                    : 'Tell us how it went'}
-                </p>
-                <p className="text-sm font-semibold text-muted-foreground">
-                  Up to {MAX_SECONDS / 60} minutes. No app or account needed.
-                </p>
-              </>
-            )}
-          </div>
-
-          <div className="flex gap-3">
-            {stage.name === 'recording' ? (
-              <Button
-                type="button"
-                onClick={stopRecording}
-                variant="destructive"
-                className={primaryButton}
+              </div>
+              <p
+                id="typed-hint"
+                className="text-sm font-semibold text-muted-foreground"
               >
-                <Square className="w-5 h-5 mr-2" />
-                STOP
-              </Button>
-            ) : recorded ? (
+                At least 3 characters, up to 2,000.
+              </p>
               <Button
-                type="button"
-                onClick={recordAgain}
-                variant="outline"
-                disabled={stage.name === 'sending'}
-                className={`flex-1 ${outlineButton}`}
-              >
-                <RotateCcw className="w-5 h-5 mr-2" />
-                RECORD AGAIN
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={startRecording}
-                disabled={stage.name === 'loading' || stage.name === 'asking'}
-                className={primaryButton}
+                type="submit"
+                disabled={
+                  sendingText ||
+                  stage.name === 'loading' ||
+                  text.trim().length < 3
+                }
+                className={`w-full ${primaryButton}`}
                 style={accentStyle}
               >
-                <Mic className="w-5 h-5 mr-2" />
-                {stage.name === 'denied' ? 'TRY AGAIN' : 'START RECORDING'}
+                <Send className="w-5 h-5 mr-2" />
+                {sendingText ? 'SENDING…' : 'SEND FEEDBACK'}
               </Button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <>
+              <div
+                className="bg-secondary border-4 border-foreground p-8 text-center"
+                aria-live="polite"
+              >
+                {stage.name === 'recording' ? (
+                  <>
+                    <Mic
+                      className="w-16 h-16 mx-auto mb-4 text-destructive animate-pulse"
+                      strokeWidth={2}
+                    />
+                    <p className="text-3xl font-black mb-2 text-destructive tabular-nums">
+                      {formatTime(elapsed)}
+                    </p>
+                    <p className="text-sm font-semibold text-muted-foreground">
+                      Recording… stops on its own at {formatTime(MAX_SECONDS)}
+                    </p>
+                  </>
+                ) : recorded ? (
+                  <>
+                    <p className="text-sm font-bold uppercase mb-3">
+                      Listen back before you send
+                    </p>
+                    <audio
+                      src={stage.url}
+                      controls
+                      className="w-full"
+                      aria-label="Your recording"
+                    />
+                  </>
+                ) : stage.name === 'denied' ? (
+                  <>
+                    <MicOff
+                      className="w-16 h-16 mx-auto mb-4"
+                      strokeWidth={2}
+                    />
+                    <p className="text-lg font-bold mb-2">
+                      Microphone is blocked
+                    </p>
+                    <p className="text-sm font-semibold text-muted-foreground">
+                      Allow microphone access for this site in your browser
+                      settings and try again, or type your feedback instead.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Mic
+                      className="w-16 h-16 mx-auto mb-4 text-primary"
+                      strokeWidth={2}
+                    />
+                    <p className="text-lg font-bold mb-2">
+                      {stage.name === 'asking'
+                        ? 'Allow the microphone to start'
+                        : 'Tell us how it went'}
+                    </p>
+                    <p className="text-sm font-semibold text-muted-foreground">
+                      Up to {MAX_SECONDS / 60} minutes. No app or account
+                      needed.
+                    </p>
+                  </>
+                )}
+              </div>
 
-          {recorded && (
-            <Button
-              type="submit"
-              disabled={stage.name === 'sending'}
-              className={`w-full ${primaryButton}`}
-              style={accentStyle}
+              <div className="flex gap-3">
+                {stage.name === 'recording' ? (
+                  <Button
+                    type="button"
+                    onClick={stopRecording}
+                    variant="destructive"
+                    className={primaryButton}
+                  >
+                    <Square className="w-5 h-5 mr-2" />
+                    STOP
+                  </Button>
+                ) : recorded ? (
+                  <Button
+                    type="button"
+                    onClick={recordAgain}
+                    variant="outline"
+                    disabled={stage.name === 'sending'}
+                    className={`flex-1 ${outlineButton}`}
+                  >
+                    <RotateCcw className="w-5 h-5 mr-2" />
+                    RECORD AGAIN
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={startRecording}
+                    disabled={
+                      stage.name === 'loading' || stage.name === 'asking'
+                    }
+                    className={primaryButton}
+                    style={accentStyle}
+                  >
+                    <Mic className="w-5 h-5 mr-2" />
+                    {stage.name === 'denied' ? 'TRY AGAIN' : 'START RECORDING'}
+                  </Button>
+                )}
+              </div>
+
+              {recorded && (
+                <Button
+                  type="submit"
+                  disabled={stage.name === 'sending'}
+                  className={`w-full ${primaryButton}`}
+                  style={accentStyle}
+                >
+                  <Send className="w-5 h-5 mr-2" />
+                  {stage.name === 'sending' ? 'SENDING…' : 'SEND FEEDBACK'}
+                </Button>
+              )}
+            </>
+          )}
+
+          {canRecord && (typing || stage.name === 'denied') && (
+            <button
+              type="button"
+              onClick={() => {
+                setTyping(!typing)
+                setError(null)
+              }}
+              className="w-full text-center font-bold underline underline-offset-4"
             >
-              <Send className="w-5 h-5 mr-2" />
-              {stage.name === 'sending' ? 'SENDING…' : 'SEND FEEDBACK'}
-            </Button>
+              {typing ? 'Record a voice note instead' : 'Prefer to type?'}
+            </button>
           )}
 
           {error && (
@@ -402,7 +497,7 @@ export function FeedbackForm({
         </div>
       </Card>
       <p className="text-center text-sm font-semibold text-muted-foreground mt-6">
-        Your recording goes only to this business.
+        Your feedback goes only to this business.
       </p>
     </form>
   )

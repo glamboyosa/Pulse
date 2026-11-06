@@ -13,6 +13,7 @@ import {
   processFeedback,
   retryAnalysis,
   submitFeedback,
+  submitTypedFeedback,
 } from '@/server/feedback-submission'
 
 const storage = vi.hoisted(() => ({
@@ -185,7 +186,7 @@ describe('processing', () => {
 
   it('saves the transcript and its analysis, then emails the owner', async () => {
     const { owner, feedbackId, business } = await submitted()
-    await processFeedback(feedbackId, business, audio)
+    await processFeedback(feedbackId, business, { audio })
 
     const [row] = await db
       .select()
@@ -221,7 +222,7 @@ describe('processing', () => {
       summary: 'Service was too slow.',
       themes: ['wait time'],
     })
-    await processFeedback(feedbackId, business, audio)
+    await processFeedback(feedbackId, business, { audio })
 
     const [row] = await db
       .select()
@@ -244,7 +245,7 @@ describe('processing', () => {
   it('keeps the transcript when analysis fails', async () => {
     const { feedbackId } = await submitted()
     ai.analyse.mockRejectedValueOnce(new Error('LLM down'))
-    const saved = await analyseFeedback(feedbackId, audio)
+    const saved = await analyseFeedback(feedbackId, { audio })
     expect(saved).toMatchObject({
       transcript: 'Hi, I am Sam. The coffee was great.',
       sentiment: null,
@@ -269,7 +270,7 @@ describe('processing', () => {
       summary: 'Food is good but the room is too hot.',
       themes: ['atmosphere'],
     })
-    const saved = await analyseFeedback(feedbackId, audio)
+    const saved = await analyseFeedback(feedbackId, { audio })
     expect(saved).toMatchObject({
       language: 'Nigerian Pidgin',
       translation: 'Please, your food is tasty but the place is hot.',
@@ -293,7 +294,7 @@ describe('processing', () => {
         'wait time',
       ],
     })
-    const saved = await analyseFeedback(feedbackId, audio)
+    const saved = await analyseFeedback(feedbackId, { audio })
     expect(saved).toMatchObject({
       translation: null,
       themes: ['service', 'price', 'food quality', 'atmosphere'],
@@ -303,7 +304,7 @@ describe('processing', () => {
   it('marks the feedback failed when transcription fails, and still emails', async () => {
     const { feedbackId, business } = await submitted()
     ai.transcribe.mockRejectedValueOnce(new Error('ElevenLabs down'))
-    await processFeedback(feedbackId, business, audio)
+    await processFeedback(feedbackId, business, { audio })
     const [row] = await db
       .select()
       .from(feedback)
@@ -322,7 +323,7 @@ describe('processing', () => {
     ] as const) {
       emails.low.mockClear()
       const { feedbackId, business } = await submitted(start)
-      await processFeedback(feedbackId, business, audio)
+      await processFeedback(feedbackId, business, { audio })
       expect(emails.low.mock.calls.length > 0).toBe(shouldEmail)
     }
   })
@@ -403,5 +404,121 @@ describe('processing', () => {
       .where(eq(feedback.id, feedbackId))
     await retryAnalysis(feedbackId)
     expect(storage.downloadAudio).not.toHaveBeenCalled()
+  })
+})
+
+describe('typed feedback', () => {
+  const typed = (code: string, text: string) =>
+    submitTypedFeedback({ code, text, customerName: null })
+
+  it('stores the text straight away, spends a pulse and analyses it without transcribing', async () => {
+    const owner = await createBusiness({ pulsesRemaining: 3 })
+    const { feedbackId, business } = await typed(
+      owner.uniqueCode!,
+      '  The room was too cold.  ',
+    )
+    expect(await pulsesOf(owner.id)).toBe(2)
+    const [stored] = await db
+      .select()
+      .from(feedback)
+      .where(eq(feedback.id, feedbackId))
+    expect(stored).toMatchObject({
+      transcript: 'The room was too cold.',
+      audioKey: null,
+      status: 'processing',
+    })
+
+    await processFeedback(feedbackId, business, { typed: true })
+    expect(ai.transcribe).not.toHaveBeenCalled()
+    expect(ai.analyse).toHaveBeenCalledWith('The room was too cold.')
+    const [row] = await db
+      .select()
+      .from(feedback)
+      .where(eq(feedback.id, feedbackId))
+    expect(row).toMatchObject({
+      status: 'ready',
+      summary: 'Sam loved the coffee.',
+    })
+    expect(emails.received).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transcript: 'The room was too cold.',
+        duration: null,
+      }),
+    )
+  })
+
+  it.each([
+    ['too short', 'ok', 400],
+    ['too long', 'x'.repeat(2001), 413],
+  ])(
+    'refuses text that is %s without spending a pulse',
+    async (_, text, status) => {
+      const owner = await createBusiness({ pulsesRemaining: 3 })
+      await expect(typed(owner.uniqueCode!, text)).rejects.toMatchObject({
+        status,
+      })
+      expect(await pulsesOf(owner.id)).toBe(3)
+    },
+  )
+
+  it('refuses with 402 when the business is out of pulses', async () => {
+    const owner = await createBusiness({ pulsesRemaining: 0 })
+    await expect(
+      typed(owner.uniqueCode!, 'Lovely service.'),
+    ).rejects.toMatchObject({
+      status: 402,
+    })
+  })
+
+  it('does not analyse typed feedback again once it is ready', async () => {
+    const owner = await createBusiness()
+    const { feedbackId, business } = await typed(
+      owner.uniqueCode!,
+      'Lovely service.',
+    )
+    await processFeedback(feedbackId, business, { typed: true })
+    ai.analyse.mockClear()
+    await retryAnalysis(feedbackId)
+    expect(ai.analyse).not.toHaveBeenCalled()
+  })
+
+  it('still retries an old recording that never got a transcript', async () => {
+    const owner = await createBusiness()
+    // Rows from before statuses existed default to 'ready'.
+    const [old] = await db
+      .insert(feedback)
+      .values({ userId: owner.id, audioKey: 'test/old.webm', status: 'ready' })
+      .returning()
+    storage.downloadAudio.mockResolvedValue({
+      buffer: Buffer.from('x'),
+      type: 'audio/webm',
+    })
+    await retryAnalysis(old.id)
+    expect(ai.transcribe).toHaveBeenCalledTimes(1)
+    const [row] = await db
+      .select()
+      .from(feedback)
+      .where(eq(feedback.id, old.id))
+    expect(row.transcript).toBe('Hi, I am Sam. The coffee was great.')
+  })
+
+  it('analyses typed feedback whose first run died', async () => {
+    const owner = await createBusiness()
+    const { feedbackId } = await typed(owner.uniqueCode!, 'Lovely service.')
+    await db
+      .update(feedback)
+      .set({ analysisStartedAt: new Date(Date.now() - 11 * 60_000) })
+      .where(eq(feedback.id, feedbackId))
+
+    await retryAnalysis(feedbackId)
+    expect(storage.downloadAudio).not.toHaveBeenCalled()
+    const [row] = await db
+      .select()
+      .from(feedback)
+      .where(eq(feedback.id, feedbackId))
+    expect(row).toMatchObject({
+      status: 'ready',
+      transcript: 'Lovely service.',
+    })
   })
 })

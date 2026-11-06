@@ -231,6 +231,55 @@ describe('customer submissions', () => {
   })
 })
 
+describe('typed feedback API', () => {
+  it('accepts typed feedback, spends a pulse and processes it after replying', async () => {
+    const owner = await createBusiness({ pulsesRemaining: 2 })
+    const response = await postJson(
+      '/feedback/submit-text',
+      { code: owner.uniqueCode, text: 'Great jollof, slow service.' },
+      { 'x-forwarded-for': '10.2.2.2' },
+    )
+    expect(response.status).toBe(200)
+    expect(await pulsesOf(owner.id)).toBe(1)
+    expect(background.tasks).toHaveLength(1)
+  })
+
+  it('tags typed feedback with the spot from the QR link', async () => {
+    const owner = await createBusiness()
+    await postJson(
+      '/spots',
+      { name: 'Patio' },
+      { cookie: await sessionCookie(owner) },
+    )
+    await postJson(
+      '/feedback/submit-text',
+      { code: owner.uniqueCode, text: 'Lovely patio.', spot: 'patio' },
+      { 'x-forwarded-for': '10.3.3.3' },
+    )
+    const list = (await (
+      await get('/feedback', await sessionCookie(owner))
+    ).json()) as {
+      feedback: Array<{ spot: { name: string } | null; typed: boolean }>
+    }
+    expect(list.feedback[0]).toMatchObject({
+      spot: { name: 'Patio' },
+      typed: true,
+    })
+  })
+
+  it('explains text that is too short', async () => {
+    const owner = await createBusiness()
+    const response = await postJson('/feedback/submit-text', {
+      code: owner.uniqueCode,
+      text: 'no',
+    })
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      error: 'Write a little more first',
+    })
+  })
+})
+
 describe('checkout', () => {
   it('requires a session', async () => {
     expect((await postJson('/checkout', { packId: 'starter' })).status).toBe(
