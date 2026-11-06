@@ -2,8 +2,8 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 
-import { BuyPulsesForm } from '@/components/buy-pulses-form'
 import { getCurrentUser } from '../actions/auth'
+import { BuyPulsesForm } from '@/components/buy-pulses-form'
 
 export default async function BuyPulsesPage() {
   const user = await getCurrentUser()
@@ -28,7 +28,7 @@ export default async function BuyPulsesPage() {
             Each pulse = one voice feedback submission. Top up anytime.
           </p>
         </div>
-        <BuyPulsesForm user={user} />
+        <BuyPulsesForm />
       </div>
     </div>
   )

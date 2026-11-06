@@ -8,371 +8,125 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/empty-state'
-import { api } from '@/lib/eden'
 
-interface Feedback {
+export interface Feedback {
   id: string
-  customerName?: string | null
-  date: string
-  duration: number // Duration in seconds
+  customerName: string | null
+  duration: number // seconds
   transcript: string
-  audioUrl?: string | null
-  audioKey?: string | null // R2 key for regenerating URLs if audioUrl expires
   sentiment: 'positive' | 'neutral' | 'negative' | null
+  status: string
+  // Presigned, valid for an hour; the list refetches before it expires.
+  audioUrl: string | null
   createdAt: string
 }
 
 interface FeedbackListProps {
   hasFeedback?: boolean
-  userId?: string
-  initialData?: Array<Feedback> // Server-fetched feedback data
+  initialData?: Array<Feedback>
+}
+
+const formatDuration = (seconds: number): string => {
+  if (!seconds) return '0 secs'
+  if (seconds < 60) return `${seconds} sec${seconds === 1 ? '' : 's'}`
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  if (secs === 0) return `${mins} min${mins === 1 ? '' : 's'}`
+  return `${mins} min${mins === 1 ? '' : 's'} ${secs} sec${secs === 1 ? '' : 's'}`
+}
+
+const formatRelativeTime = (isoString: string): string => {
+  const diffMs = Date.now() - new Date(isoString).getTime()
+  const mins = Math.floor(diffMs / 60000)
+  const hours = Math.floor(diffMs / 3600000)
+  const days = Math.floor(diffMs / 86400000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins} minute${mins > 1 ? 's' : ''} ago`
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+  if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`
+  return new Date(isoString).toLocaleDateString()
 }
 
 export function FeedbackList({
   hasFeedback = true,
-  userId,
   initialData = [],
 }: FeedbackListProps) {
   const router = useRouter()
   const [playingId, setPlayingId] = useState<string | null>(null)
+  const [playError, setPlayError] = useState<string | null>(null)
   const [filter, setFilter] = useState<
     'all' | 'positive' | 'neutral' | 'negative'
   >('all')
-  const audioRefs = useRef<Map<string, HTMLAudioElement>>(new Map())
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  // Fetch feedback using TanStack Query with initialData from server
   const {
     data: feedbackData,
     isLoading: loading,
     error: queryError,
   } = useQuery({
-    queryKey: ['feedback', userId],
+    queryKey: ['feedback'],
     queryFn: async () => {
-      if (!userId) {
-        throw new Error('User ID is required')
-      }
-      const response = await api.feedback.get({
-        query: {
-          userId,
-        },
-      })
-      if (response.error) {
-        const error = response.error as
-          | string
-          | { message?: string; type?: string }
-        const errorMessage =
-          typeof error === 'string' ? error : error.message || 'Unknown error'
-        throw new Error(errorMessage)
-      }
-      return response.data
+      const response = await fetch('/api/feedback')
+      if (!response.ok) throw new Error('Failed to load feedback')
+      return (await response.json()) as { feedback: Array<Feedback> }
     },
-    enabled: hasFeedback && !!userId, // Only fetch if user has feedback and userId is provided
-    initialData:
-      initialData.length > 0
-        ? ({ feedback: initialData } as { feedback: Array<Feedback> })
-        : undefined, // Use server data as initialData to hydrate the query
+    enabled: hasFeedback,
+    initialData: { feedback: initialData },
+    // Audio links last an hour; refresh well before then. Also picks up
+    // transcripts that finish while the page is open.
+    refetchInterval: 30_000,
   })
 
-  // Format duration as "X secs" or "X mins Y secs"
-  const formatDuration = (seconds: number): string => {
-    if (!seconds || seconds === 0) return '0 secs'
-    if (seconds < 60) return `${seconds} sec${seconds === 1 ? '' : 's'}`
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    if (secs === 0) return `${mins} min${mins === 1 ? '' : 's'}`
-    return `${mins} min${mins === 1 ? '' : 's'} ${secs} sec${secs === 1 ? '' : 's'}`
-  }
+  const feedbackList = feedbackData.feedback.map((f) => ({
+    ...f,
+    date: formatRelativeTime(f.createdAt),
+    formattedDuration: formatDuration(f.duration),
+    displayName: f.customerName || 'Anonymous',
+  }))
 
-  // Format relative time (e.g., "2 hours ago")
-  const formatRelativeTime = (isoString: string): string => {
-    const date = new Date(isoString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
-    if (diffHours < 24)
-      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-    return date.toLocaleDateString()
-  }
-
-  // Format feedback with relative dates and formatted duration
-  const feedbackList: Array<
-    Feedback & { formattedDuration: string; displayName: string }
-  > =
-    feedbackData?.feedback.map((f: Feedback) => ({
-      ...f,
-      date: formatRelativeTime(f.createdAt),
-      formattedDuration: formatDuration(f.duration),
-      displayName: f.customerName || 'Anonymous',
-    })) ?? []
-
-  const error = queryError
-    ? queryError instanceof Error
-      ? queryError.message
-      : 'Failed to load feedback'
-    : null
+  const error = queryError ? 'Failed to load feedback' : null
 
   const filteredFeedback =
     filter === 'all'
       ? feedbackList
-      : feedbackList.filter((f: Feedback) => f.sentiment === filter)
+      : feedbackList.filter((f) => f.sentiment === filter)
 
-  // Cleanup audio elements on unmount
-  useEffect(() => {
-    return () => {
-      audioRefs.current.forEach((audio) => {
-        audio.pause()
-        audio.src = ''
-      })
-      audioRefs.current.clear()
-    }
-  }, [])
+  useEffect(() => () => audioRef.current?.pause(), [])
 
-  const togglePlay = async (
-    e: React.MouseEvent,
-    item: Feedback & {
-      formattedDuration: string
-      displayName: string
-      audioUrl?: string | null
-      audioKey?: string | null
-    },
-  ) => {
+  // Plays straight from the click, with no await before play(): Safari
+  // refuses play() once the click's user activation has been spent.
+  const togglePlay = (e: React.MouseEvent, item: Feedback) => {
     e.stopPropagation()
+    setPlayError(null)
 
-    console.log(`[FeedbackList] ===== togglePlay called =====`, {
-      feedbackId: item.id,
-      playingId,
-      hasAudioKey: !!item.audioKey,
-      hasAudioUrl: !!item.audioUrl,
-    })
+    const current = audioRef.current
+    if (current && playingId === item.id) {
+      current.pause()
+      setPlayingId(null)
+      return
+    }
+    current?.pause()
 
-    if (playingId === item.id) {
-      // Pause current audio
-      console.log(`[FeedbackList] Pausing audio for feedback: ${item.id}`)
-      const audio = audioRefs.current.get(item.id)
-      if (audio) {
-        audio.pause()
+    if (!item.audioUrl) {
+      setPlayError('This recording has no audio.')
+      return
+    }
+    const audio = new Audio(item.audioUrl)
+    audioRef.current = audio
+    audio.onended = () => setPlayingId(null)
+    audio.onerror = () => {
+      setPlayingId(null)
+      setPlayError("This recording couldn't be played. Refresh and try again.")
+    }
+    audio
+      .play()
+      .then(() => setPlayingId(item.id))
+      .catch(() => {
         setPlayingId(null)
-      }
-      return
-    }
-
-    // Stop any currently playing audio
-    if (playingId) {
-      console.log(
-        `[FeedbackList] Stopping currently playing audio: ${playingId}`,
-      )
-      const currentAudio = audioRefs.current.get(playingId)
-      if (currentAudio) {
-        currentAudio.pause()
-        currentAudio.currentTime = 0
-      }
-    }
-
-    // Always regenerate audio URL to ensure it's fresh (presigned URLs expire)
-    let audioUrl = item.audioUrl
-    if (item.audioKey) {
-      try {
-        console.log(`[FeedbackList] Fetching fresh audio URL from API...`, {
-          feedbackId: item.id,
-          audioKey: item.audioKey,
-        })
-        const urlFetchStartTime = Date.now()
-        // Always fetch a fresh URL from the API (presigned URLs expire after 1 hour)
-        const response = await fetch(`/api/feedback/${item.id}/audio-url`)
-        const urlFetchDuration = Date.now() - urlFetchStartTime
-        console.log(
-          `[FeedbackList] URL fetch response received in ${urlFetchDuration}ms`,
-          {
-            status: response.status,
-            statusText: response.statusText,
-            ok: response.ok,
-          },
+        setPlayError(
+          "This recording couldn't be played. Refresh and try again.",
         )
-
-        if (!response.ok) {
-          throw new Error(`Failed to get audio URL: ${response.statusText}`)
-        }
-        const data = await response.json()
-        console.log(`[FeedbackList] URL fetch data:`, {
-          hasAudioUrl: !!data.audioUrl,
-          hasError: !!data.error,
-          audioUrlPreview: data.audioUrl?.substring(0, 100),
-        })
-        if (data.audioUrl) {
-          audioUrl = data.audioUrl
-          console.log(`[FeedbackList] ✓ Got fresh audio URL`)
-        } else if (data.error) {
-          throw new Error(data.error)
-        } else {
-          throw new Error('No audio URL in response')
-        }
-      } catch (audioError) {
-        console.error(`[FeedbackList] ✗ Failed to get audio URL:`, {
-          error:
-            audioError instanceof Error
-              ? audioError.message
-              : String(audioError),
-          feedbackId: item.id,
-          audioKey: item.audioKey,
-        })
-        alert('Failed to load audio. Please try again.')
-        return
-      }
-    }
-
-    if (!audioUrl) {
-      console.warn(`[FeedbackList] ✗ No audio URL available for feedback:`, {
-        feedbackId: item.id,
-        hasAudioKey: !!item.audioKey,
-        hasInitialAudioUrl: !!item.audioUrl,
       })
-      alert('Audio not available for this feedback.')
-      return
-    }
-
-    console.log(`[FeedbackList] Creating audio element...`, {
-      audioUrl: audioUrl.substring(0, 100) + '...',
-    })
-
-    // Create or get audio element
-    let audio = audioRefs.current.get(item.id)
-
-    // Always create a new audio element with fresh URL to avoid caching issues
-    if (audio) {
-      console.log(`[FeedbackList] Cleaning up existing audio element`)
-      // Clean up old audio element
-      audio.pause()
-      audio.src = ''
-      audioRefs.current.delete(item.id)
-    }
-
-    // Create new audio element with fresh URL
-    // Note: Audio constructor will try to determine format from URL/Content-Type
-    // Audio is stored as MP3 in R2
-    audio = new Audio(audioUrl)
-
-    // Set preload to help browser determine format
-    audio.preload = 'auto'
-
-    audioRefs.current.set(item.id, audio)
-
-    // Set up event handlers
-    audio.onended = () => {
-      console.log(
-        `[FeedbackList] Audio playback ended for feedback: ${item.id}`,
-      )
-      setPlayingId(null)
-    }
-
-    audio.onerror = (audioError: string | Event) => {
-      const errorEvent = typeof audioError === 'string' ? null : audioError
-      const audioElement = errorEvent?.target as HTMLAudioElement | undefined
-      console.error(
-        `[FeedbackList] ✗ Audio playback error for feedback: ${item.id}`,
-        {
-          error: audioError,
-          errorType: errorEvent?.type,
-          target: audioElement,
-          audioSrc: audioElement?.src.substring(0, 100),
-          audioNetworkState: audioElement?.networkState,
-          audioReadyState: audioElement?.readyState,
-          audioErrorCode: audioElement?.error?.code,
-          audioErrorMessage: audioElement?.error?.message,
-        },
-      )
-      setPlayingId(null)
-      // Try to get a fresh URL and retry once
-      if (item.audioKey) {
-        console.log(
-          `[FeedbackList] Attempting to refresh audio URL and retry...`,
-        )
-        fetch(`/api/feedback/${item.id}/audio-url`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.audioUrl) {
-              console.log(`[FeedbackList] Got fresh URL, reloading audio...`)
-              audio.src = data.audioUrl
-              audio.load() // Reload with new URL
-            } else {
-              console.error(`[FeedbackList] No audio URL in refresh response`)
-            }
-          })
-          .catch((err) => {
-            console.error(`[FeedbackList] ✗ Failed to refresh audio URL:`, err)
-            alert('Failed to play audio. The audio file may be unavailable.')
-          })
-      } else {
-        alert('Failed to play audio. The audio file may be unavailable.')
-      }
-    }
-
-    // Set up load handler to check if audio format is supported
-    audio.oncanplay = () => {
-      console.log(`[FeedbackList] ✓ Audio can play for feedback: ${item.id}`, {
-        readyState: audio.readyState,
-        networkState: audio.networkState,
-        duration: audio.duration,
-      })
-    }
-
-    audio.onloadstart = () => {
-      console.log(
-        `[FeedbackList] Audio loading started for feedback: ${item.id}`,
-      )
-    }
-
-    audio.onloadeddata = () => {
-      console.log(
-        `[FeedbackList] ✓ Audio data loaded for feedback: ${item.id}`,
-        {
-          duration: audio.duration,
-          readyState: audio.readyState,
-        },
-      )
-    }
-
-    audio.onloadedmetadata = () => {
-      console.log(
-        `[FeedbackList] ✓ Audio metadata loaded for feedback: ${item.id}`,
-        {
-          duration: audio.duration,
-          readyState: audio.readyState,
-        },
-      )
-    }
-
-    try {
-      console.log(`[FeedbackList] Attempting to play audio...`)
-      await audio.play()
-      console.log(
-        `[FeedbackList] ✓ Audio playback started for feedback: ${item.id}`,
-      )
-      setPlayingId(item.id)
-    } catch (playError) {
-      console.error(`[FeedbackList] ✗ Failed to play audio:`, {
-        error: playError,
-        errorName: playError instanceof Error ? playError.name : 'Unknown',
-        errorMessage:
-          playError instanceof Error ? playError.message : String(playError),
-        audioSrc: audio.src.substring(0, 100),
-        audioReadyState: audio.readyState,
-        audioNetworkState: audio.networkState,
-      })
-      setPlayingId(null)
-      if (playError instanceof Error) {
-        if (playError.name === 'NotSupportedError') {
-          alert('Audio format not supported. Please try refreshing the page.')
-        } else {
-          alert(`Failed to play audio: ${playError.message}`)
-        }
-      }
-    }
   }
 
   const getSentimentColor = (sentiment: string | null) => {
@@ -509,6 +263,14 @@ export function FeedbackList({
         </div>
       </div>
 
+      {playError && (
+        <p
+          role="alert"
+          className="mb-4 border-4 border-foreground bg-red-100 p-3 font-bold"
+        >
+          {playError}
+        </p>
+      )}
       <div className="space-y-4">
         {filteredFeedback.map((item) => (
           <Card
@@ -521,6 +283,9 @@ export function FeedbackList({
                 size="icon"
                 variant="outline"
                 onClick={(e) => togglePlay(e, item)}
+                aria-label={
+                  playingId === item.id ? 'Pause recording' : 'Play recording'
+                }
                 className="shrink-0 w-12 h-12 border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-primary hover:text-primary-foreground transition-colors"
               >
                 {playingId === item.id ? (
@@ -554,6 +319,7 @@ export function FeedbackList({
                         e.stopPropagation()
                         handleViewFeedback(item.id)
                       }}
+                      aria-label="View transcript"
                       className="border-2 border-transparent hover:border-foreground"
                     >
                       <FileText className="w-5 h-5" />

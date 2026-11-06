@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { and, avg, count, desc, eq, gte } from 'drizzle-orm'
+import { and, avg, count, eq, gte } from 'drizzle-orm'
 
 import { getCurrentUser } from '../actions/auth'
 import { DashboardHeader } from '@/components/dashboard-header'
@@ -8,7 +8,7 @@ import { FeedbackList } from '@/components/feedback-list'
 import { QRCodeSection } from '@/components/qr-code-section'
 import { db } from '@/db/index'
 import { feedback } from '@/db/schema'
-import { getAudioUrl } from '@/lib/storage/r2'
+import { listFeedback } from '@/server/feedback-queries'
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
@@ -17,44 +17,8 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  // Fetch all feedback data directly from DB
-  const feedbackRecords = await db
-    .select()
-    .from(feedback)
-    .where(eq(feedback.userId, user.id))
-    .orderBy(desc(feedback.createdAt))
-
-  const hasFeedback = feedbackRecords.length > 0
-
-  // Format feedback for client (same format as API)
-  const formattedFeedback = await Promise.all(
-    feedbackRecords.map(async (f) => {
-      // Regenerate audio URL if we have audioKey
-      let audioUrl = f.audioUrl || null
-      if (f.audioKey && !audioUrl) {
-        try {
-          audioUrl = await getAudioUrl(f.audioKey)
-        } catch (error) {
-          console.error(
-            `[Dashboard] Failed to generate audio URL for key ${f.audioKey}:`,
-            error,
-          )
-        }
-      }
-
-      return {
-        id: f.id,
-        customerName: f.customerName || null,
-        date: f.createdAt.toISOString(),
-        duration: f.duration || 0,
-        transcript: f.transcript || '',
-        audioUrl,
-        audioKey: f.audioKey || null,
-        sentiment: f.sentiment as 'positive' | 'neutral' | 'negative' | null,
-        createdAt: f.createdAt.toISOString(),
-      }
-    }),
-  )
+  const formattedFeedback = await listFeedback(user.id)
+  const hasFeedback = formattedFeedback.length > 0
 
   // Calculate stats directly from DB
   const stats = {
@@ -121,7 +85,6 @@ export default async function DashboardPage() {
           <div className="lg:col-span-2">
             <FeedbackList
               hasFeedback={hasFeedback}
-              userId={user.id}
               initialData={formattedFeedback}
             />
           </div>

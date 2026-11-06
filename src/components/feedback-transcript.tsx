@@ -5,63 +5,46 @@ import { useEffect, useState } from 'react'
 interface FeedbackTranscriptProps {
   feedbackId: string
   initialTranscript: string | null
-  initialSentiment: string | null
 }
+
+type State = 'waiting' | 'ready' | 'failed' | 'timed-out'
+
+const POLL_MS = 2000
+const GIVE_UP_MS = 5 * 60 * 1000
 
 export function FeedbackTranscript({
   feedbackId,
   initialTranscript,
-  initialSentiment,
 }: FeedbackTranscriptProps) {
-  const [transcript, setTranscript] = useState<string | null>(initialTranscript)
-  const [sentiment, setSentiment] = useState<string | null>(initialSentiment)
-  const [isPolling, setIsPolling] = useState(!initialTranscript)
+  const [transcript, setTranscript] = useState(initialTranscript)
+  const [state, setState] = useState<State>(
+    initialTranscript ? 'ready' : 'waiting',
+  )
 
   useEffect(() => {
-    if (!initialTranscript) {
-      // Poll for transcript updates every 2 seconds
-      console.log(`[FeedbackTranscript] Starting polling for feedback: ${feedbackId}`)
-      const pollInterval = setInterval(async () => {
-        try {
-          console.log(`[FeedbackTranscript] Polling for transcript update...`)
-          const response = await fetch(`/api/feedback/${feedbackId}`)
-          if (!response.ok) {
-            console.error(`[FeedbackTranscript] Poll failed: ${response.statusText}`)
-            return
-          }
-          const data = await response.json()
-          console.log(`[FeedbackTranscript] Poll response:`, {
-            hasTranscript: !!data.transcript,
-            hasSentiment: !!data.sentiment,
-          })
+    if (state !== 'waiting') return
 
-          if (data.transcript) {
-            console.log(`[FeedbackTranscript] ✓ Transcript received!`)
-            setTranscript(data.transcript)
-            if (data.sentiment) {
-              setSentiment(data.sentiment)
-            }
-            setIsPolling(false)
-            clearInterval(pollInterval)
-          }
-        } catch (error) {
-          console.error(`[FeedbackTranscript] Poll error:`, error)
-        }
-      }, 2000) // Poll every 2 seconds
-
-      // Stop polling after 5 minutes (transcription should be done by then)
-      const timeout = setTimeout(() => {
-        console.log(`[FeedbackTranscript] Polling timeout reached`)
-        clearInterval(pollInterval)
-        setIsPolling(false)
-      }, 5 * 60 * 1000)
-
-      return () => {
-        clearInterval(pollInterval)
-        clearTimeout(timeout)
+    const poll = setInterval(async () => {
+      const response = await fetch(`/api/feedback/${feedbackId}`).catch(
+        () => null,
+      )
+      if (!response?.ok) return
+      const data: { transcript: string | null; status: string } =
+        await response.json()
+      if (data.transcript) {
+        setTranscript(data.transcript)
+        setState('ready')
+      } else if (data.status === 'failed') {
+        setState('failed')
       }
+    }, POLL_MS)
+    const giveUp = setTimeout(() => setState('timed-out'), GIVE_UP_MS)
+
+    return () => {
+      clearInterval(poll)
+      clearTimeout(giveUp)
     }
-  }, [feedbackId, initialTranscript])
+  }, [feedbackId, state])
 
   return (
     <div className="bg-secondary border-4 border-foreground p-6">
@@ -71,18 +54,14 @@ export function FeedbackTranscript({
           {transcript}
         </p>
       ) : (
-        <div className="space-y-2">
-          <p className="font-semibold text-muted-foreground italic">
-            Transcription in progress...
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {isPolling
-              ? 'This page will automatically update when transcription is complete.'
-              : 'Transcription is taking longer than expected. Please refresh the page to check.'}
-          </p>
-        </div>
+        <p className="font-semibold text-muted-foreground">
+          {state === 'failed'
+            ? "We couldn't transcribe this recording. You can still listen to it above."
+            : state === 'timed-out'
+              ? 'Transcription is taking longer than usual. Refresh the page to check again.'
+              : 'Transcribing… this page updates on its own.'}
+        </p>
       )}
     </div>
   )
 }
-

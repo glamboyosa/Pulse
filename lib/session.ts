@@ -9,9 +9,10 @@ type SessionPayload = {
   expiresAt: Date
 }
 
-const secretKey =
-  process.env.SESSION_SECRET ||
-  'default-secret-key-change-in-production-min-32-chars'
+const secretKey = process.env.SESSION_SECRET
+if (!secretKey || secretKey.length < 32) {
+  throw new Error('SESSION_SECRET must be set to at least 32 characters')
+}
 const encodedKey = new TextEncoder().encode(secretKey)
 
 export async function encrypt(
@@ -32,8 +33,7 @@ export async function decrypt(
       algorithms: ['HS256'],
     })
     return payload as SessionPayload
-  } catch (error) {
-    console.log('Failed to verify session')
+  } catch {
     return null
   }
 }

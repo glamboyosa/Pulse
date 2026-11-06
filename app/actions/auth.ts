@@ -1,13 +1,16 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, gt, lt, sql } from 'drizzle-orm'
 
+import { createSession, deleteSession, getSession } from '../../lib/session'
 import { db } from '@/db/index'
 import { otpCodes, users } from '@/db/schema'
-import { createSession, deleteSession, getSession } from '../../lib/session'
-import { isOTPExpired } from '@/lib/otp'
+import { OTP_MAX_ATTEMPTS } from '@/lib/otp'
 import { getUserById } from '@/lib/auth-helpers'
+
+// New businesses get this many pulses to try Pulse.
+const FREE_PULSES_ON_SIGNUP = 5
 
 export async function loginAction(
   prevState: { error?: string } | undefined,
@@ -20,36 +23,53 @@ export async function loginAction(
     return { error: 'Email and OTP code are required' }
   }
 
-  // Verify OTP
-  const otp = await db
-    .select()
-    .from(otpCodes)
-    .where(
-      and(
-        eq(otpCodes.email, email.toLowerCase()),
-        eq(otpCodes.code, otpCode),
-        eq(otpCodes.used, false),
-      ),
-    )
-    .orderBy(desc(otpCodes.createdAt))
-    .limit(1)
+  const latest = (
+    await db
+      .select({ id: otpCodes.id })
+      .from(otpCodes)
+      .where(
+        and(eq(otpCodes.email, email.toLowerCase()), eq(otpCodes.used, false)),
+      )
+      .orderBy(desc(otpCodes.createdAt))
+      .limit(1)
+  ).at(0)
 
-  if (otp.length === 0) {
-    return { error: 'Invalid or expired code' }
+  // Every guess is counted in the same statement that checks the limit, so
+  // parallel requests can't get more than OTP_MAX_ATTEMPTS guesses at a code.
+  const otpRecord = latest
+    ? (
+        await db
+          .update(otpCodes)
+          .set({ attempts: sql`${otpCodes.attempts} + 1` })
+          .where(
+            and(
+              eq(otpCodes.id, latest.id),
+              eq(otpCodes.used, false),
+              lt(otpCodes.attempts, OTP_MAX_ATTEMPTS),
+              gt(otpCodes.expiresAt, new Date()),
+            ),
+          )
+          .returning({ id: otpCodes.id, code: otpCodes.code })
+      ).at(0)
+    : undefined
+
+  if (!otpRecord) {
+    return { error: 'Invalid or expired code. Please request a new one.' }
   }
 
-  const otpRecord = otp[0]
-
-  // Check if expired
-  if (isOTPExpired(otpRecord.expiresAt)) {
-    return { error: 'Code has expired. Please request a new one.' }
+  if (otpRecord.code !== otpCode.trim()) {
+    return { error: 'That code is not right. Check the email and try again.' }
   }
 
-  // Mark OTP as used
-  await db
+  // Mark the code used; the condition makes a second use of the same code fail.
+  const consumed = await db
     .update(otpCodes)
     .set({ used: true })
-    .where(eq(otpCodes.id, otpRecord.id))
+    .where(and(eq(otpCodes.id, otpRecord.id), eq(otpCodes.used, false)))
+    .returning({ id: otpCodes.id })
+  if (consumed.length === 0) {
+    return { error: 'Invalid or expired code. Please request a new one.' }
+  }
 
   // Find or create user
   let user = await db
@@ -65,7 +85,7 @@ export async function loginAction(
       .values({
         email: email.toLowerCase(),
         isVerified: false,
-        pulsesRemaining: 3,
+        pulsesRemaining: FREE_PULSES_ON_SIGNUP,
       })
       .returning()
 

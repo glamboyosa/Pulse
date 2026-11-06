@@ -1,5 +1,6 @@
 import { getResendClient } from '@/lib/utils/resend'
 import { env } from '@/env'
+import { escapeHtml } from '@/lib/utils/html'
 
 interface SendFeedbackReceivedEmailParams {
   to: string
@@ -55,13 +56,13 @@ export async function sendFeedbackReceivedEmail({
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #111; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="margin: 0 0 12px 0;">New feedback received</h2>
-          <p style="margin: 0 0 16px 0;">Hi ${businessName}, you just received a new voice feedback.</p>
+          <p style="margin: 0 0 16px 0;">Hi ${escapeHtml(businessName)}, you just received a new voice feedback.</p>
           <div style="border: 2px solid #111; padding: 16px; margin-bottom: 16px;">
-            <p style="margin: 0 0 8px 0;"><strong>From:</strong> ${displayName}</p>
+            <p style="margin: 0 0 8px 0;"><strong>From:</strong> ${escapeHtml(displayName)}</p>
             <p style="margin: 0 0 8px 0;"><strong>Duration:</strong> ${formatDuration(duration)}</p>
             <p style="margin: 0 0 8px 0;"><strong>Sentiment:</strong> ${sentimentText}</p>
             <p style="margin: 12px 0 8px 0;"><strong>Transcript:</strong></p>
-            <p style="margin: 0; background: #f5f5f5; padding: 12px;">${transcriptPreview}</p>
+            <p style="margin: 0; background: #f5f5f5; padding: 12px;">${escapeHtml(transcriptPreview)}</p>
           </div>
           <div style="text-align: center; margin: 24px 0;">
             <a href="${feedbackUrl}" style="display: inline-block; background-color: #111; color: #fff; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;">

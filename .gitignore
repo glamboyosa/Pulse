@@ -12,3 +12,9 @@ count.txt
 .vinxi
 todos.json
 .next
+
+tsconfig.tsbuildinfo
+
+# Playwright
+test-results/
+playwright-report/

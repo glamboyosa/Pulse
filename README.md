@@ -33,7 +33,7 @@
 - **[Neon Database](https://neon.tech/)** - Serverless PostgreSQL
 - **[Resend](https://resend.com/)** - Transactional emails
 - **[ElevenLabs](https://elevenlabs.io/)** - Speech-to-text transcription
-- **[Google Gemini AI](https://ai.google.dev/)** - Sentiment analysis and name extraction
+- **[AI SDK](https://ai-sdk.dev/)** with OpenAI, falling back to OpenRouter - Sentiment analysis and name extraction
 - **[Cloudflare R2](https://www.cloudflare.com/products/r2/)** - Object storage for audio files
 
 ### Development Tools
@@ -41,7 +41,8 @@
 - **[TypeScript](https://www.typescriptlang.org/)** - Type safety
 - **[Zod](https://zod.dev/)** - Schema validation
 - **[T3 Env](https://env.t3.gg/)** - Type-safe environment variables for Next.js
-- **[Vitest](https://vitest.dev/)** - Testing framework
+- **[Vitest](https://vitest.dev/)** - Unit and API tests against a real Postgres
+- **[Playwright](https://playwright.dev/)** - End-to-end tests in desktop and mobile Chrome
 - **[ESLint](https://eslint.org/)** & **[Prettier](https://prettier.io/)** - Code quality
 
 ## Getting Started
@@ -51,7 +52,8 @@
 - [Bun](https://bun.sh/) (recommended) or Node.js 18+
 - A Neon database (or PostgreSQL)
 - Cloudflare R2 account (for audio storage)
-- Google Gemini API key
+- OpenAI or OpenRouter API key
+- ElevenLabs API key
 - Resend API key (for emails)
 
 ### Installation
@@ -101,8 +103,9 @@ DATABASE_URL=your-neon-postgres-connection-string
 # Email (Resend)
 SERVER_RESEND_API_KEY=your-resend-api-key
 
-# AI (Google Gemini)
-SERVER_GEMINI_API_KEY=your-gemini-api-key
+# AI (OpenAI first, OpenRouter as fallback)
+OPENAI_API_KEY=your-openai-api-key
+OPENROUTER_API_KEY=your-openrouter-api-key
 
 # Speech-to-text (ElevenLabs)
 ELEVEN_LABS_API_KEY=your-elevenlabs-api-key
@@ -113,8 +116,12 @@ CLOUDFLARE_ACCESS_KEY_ID=your-r2-access-key-id
 CLOUDFLARE_SECRET_ACCESS_KEY=your-r2-secret-access-key
 CLOUDFLARE_R2_BUCKET_NAME=your-bucket-name
 
-# Payments (Polar.sh)
-POLAR_API_KEY=your-polar-api-key
+# Payments (Polar.sh). POLAR_ENVIRONMENT picks which pair is used.
+POLAR_ENVIRONMENT=sandbox
+POLAR_API_KEY=your-polar-production-token
+POLAR_WEBHOOK_SECRET=your-polar-production-webhook-secret
+POLAR_SANDBOX_API_TOKEN=your-polar-sandbox-token
+POLAR_SANDBOX_WEBHOOK_SECRET=your-polar-sandbox-webhook-secret
 
 # Client
 NEXT_PUBLIC_APP_TITLE=Pulse
@@ -194,7 +201,22 @@ bun run check           # Format and lint
 
 # Tunnels
 bun run dev:tunnel      # Expose local app with ngrok
+
+# Tests
+bun run test            # Unit and API tests (Vitest)
+bun run test:e2e        # Browser journey (Playwright) against a running app
 ```
+
+### Tests
+
+Vitest runs against a real Postgres database called `pulse_test` on `localhost:5440`. It wipes that database between tests, so never point it anywhere else. Create and migrate it once:
+
+```bash
+createdb -h localhost -p 5440 -U postgres pulse_test
+DATABASE_URL=postgres://postgres@localhost:5440/pulse_test bun run db:migrate
+```
+
+The Playwright journey signs a business up, records feedback as a customer, waits for the real ElevenLabs transcript, plays it back and checks the out-of-pulses state. It needs the dev server running with real ElevenLabs, AI, R2 and Resend keys. It reads login codes from the app's database, set with `E2E_DATABASE_URL` (default `postgres://postgres@localhost:5440/pulse_dev`). Run `bunx playwright install chromium` once first.
 
 ## Key Features Implementation
 
@@ -204,21 +226,23 @@ bun run dev:tunnel      # Expose local app with ngrok
 - Protected dashboard routes via server-side auth checks
 
 ### Voice Feedback
-- Real-time audio streaming (WhatsApp-like experience)
-- Chunks uploaded every 2 seconds during recording
-- Automatic transcription with ElevenLabs Speech-to-Text
-- Sentiment analysis with Google Gemini (positive/neutral/negative)
-- Customer name extraction from transcripts with Google Gemini
+- Customers record up to 2 minutes, listen back, then send one upload
+- Each submission spends one pulse atomically; a failed upload gives it back
+- Transcription with ElevenLabs runs after the response, so customers never wait
+- Sentiment and customer name come from the AI SDK (OpenAI, then OpenRouter)
+- Submissions are rate limited per connection and per business
 
 ### Storage
 - Audio files stored in Cloudflare R2
 - Presigned URLs for secure access
-- Unique keys per feedback: `feedback/{userId}/{feedbackId}/audio.webm`
+- Keys are made on the server: `feedback/{userId}/{feedbackId}.{ext}`
 
 ### Payments
 - Credit-based system (Pulses)
 - Integration with Polar.sh for payment processing
-- Packages: 10, 25, 50, 100 pulses
+- Packs of 10, 25, 50 and 100 pulses, or a custom amount priced at the matching pack rate
+- The `order.paid` webhook credits pulses once per Polar order; `order.refunded` removes them pro rata
+- New accounts start with 5 free pulses
 
 ## Adding Components
 

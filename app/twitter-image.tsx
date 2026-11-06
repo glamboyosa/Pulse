@@ -77,7 +77,7 @@ export default function Image() {
             fontWeight: 800,
           }}
         >
-          Limited time: 3 free pulses
+          Limited time: 5 free pulses
         </div>
       </div>
     ),

@@ -10,12 +10,7 @@ import { AudioPlayer } from '@/components/audio-player'
 import { FeedbackTranscript } from '@/components/feedback-transcript'
 import { db } from '@/db/index'
 import { feedback } from '@/db/schema'
-import {
-  analyzeSentiment,
-  extractNameFromTranscript,
-} from '@/lib/ai/text-analysis'
-import { transcribeAudioWithElevenLabs } from '@/lib/ai/elevenlabs'
-import { downloadAudioChunk } from '@/lib/storage/r2'
+import { retryAnalysis } from '@/server/feedback-submission'
 
 interface FeedbackPageProps {
   params: Promise<{ id: string }>
@@ -47,96 +42,13 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
     notFound()
   }
 
-  // If no transcript, trigger transcription on-demand
-  let transcript = feedbackData.transcript
+  const transcript = feedbackData.transcript
   const sentiment = feedbackData.sentiment
   const customerName = feedbackData.customerName
 
-  if (!transcript && feedbackData.audioKey) {
-    // Trigger transcription asynchronously using after()
-    after(async () => {
-      try {
-        console.log(
-          `[FeedbackPage] Starting on-demand transcription for feedback ${feedbackId}`,
-        )
-
-        // Download audio from R2
-        const audioBuffer = await downloadAudioChunk(feedbackData.audioKey!)
-        console.log(
-          `[FeedbackPage] Downloaded audio, size: ${audioBuffer.length} bytes`,
-        )
-
-        // Determine MIME type from extension
-        const audioKey = feedbackData.audioKey
-        if (!audioKey) {
-          throw new Error('Audio key is missing for this feedback')
-        }
-
-        let transcriptionMimeType: string
-        if (audioKey.endsWith('.ogg')) {
-          transcriptionMimeType = 'audio/ogg'
-        } else if (audioKey.endsWith('.wav')) {
-          transcriptionMimeType = 'audio/wav'
-        } else if (audioKey.endsWith('.mp3') || audioKey.endsWith('.mpeg')) {
-          transcriptionMimeType = 'audio/mpeg'
-        } else if (audioKey.endsWith('.aac')) {
-          transcriptionMimeType = 'audio/aac'
-        } else if (audioKey.endsWith('.mp4') || audioKey.endsWith('.m4a')) {
-          transcriptionMimeType = 'audio/mp4'
-        } else {
-          transcriptionMimeType = 'audio/ogg'
-        }
-
-        console.log(
-          `[FeedbackPage] Transcribing audio (${transcriptionMimeType}) with ElevenLabs`,
-        )
-
-        const newTranscript = await transcribeAudioWithElevenLabs(
-          audioBuffer,
-          transcriptionMimeType,
-        )
-        console.log(
-          `[FeedbackPage] Transcription complete, length: ${newTranscript.length}`,
-        )
-
-        // Analyze sentiment
-        const newSentiment = await analyzeSentiment(newTranscript)
-        console.log(`[FeedbackPage] Sentiment analyzed: ${newSentiment}`)
-
-        // Extract name if not provided
-        let newCustomerName = customerName
-        if (!newCustomerName && newTranscript) {
-          try {
-            newCustomerName = await extractNameFromTranscript(newTranscript)
-            console.log(
-              `[FeedbackPage] Name extracted: ${newCustomerName || 'None'}`,
-            )
-          } catch (nameError) {
-            console.error(`[FeedbackPage] Name extraction failed:`, nameError)
-          }
-        }
-
-        // Update feedback record
-        await db
-          .update(feedback)
-          .set({
-            transcript: newTranscript,
-            sentiment: newSentiment,
-            customerName: newCustomerName,
-          })
-          .where(eq(feedback.id, feedbackId))
-
-        console.log(`[FeedbackPage] Feedback updated with transcription`)
-      } catch (error) {
-        console.error(
-          `[FeedbackPage] Error during on-demand transcription:`,
-          error,
-        )
-      }
-    })
-
-    // Show loading state for transcript
-    transcript = null
+  // retryAnalysis decides whether this recording gets another try.
+  if (!transcript) {
+    after(() => retryAnalysis(feedbackId))
   }
 
   const getSentimentColor = (sentiment: string | null) => {
@@ -214,7 +126,6 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
             <FeedbackTranscript
               feedbackId={feedbackId}
               initialTranscript={transcript}
-              initialSentiment={sentiment}
             />
 
             {sentiment && (

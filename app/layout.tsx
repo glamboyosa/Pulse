@@ -1,5 +1,5 @@
+import { Fascinate, Inter, Rampart_One, Rye } from 'next/font/google'
 import type { Metadata } from 'next'
-import { Inter, Fascinate, Rye, Rampart_One } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'
 
@@ -26,7 +26,7 @@ const rampartOne = Rampart_One({
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pulseapp.click'
 const title = "Pulse — Hear your customers, don't just read them"
 const description =
-  'QR-based voice feedback with instant transcription and saved audio. Limited time: 3 free pulses for new businesses.'
+  'QR-based voice feedback with instant transcription and saved audio. Limited time: 5 free pulses for new businesses.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),

@@ -33,6 +33,12 @@ export const feedback = pgTable('feedback', {
   transcript: text('transcript'),
   sentiment: text('sentiment'), // 'positive', 'neutral', 'negative'
   duration: integer('duration'), // Duration in seconds
+  // 'processing' until transcription and analysis finish, then 'ready' or 'failed'
+  status: text('status').default('ready').notNull(),
+  // Page-view retries are capped and can take over a run stuck in
+  // 'processing', e.g. one killed by a redeploy.
+  analysisAttempts: integer('analysis_attempts').default(0).notNull(),
+  analysisStartedAt: timestamp('analysis_started_at').defaultNow().notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -44,7 +50,9 @@ export const pulsePurchases = pgTable('pulse_purchases', {
     .notNull(),
   amount: integer('amount').notNull(), // Number of pulses purchased
   price: integer('price').notNull(), // Price in cents
-  stripePaymentId: text('stripe_payment_id'),
+  // Polar order id. Unique so a redelivered webhook can't credit the same order twice.
+  stripePaymentId: text('stripe_payment_id').unique(),
+  refundedPulses: integer('refunded_pulses').default(0).notNull(),
   status: text('status').default('completed').notNull(), // 'pending', 'completed', 'failed'
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
@@ -56,6 +64,7 @@ export const otpCodes = pgTable('otp_codes', {
   code: text('code').notNull(), // 6-digit code
   expiresAt: timestamp('expires_at').notNull(),
   used: boolean('used').default(false).notNull(),
+  attempts: integer('attempts').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

@@ -6,130 +6,65 @@ import { Check, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
-import { api } from '@/lib/eden'
+import {
+  CUSTOM_PULSES_MAX,
+  CUSTOM_PULSES_MIN,
+  PACKS,
+  customPriceCents,
+} from '@/lib/pricing'
 
-// Check if we're in development mode
-const isDev = process.env.NODE_ENV === 'development'
+const PULSE_PACKAGES = PACKS.map((pack) => ({
+  id: pack.id,
+  amount: pack.pulses,
+  price: pack.priceCents / 100,
+  popular: pack.id === 'popular',
+}))
 
-// Product IDs - sandbox for dev, production for prod
-const PRODUCT_IDS = {
-  starter: isDev
-    ? '9d2ffe60-4204-4ed0-abc2-9707e66d713f' // Sandbox
-    : 'fad8b1dd-d9f5-42a1-b84d-c4a07059e475', // Production
-  popular: isDev
-    ? '1d502f05-c411-49f8-8f27-83e7b6e7e515' // Sandbox
-    : '80ed7c99-0512-48af-88d5-83dc29cfec50', // Production
-  growth: isDev
-    ? 'd04c9f17-af15-4ee1-86bb-da89b340b562' // Sandbox
-    : '1a60a8a1-a88e-4aa9-8cd1-43bf88cd15f5', // Production
-  scale: isDev
-    ? 'cfa4b754-6a75-4c39-a703-93cf92597d02' // Sandbox
-    : 'f4f82b5c-2c39-4b8d-a8bf-53de00594e21', // Production
-}
+const formatPrice = (cents: number) =>
+  `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`
 
-// Polar product IDs mapped to pulse packages
-const PULSE_PACKAGES = [
-  {
-    amount: 10,
-    price: 7,
-    pricePerPulse: 0.7,
-    popular: false,
-    productId: PRODUCT_IDS.starter, // Starter
-  },
-  {
-    amount: 25,
-    price: 16,
-    pricePerPulse: 0.64,
-    popular: true,
-    productId: PRODUCT_IDS.popular, // Popular
-  },
-  {
-    amount: 50,
-    price: 30,
-    pricePerPulse: 0.6,
-    popular: false,
-    productId: PRODUCT_IDS.growth, // Growth
-  },
-  {
-    amount: 100,
-    price: 55,
-    pricePerPulse: 0.55,
-    popular: false,
-    productId: PRODUCT_IDS.scale, // Scale
-  },
-]
-
-interface BuyPulsesFormProps {
-  user: {
-    id: string
-    email: string
-    name: string
-  }
-}
-
-export function BuyPulsesForm({ user }: BuyPulsesFormProps) {
+export function BuyPulsesForm() {
   const [selectedPackage, setSelectedPackage] = useState<number | 'custom'>(25)
   const [customAmount, setCustomAmount] = useState([50])
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handlePurchase = async () => {
-    if (selectedPackage === 'custom') {
-      const pulseAmount = customAmount[0] || 50
-      // Calculate price: $0.50 per pulse
-      const price = pulseAmount * 0.5
+    setError(null)
+    setIsRedirecting(true)
+    const pkg = PULSE_PACKAGES.find((p) => p.amount === selectedPackage)
+    const body =
+      selectedPackage === 'custom' || !pkg
+        ? { pulses: customAmount[0] }
+        : { packId: pkg.id }
 
-      try {
-        // Create custom checkout
-        const response = await api['custom-checkout'].post({
-          customerName: user.name,
-          customerEmail: user.email,
-          customerExternalId: user.id,
-          pulseAmount,
-          price,
-        })
-
-        if (
-          response.data &&
-          response.data.success &&
-          response.data.checkoutUrl
-        ) {
-          window.location.href = response.data.checkoutUrl
-        } else {
-          alert('Failed to create checkout. Please try again.')
-        }
-      } catch (error) {
-        console.error('Error creating custom checkout:', error)
-        alert('Failed to create checkout. Please try again.')
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data: { url?: string; error?: string } = await response
+        .json()
+        .catch(() => ({}))
+      if (response.ok && data.url) {
+        window.location.href = data.url
+        return
       }
-      return
+      setError(data.error || "Couldn't start checkout. Please try again.")
+    } catch {
+      setError("Couldn't start checkout. Check your connection and try again.")
     }
-
-    const pkg = PULSE_PACKAGES.find((p) => p.amount === selectedPackage)
-    if (!pkg) {
-      alert('Invalid package selected')
-      return
-    }
-
-    // Build checkout URL with query params
-    const params = new URLSearchParams({
-      products: pkg.productId,
-      customerExternalId: user.id,
-      customerEmail: user.email,
-      customerName: user.name,
-    })
-
-    // Redirect to Polar checkout
-    window.location.href = `/api/checkout?${params.toString()}`
+    setIsRedirecting(false)
   }
 
-  const getPrice = () => {
-    if (selectedPackage === 'custom') {
-      const amount = customAmount[0] || 50
-      // $0.50 per pulse for custom amounts
-      return Math.round(amount * 0.5)
-    }
-    const pkg = PULSE_PACKAGES.find((p) => p.amount === selectedPackage)
-    return pkg?.price || 0
-  }
+  const getPriceCents = () =>
+    selectedPackage === 'custom'
+      ? customPriceCents(customAmount[0])
+      : Math.round(
+          (PULSE_PACKAGES.find((p) => p.amount === selectedPackage)?.price ??
+            0) * 100,
+        )
 
   const getAmount = () => {
     if (selectedPackage === 'custom') {
@@ -208,15 +143,15 @@ export function BuyPulsesForm({ user }: BuyPulsesFormProps) {
           <div className="flex-1">
             <h3 className="text-xl font-black mb-2">CUSTOM AMOUNT</h3>
             <p className="text-sm font-semibold text-muted-foreground mb-3">
-              Need a different amount? Choose your quantity at $0.50 per pulse
+              Need a different amount? Priced at the rate of the matching pack.
             </p>
             <div className="space-y-2">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-bold">
-                  {customAmount[0] || 50} pulses
+                  {customAmount[0]} pulses
                 </span>
                 <span className="text-lg font-black">
-                  ${Math.round((customAmount[0] || 50) * 0.5)}
+                  {formatPrice(customPriceCents(customAmount[0]))}
                 </span>
               </div>
               <Slider
@@ -225,14 +160,14 @@ export function BuyPulsesForm({ user }: BuyPulsesFormProps) {
                   setCustomAmount(value)
                   setSelectedPackage('custom')
                 }}
-                min={1}
-                max={500}
+                min={CUSTOM_PULSES_MIN}
+                max={CUSTOM_PULSES_MAX}
                 step={1}
                 className="w-full"
               />
               <div className="flex justify-between text-xs font-semibold text-muted-foreground">
-                <span>1</span>
-                <span>500</span>
+                <span>{CUSTOM_PULSES_MIN}</span>
+                <span>{CUSTOM_PULSES_MAX}</span>
               </div>
             </div>
           </div>
@@ -251,19 +186,27 @@ export function BuyPulsesForm({ user }: BuyPulsesFormProps) {
             <div className="text-sm font-bold text-muted-foreground mb-1">
               TOTAL
             </div>
-            <div className="text-4xl font-black">${getPrice()}</div>
+            <div className="text-4xl font-black">
+              {formatPrice(getPriceCents())}
+            </div>
           </div>
         </div>
         <Button
           onClick={handlePurchase}
           disabled={
+            isRedirecting ||
             getAmount() === 0 ||
             (selectedPackage !== 'custom' && !getSelectedPackage())
           }
           className="w-full border-3 border-foreground font-bold text-lg py-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
         >
-          PROCEED TO CHECKOUT
+          {isRedirecting ? 'OPENING CHECKOUT…' : 'PROCEED TO CHECKOUT'}
         </Button>
+        {error && (
+          <p role="alert" className="mt-3 font-bold text-red-700">
+            {error}
+          </p>
+        )}
       </Card>
     </div>
   )

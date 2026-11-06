@@ -12,7 +12,6 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from '@/components/ui/input-otp'
-import { api } from '@/lib/eden'
 
 type LoginStep = 'email' | 'otp'
 
@@ -36,35 +35,25 @@ export function LoginForm() {
 
   const handleEmailSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    console.log('[LoginForm] handleEmailSubmit called', { email })
     setError('')
     setIsLoading(true)
 
     try {
-      console.log('[LoginForm] Creating API client...')
-      const apiClient = api
-      console.log('[LoginForm] API client created, calling send-otp...', {
-        email,
-        apiClient: !!apiClient,
-        authEndpoint: true,
+      const response = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       })
+      const data: { success?: boolean; error?: string } = await response
+        .json()
+        .catch(() => ({}))
 
-      // Use the full path for the API call
-      const result = await apiClient.auth['send-otp'].post({
-        email,
-      })
-
-      console.log('[LoginForm] send-otp response:', result)
-
-      if (result.data?.success) {
-        console.log('[LoginForm] OTP sent successfully, moving to OTP step')
+      if (response.ok && data.success) {
         setStep('otp')
       } else {
-        console.error('[LoginForm] OTP send failed:', result.data)
-        setError(result.data?.error || 'Failed to send OTP')
+        setError(data.error || 'Failed to send the code. Please try again.')
       }
-    } catch (err) {
-      console.error('[LoginForm] Error sending OTP:', err)
+    } catch {
       setError('An error occurred. Please try again.')
     } finally {
       setIsLoading(false)

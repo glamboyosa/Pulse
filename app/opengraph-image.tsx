@@ -117,7 +117,7 @@ export default function Image() {
             </div>
           </div>
           <div style={{ fontSize: '22px', fontWeight: 800 }}>
-            Limited time: 3 free pulses
+            Limited time: 5 free pulses
           </div>
         </div>
       </div>

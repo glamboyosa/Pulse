@@ -1,3 +1,4 @@
+import { escapeHtml } from '@/lib/utils/html'
 import { getResendClient } from '@/lib/utils/resend'
 
 interface SendLowPulseEmailParams {
@@ -25,9 +26,7 @@ export async function sendLowPulseEmail({
     : `Low Pulse Alert: ${pulsesRemaining} pulse${pulsesRemaining === 1 ? '' : 's'} remaining`
 
   const urgencyColor = isCritical ? '#dc2626' : '#f59e0b'
-  const urgencyText = isCritical
-    ? 'CRITICAL - Running Low!'
-    : 'Running Low'
+  const urgencyText = isCritical ? 'CRITICAL - Running Low!' : 'Running Low'
 
   const { data, error } = await resend.emails.send({
     from: 'Pulse <support@pulseapp.click>',
@@ -46,19 +45,19 @@ export async function sendLowPulseEmail({
           </div>
           
           <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="font-size: 18px; font-weight: bold; margin: 0 0 10px 0;">Hi ${userName},</p>
+            <p style="font-size: 18px; font-weight: bold; margin: 0 0 10px 0;">Hi ${escapeHtml(userName)},</p>
             <p style="margin: 0 0 15px 0;">
               You currently have <strong style="color: ${urgencyColor}; font-size: 20px;">${pulsesRemaining}</strong> pulse${pulsesRemaining === 1 ? '' : 's'} remaining in your Pulse account.
             </p>
-            ${isCritical ? (
-              `<p style="margin: 15px 0; padding: 15px; background-color: #fee2e2; border-left: 4px solid ${urgencyColor}; border-radius: 4px;">
+            ${
+              isCritical
+                ? `<p style="margin: 15px 0; padding: 15px; background-color: #fee2e2; border-left: 4px solid ${urgencyColor}; border-radius: 4px;">
                 <strong>⚠️ Action Required:</strong> You're running very low on pulses. Purchase more now to ensure uninterrupted feedback collection.
               </p>`
-            ) : (
-              `<p style="margin: 15px 0; padding: 15px; background-color: #fef3c7; border-left: 4px solid ${urgencyColor}; border-radius: 4px;">
+                : `<p style="margin: 15px 0; padding: 15px; background-color: #fef3c7; border-left: 4px solid ${urgencyColor}; border-radius: 4px;">
                 Consider purchasing more pulses soon to avoid interruption.
               </p>`
-            )}
+            }
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
@@ -80,7 +79,7 @@ Hi ${userName},
 
 You currently have ${pulsesRemaining} pulse${pulsesRemaining === 1 ? '' : 's'} remaining in your Pulse account.
 
-${isCritical ? '⚠️ CRITICAL: You\'re running very low on pulses. Purchase more now to ensure uninterrupted feedback collection.' : 'Consider purchasing more pulses soon to avoid interruption.'}
+${isCritical ? "⚠️ CRITICAL: You're running very low on pulses. Purchase more now to ensure uninterrupted feedback collection." : 'Consider purchasing more pulses soon to avoid interruption.'}
 
 Buy more pulses: ${process.env.NEXT_PUBLIC_APP_URL || 'https://pulseapp.click'}/buy-pulses
 
@@ -97,5 +96,3 @@ If you have any questions, contact us at support@pulseapp.click
 
   return data
 }
-
-
