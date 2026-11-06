@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import {
   BellRing,
   Languages,
@@ -11,6 +12,13 @@ import {
 } from 'lucide-react'
 
 import { getCurrentUser } from './actions/auth'
+import {
+  appUrl,
+  description as siteDescription,
+  preview,
+  title as siteTitle,
+} from './layout'
+import type { Metadata } from 'next'
 import { HeroMock } from '@/components/landing/hero-mock'
 import { PulseLogo } from '@/components/pulse-logo'
 import { Button } from '@/components/ui/button'
@@ -103,6 +111,36 @@ const FAQS = [
     a: 'Pulse shows your review link to everyone who leaves feedback, never only to happy customers. Asking only happy customers breaks Google’s rules.',
   },
 ]
+
+/**
+ * The home page's link preview adds a short video of the hero. LinkedIn can't
+ * play og:video and drops the image when one is present, so its crawler gets
+ * the image alone.
+ */
+export const generateMetadata = async (): Promise<Metadata> => {
+  const userAgent = (await headers()).get('user-agent') ?? ''
+  if (userAgent.includes('LinkedInBot')) return {}
+  const video = new URL('/og-preview.mp4', appUrl).href
+  return {
+    openGraph: {
+      title: siteTitle,
+      description: siteDescription,
+      url: '/',
+      siteName: 'Pulse',
+      type: 'website',
+      images: [{ ...preview, type: 'image/jpeg' }],
+      videos: [
+        {
+          url: video,
+          secureUrl: video,
+          type: 'video/mp4',
+          width: 1200,
+          height: 630,
+        },
+      ],
+    },
+  }
+}
 
 export default async function HomePage() {
   const user = await getCurrentUser()

@@ -16,14 +16,15 @@ const bricolage = Bricolage_Grotesque({
   display: 'swap',
 })
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.pulseapp.click'
-const title = 'Pulse: hear what your customers really think'
-const description =
+export const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL || 'https://www.pulseapp.click'
+export const title = 'Pulse: hear what your customers really think'
+export const description =
   'Customers scan a QR code and leave a voice note in their own language. You get the transcript, an English translation, alerts when someone is unhappy and a weekly list of what to fix. 5 free pulses to start.'
 
-// Link previews: a 1200x630 image and a short muted video of the landing hero,
-// both in /public.
-const preview = {
+// Link previews: a 1200x630 image of the landing hero, in /public. The home
+// page adds a short video of it (see app/page.tsx).
+export const preview = {
   url: '/og-preview.jpg',
   width: 1200,
   height: 630,
@@ -44,15 +45,6 @@ export const metadata: Metadata = {
     siteName: 'Pulse',
     type: 'website',
     images: [{ ...preview, type: 'image/jpeg' }],
-    videos: [
-      {
-        url: new URL('/og-preview.mp4', appUrl).href,
-        secureUrl: new URL('/og-preview.mp4', appUrl).href,
-        type: 'video/mp4',
-        width: 1200,
-        height: 630,
-      },
-    ],
   },
   twitter: {
     card: 'summary_large_image',
