@@ -28,6 +28,12 @@ import {
   submitFeedback,
 } from '@/server/feedback-submission'
 import { listFeedback } from '@/server/feedback-queries'
+import {
+  MIN_FEEDBACK_FOR_DIGEST,
+  countReadyFeedback,
+  currentWeek,
+  refreshDigest,
+} from '@/server/digest'
 import { RateLimitError, clientIp, enforceRateLimit } from '@/server/rate-limit'
 
 const HOUR_MS = 60 * 60 * 1000
@@ -240,6 +246,22 @@ const app = new Elysia({ prefix: '/api' })
       }),
     },
   )
+  .post('/insights/digest', async ({ request }) => {
+    const user = await getUserFromSession(request)
+    if (!user) return json(401, { error: 'Unauthorized' })
+    // Checked first, so a refresh that can't work doesn't use up the limit.
+    const thisWeek = await countReadyFeedback(user.id, currentWeek())
+    if (thisWeek < MIN_FEEDBACK_FOR_DIGEST) {
+      return json(422, { error: 'Not enough feedback this week yet' })
+    }
+    await enforceRateLimit(`digest:${user.id}`, 3, 24 * HOUR_MS)
+
+    const digest = await refreshDigest(user.id)
+    if (!digest) {
+      return json(422, { error: 'Not enough feedback this week yet' })
+    }
+    return { digest }
+  })
   .post('/webhook/polar', async ({ request }) => {
     const environment = polarEnvironment()
     const secret = polarWebhookSecret(environment)

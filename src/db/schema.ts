@@ -1,11 +1,16 @@
 import {
   boolean,
+  date,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
 } from 'drizzle-orm/pg-core'
+
+import type { DigestContent } from '@/server/digest'
 
 // Users table - extends authentication with business info
 export const users = pgTable('users', {
@@ -80,6 +85,25 @@ export const rateLimits = pgTable('rate_limits', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
+
+// One AI digest per owner per week (weeks start Monday, UTC). An owner can
+// rewrite the current week's from the Insights tab; the Monday cron claims the
+// week that just ended by setting sendingAt, so nobody is emailed twice.
+export const weeklyDigests = pgTable(
+  'weekly_digests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .references(() => users.id)
+      .notNull(),
+    weekStart: date('week_start').notNull(),
+    content: jsonb('content').$type<DigestContent>(),
+    sendingAt: timestamp('sending_at'),
+    emailedAt: timestamp('emailed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [unique().on(table.userId, table.weekStart)],
+)
 
 // Types for TypeScript
 export type User = typeof users.$inferSelect

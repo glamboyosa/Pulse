@@ -12,21 +12,24 @@ const models = [
     createOpenRouter({ apiKey: env.OPENROUTER_API_KEY })('openai/gpt-5-mini'),
 ].filter((model) => !!model)
 
-const generateObject = async <T>(
+/**
+ * Asks each provider in turn for an object matching `schema`. `timeoutMs` is
+ * per provider: a hung one must not run the request past its time limit.
+ */
+export const generateObject = async <T>(
   schema: z.ZodType<T>,
   prompt: string,
+  timeoutMs = 20_000,
 ): Promise<T> => {
   let lastError: unknown = new Error('No OpenAI or OpenRouter API key is set')
   for (const model of models) {
     try {
-      // A hung provider must not run the request past its time limit: the
-      // transcript is only saved after this returns.
       const { output } = await generateText({
         model,
         output: Output.object({ schema }),
         prompt,
         maxRetries: 1,
-        abortSignal: AbortSignal.timeout(20_000),
+        abortSignal: AbortSignal.timeout(timeoutMs),
       })
       return output
     } catch (error) {

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { encrypt } from '../lib/session'
 import { GET, POST } from '../app/api/[[...slugs]]/route'
+import { GET as cronGET } from '../app/api/cron/weekly-digest/route'
 import { createBusiness, pulsesOf, resetDatabase } from './support/db'
 import { orderPayload, signedWebhook } from './support/polar'
 import { feedback, otpCodes } from '@/db/schema'
@@ -365,5 +366,33 @@ describe('login codes', () => {
     }
     expect(statuses.filter((s) => s === 200)).toHaveLength(10)
     expect(statuses.at(-1)).toBe(429)
+  })
+})
+
+describe('weekly digest cron', () => {
+  it('runs only for Vercel Cron, which sends the secret', async () => {
+    const run = (authorization?: string) =>
+      cronGET(
+        new Request(`${base}/cron/weekly-digest`, {
+          headers: authorization ? { authorization } : {},
+        }),
+      )
+    expect((await run()).status).toBe(401)
+    expect((await run('Bearer wrong-secret')).status).toBe(401)
+    expect((await run('test-cron-secret')).status).toBe(401)
+
+    const response = await run('Bearer test-cron-secret')
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ sent: 0, skipped: 0, failed: 0 })
+  })
+
+  it('refuses to write a digest without enough feedback this week, without spending the limit', async () => {
+    const owner = await createBusiness()
+    const cookie = await sessionCookie(owner)
+    for (let i = 0; i < 4; i++) {
+      expect((await postJson('/insights/digest', {}, { cookie })).status).toBe(
+        422,
+      )
+    }
   })
 })

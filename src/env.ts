@@ -6,6 +6,8 @@ export const env = createEnv({
     SERVER_URL: z.string().url().optional(),
     SERVER_RESEND_API_KEY: z.string().min(1).optional(),
     RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
+    // Vercel sends it as a bearer token on cron requests.
+    CRON_SECRET: z.string().min(1).optional(),
     DATABASE_URL: z.string().url().optional(),
     ELEVEN_LABS_API_KEY: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
@@ -31,6 +33,7 @@ export const env = createEnv({
     SERVER_URL: process.env.SERVER_URL,
     SERVER_RESEND_API_KEY: process.env.SERVER_RESEND_API_KEY,
     RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
+    CRON_SECRET: process.env.CRON_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     ELEVEN_LABS_API_KEY: process.env.ELEVEN_LABS_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,

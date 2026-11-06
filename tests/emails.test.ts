@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendFeedbackReceivedEmail } from '@/lib/email/feedback-received'
+import { sendWeeklyDigestEmail } from '@/lib/email/weekly-digest'
 
 const send = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/utils/resend', () => ({
@@ -53,5 +54,35 @@ describe('feedback email', () => {
     expect(email.html).toContain('New feedback received')
     expect(email.html).toContain('Transcript:')
     expect(email.html).not.toContain('Translated from')
+  })
+})
+
+describe('weekly digest email', () => {
+  it('escapes everything the model and the owner wrote, and sends once per key', async () => {
+    await sendWeeklyDigestEmail({
+      to: 'owner@example.test',
+      businessName: 'Test Cafe <130>',
+      idempotencyKey: 'weekly-digest/u1/2026-11-02',
+      content: {
+        headline: '<img src=x onerror=alert(1)> week',
+        fixes: [
+          {
+            title: '<b>Faster</b> food',
+            customers: 2,
+            why: 'Waits & delays',
+            quote: '"we waited" <script>',
+          },
+        ],
+        wins: ['<i>Great</i> suya'],
+      },
+    })
+
+    const email = sent()
+    expect(email.html).not.toMatch(/<img|<b>|<script>|<i>|Cafe <130>/)
+    expect(email.html).toContain('&lt;img src=x onerror=alert(1)&gt; week')
+    expect(email.html).toContain('2 customers: Waits &amp; delays')
+    expect(send.mock.calls[0][1]).toEqual({
+      idempotencyKey: 'weekly-digest/u1/2026-11-02',
+    })
   })
 })
