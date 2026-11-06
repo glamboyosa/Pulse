@@ -396,3 +396,57 @@ describe('weekly digest cron', () => {
     }
   })
 })
+
+describe('spots API', () => {
+  it("needs a session and only touches the owner's own spots", async () => {
+    expect((await get('/spots')).status).toBe(401)
+    expect((await postJson('/spots', { name: 'Patio' })).status).toBe(401)
+    expect(
+      (
+        await POST(
+          new Request(`${base}/spots/${crypto.randomUUID()}`, {
+            method: 'DELETE',
+          }),
+        )
+      ).status,
+    ).toBe(401)
+
+    const alice = await createBusiness()
+    const bob = await createBusiness()
+    const created = (await (
+      await postJson(
+        '/spots',
+        { name: 'Patio' },
+        { cookie: await sessionCookie(alice) },
+      )
+    ).json()) as { spot: { id: string; slug: string } }
+    expect(created.spot.slug).toBe('patio')
+
+    const remove = (id: string, cookie: string) =>
+      POST(
+        new Request(`${base}/spots/${id}`, {
+          method: 'DELETE',
+          headers: { cookie },
+        }),
+      )
+    expect(
+      (await remove(created.spot.id, await sessionCookie(bob))).status,
+    ).toBe(404)
+    expect(
+      (await remove(created.spot.id, await sessionCookie(alice))).status,
+    ).toBe(200)
+    expect(
+      await (await get('/spots', await sessionCookie(alice))).json(),
+    ).toEqual({ spots: [] })
+  })
+
+  it('rejects a blank spot name', async () => {
+    const owner = await createBusiness()
+    const response = await postJson(
+      '/spots',
+      { name: '  ' },
+      { cookie: await sessionCookie(owner) },
+    )
+    expect(response.status).toBe(400)
+  })
+})

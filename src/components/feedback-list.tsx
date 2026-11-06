@@ -12,6 +12,8 @@ import { EmptyState } from '@/components/empty-state'
 export interface Feedback {
   id: string
   customerName: string | null
+  /** The spot whose QR code the customer scanned, if any. */
+  spot: { id: string; name: string; removed: boolean } | null
   duration: number // seconds
   transcript: string
   sentiment: 'positive' | 'neutral' | 'negative' | null
@@ -62,6 +64,7 @@ export function FeedbackList({
   const [filter, setFilter] = useState<
     'all' | 'positive' | 'neutral' | 'negative'
   >('all')
+  const [spotFilter, setSpotFilter] = useState('all')
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const {
@@ -91,10 +94,26 @@ export function FeedbackList({
 
   const error = queryError ? 'Failed to load feedback' : null
 
-  const filteredFeedback =
-    filter === 'all'
-      ? feedbackList
-      : feedbackList.filter((f) => f.sentiment === filter)
+  // By id: an archived spot and a new one can share a name.
+  const spotOptions = [
+    ...new Map(
+      feedbackList.flatMap((f) =>
+        f.spot
+          ? [
+              [
+                f.spot.id,
+                f.spot.removed ? `${f.spot.name} (removed)` : f.spot.name,
+              ],
+            ]
+          : [],
+      ),
+    ),
+  ].sort(([, a], [, b]) => a.localeCompare(b))
+  const filteredFeedback = feedbackList.filter(
+    (f) =>
+      (filter === 'all' || f.sentiment === filter) &&
+      (spotFilter === 'all' || f.spot?.id === spotFilter),
+  )
 
   useEffect(() => () => audioRef.current?.pause(), [])
 
@@ -268,6 +287,27 @@ export function FeedbackList({
         </div>
       </div>
 
+      {spotOptions.length > 0 && (
+        <div className="mb-6 flex items-center gap-3">
+          <label htmlFor="spot-filter" className="text-sm font-bold uppercase">
+            Spot
+          </label>
+          <select
+            id="spot-filter"
+            value={spotFilter}
+            onChange={(event) => setSpotFilter(event.target.value)}
+            className="border-4 border-foreground bg-card px-3 py-1.5 text-base font-bold"
+          >
+            <option value="all">All spots</option>
+            {spotOptions.map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {playError && (
         <p
           role="alert"
@@ -348,8 +388,15 @@ export function FeedbackList({
                     </p>
                   )}
                 </div>
-                {(item.themes.length > 0 || item.language) && (
+                {(item.themes.length > 0 || item.language || item.spot) && (
                   <ul className="mt-3 flex flex-wrap gap-2">
+                    {item.spot && (
+                      <li className="border-2 border-foreground bg-foreground text-background px-2 py-0.5 text-xs font-bold uppercase">
+                        {item.spot.removed
+                          ? `${item.spot.name} (removed)`
+                          : item.spot.name}
+                      </li>
+                    )}
                     {item.language && (
                       <li className="border-2 border-foreground bg-accent px-2 py-0.5 text-xs font-bold uppercase">
                         Translated from {item.language}

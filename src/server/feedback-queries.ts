@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm'
 
 import type { Feedback } from '@/components/feedback-list'
 import { db } from '@/db/index'
-import { feedback } from '@/db/schema'
+import { feedback, spots } from '@/db/schema'
 import { getAudioUrl } from '@/lib/storage/r2'
 
 /**
@@ -13,15 +13,24 @@ export const listFeedback = async (
   userId: string,
 ): Promise<Array<Feedback>> => {
   const rows = await db
-    .select()
+    .select({
+      f: feedback,
+      spotName: spots.name,
+      spotArchived: spots.archivedAt,
+    })
     .from(feedback)
+    .leftJoin(spots, eq(spots.id, feedback.spotId))
     .where(eq(feedback.userId, userId))
     .orderBy(desc(feedback.createdAt))
 
   return Promise.all(
-    rows.map(async (f) => ({
+    rows.map(async ({ f, spotName, spotArchived }) => ({
       id: f.id,
       customerName: f.customerName,
+      spot:
+        f.spotId && spotName
+          ? { id: f.spotId, name: spotName, removed: spotArchived !== null }
+          : null,
       duration: f.duration ?? 0,
       transcript: f.transcript ?? '',
       sentiment: f.sentiment as Feedback['sentiment'],

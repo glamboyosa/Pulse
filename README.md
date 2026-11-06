@@ -1,277 +1,140 @@
 # Pulse
 
-**Pulse** is a AI SaaS platform that helps businesses collect authentic voice feedback from customers through simple QR codes. Instead of traditional text surveys, customers scan a QR code and leave voice messages that are automatically transcribed, analyzed for sentiment, and displayed in a real-time dashboard.
+Voice feedback for businesses. Customers scan a QR code and record up to two minutes in any language. Owners get a transcript, an English translation, a one-line summary, themes, sentiment, an alert for negative feedback and a weekly digest of what to fix.
 
-🌐 **Live at:** [pulseapp.click](https://pulseapp.click)
+Live at [pulseapp.click](https://www.pulseapp.click).
 
-## Features
+## What it does
 
-- 🎤 **Voice Feedback Collection** - Customers record voice messages via QR code scanning
-- 📝 **Automatic Transcription** - Powered by ElevenLabs Speech-to-Text
-- 😊 **Sentiment Analysis** - Automatically categorizes feedback as positive, neutral, or negative
-- 📊 **Real-Time Dashboard** - View all feedback with audio playback and transcripts
-- 🔗 **Unique QR Codes** - Each business gets a custom QR code for feedback collection
-- 💳 **Credit-Based System** - Pay-as-you-go model with Pulse credits
-- 🔒 **Privacy First** - GDPR compliant with encrypted storage
-- 📧 **OTP Authentication** - Secure email-based login system
+**For the customer**, a page at `/f/<business code>`:
+- record in the browser (no app or account), listen back, re-record, send;
+- the recording stops on its own at 2 minutes;
+- the page says so when the business is out of credit, instead of failing after the recording.
 
-## Tech Stack
+**For the owner**, a dashboard at `/dashboard`:
+- every recording with playback, a summary, themes, a sentiment tag and, for non-English recordings, the English translation next to the original;
+- filters by sentiment and by spot;
+- **Spots**: extra QR codes for a branch, a table or an event (`/f/<code>?spot=<slug>`), each tagging its feedback;
+- **Insights** (`/dashboard?tab=insights`): sentiment over the last 30 days against the 30 before, and themes ranked by how often they come up negative;
+- **Weekly digest**: up to three things to fix, each with a customer quote and a count, emailed on Mondays; the owner can also rewrite this week's so far from the Insights tab (3 times a day).
 
-### Frontend
-- **[Next.js](https://nextjs.org/)** - Full-stack React framework with App Router and SSR
-- **[React](https://react.dev/)** - UI library
-- **[TanStack Query](https://tanstack.com/query)** - Data fetching and state management
-- **[Tailwind CSS](https://tailwindcss.com/)** - Styling
-- **[Shadcn UI](https://ui.shadcn.com/)** - UI components
-- **[Lucide React](https://lucide.dev/)** - Icons
-- **[React QR Code](https://github.com/rosskhanas/react-qr-code)** - QR code generation
+**Emails** to the owner:
+- each new recording; negative ones arrive as an "Unhappy customer" alert with the summary;
+- a low-balance warning when credit drops to 9, 4 and 0;
+- the Monday digest.
 
-### Backend
-- **[ElysiaJS](https://elysiajs.com/)** - Fast web framework for API routes
-- **[Eden Treaty](https://elysiajs.com/plugins/eden/treaty.html)** - End-to-end type safety
-- **[Drizzle ORM](https://orm.drizzle.team/)** - TypeScript ORM
-- **[Neon Database](https://neon.tech/)** - Serverless PostgreSQL
-- **[Resend](https://resend.com/)** - Transactional emails
-- **[ElevenLabs](https://elevenlabs.io/)** - Speech-to-text transcription
-- **[AI SDK](https://ai-sdk.dev/)** with OpenAI, falling back to OpenRouter - Sentiment analysis and name extraction
-- **[Cloudflare R2](https://www.cloudflare.com/products/r2/)** - Object storage for audio files
+**Credit**: one recording spends one pulse. New accounts get 5. Owners buy packs of 10, 25, 50 or 100, or a custom amount from 5 to 500 priced at the matching pack rate, through Polar.
 
-### Development Tools
-- **[Next.js Compiler](https://nextjs.org/docs/architecture/nextjs-compiler)** - Application build and bundling
-- **[TypeScript](https://www.typescriptlang.org/)** - Type safety
-- **[Zod](https://zod.dev/)** - Schema validation
-- **[T3 Env](https://env.t3.gg/)** - Type-safe environment variables for Next.js
-- **[Vitest](https://vitest.dev/)** - Unit and API tests against a real Postgres
-- **[Playwright](https://playwright.dev/)** - End-to-end tests in desktop and mobile Chrome
-- **[ESLint](https://eslint.org/)** & **[Prettier](https://prettier.io/)** - Code quality
+## Run it locally
 
-## Getting Started
+Needs [Bun](https://bun.sh), Postgres, and keys for ElevenLabs, OpenAI or OpenRouter, Cloudflare R2 and Resend. Polar keys are only needed to test buying credit.
 
-### Prerequisites
-
-- [Bun](https://bun.sh/) (recommended) or Node.js 18+
-- A Neon database (or PostgreSQL)
-- Cloudflare R2 account (for audio storage)
-- OpenAI or OpenRouter API key
-- ElevenLabs API key
-- Resend API key (for emails)
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd pulse
-```
-
-2. Install dependencies:
 ```bash
 bun install
+cp .env.example .env.local   # then fill it in, see below
+DATABASE_URL=postgres://… bun run db:migrate
+bun run dev                  # http://localhost:3000
 ```
 
-3. Set up environment variables:
-```bash
-cp .env.example .env
-```
+Sign in at `/login` with any email. With `EMAIL_DELIVERY=log` the login code is printed in the dev server output instead of emailed.
 
-4. Configure your `.env` file with the required variables (see [Environment Variables](#environment-variables))
+What a local run touches:
+- **Postgres** at `DATABASE_URL`.
+- **R2**: recordings are uploaded to the bucket under `dev/` when `NODE_ENV` is not `production`.
+- **ElevenLabs and OpenAI/OpenRouter**: one transcription and one analysis call per recording, billed to your keys.
+- **Resend**: real emails unless `EMAIL_DELIVERY=log`. Use `log` for development; each test run otherwise sends several.
 
-5. Set up the database:
-```bash
-bun run db:push
-```
+## Environment variables
 
-6. Start the development server:
-```bash
-bun run dev
-```
+All are read and validated in `src/env.ts`. `.env.example` lists them with placeholders.
 
-The application will be available at `http://localhost:3000`
+| Variable | Needed for |
+| --- | --- |
+| `DATABASE_URL` | Everything |
+| `SESSION_SECRET` | Sign-in cookies. At least 32 characters; the app refuses to start otherwise |
+| `SERVER_URL` | Links in emails, Polar redirects and QR codes, e.g. `http://localhost:3000` |
+| `ELEVEN_LABS_API_KEY` | Transcription |
+| `OPENAI_API_KEY`, `OPENROUTER_API_KEY` | Analysis and digests. OpenAI is tried first; OpenRouter runs the same model if it fails. One is enough |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_ACCESS_KEY_ID`, `CLOUDFLARE_SECRET_ACCESS_KEY`, `CLOUDFLARE_R2_BUCKET_NAME` | Audio storage |
+| `SERVER_RESEND_API_KEY` | Email |
+| `EMAIL_DELIVERY` | `send` (default) or `log` to print emails instead |
+| `RESEND_WEBHOOK_SECRET` | Forwarding inbound email to the owner of the app |
+| `POLAR_ENVIRONMENT` | `production` (default) or `sandbox` |
+| `POLAR_API_KEY`, `POLAR_WEBHOOK_SECRET` | Payments in production |
+| `POLAR_SANDBOX_API_TOKEN`, `POLAR_SANDBOX_WEBHOOK_SECRET` | Payments in the Polar sandbox |
+| `CRON_SECRET` | The weekly digest cron. Without it the cron route answers 401 |
+| `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_APP_TITLE` | Fallbacks for client-side links and the page title |
 
-## Environment Variables
-
-Create a `.env` file in the root directory with the following variables:
-
-```env
-# Server
-SERVER_URL=http://localhost:3000
-SESSION_SECRET=your-session-secret-min-32-chars
-
-# Database
-DATABASE_URL=your-neon-postgres-connection-string
-
-# Email (Resend)
-SERVER_RESEND_API_KEY=your-resend-api-key
-
-# AI (OpenAI first, OpenRouter as fallback)
-OPENAI_API_KEY=your-openai-api-key
-OPENROUTER_API_KEY=your-openrouter-api-key
-
-# Speech-to-text (ElevenLabs)
-ELEVEN_LABS_API_KEY=your-elevenlabs-api-key
-
-# Storage (Cloudflare R2)
-CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
-CLOUDFLARE_ACCESS_KEY_ID=your-r2-access-key-id
-CLOUDFLARE_SECRET_ACCESS_KEY=your-r2-secret-access-key
-CLOUDFLARE_R2_BUCKET_NAME=your-bucket-name
-
-# Payments (Polar.sh). POLAR_ENVIRONMENT picks which pair is used.
-POLAR_ENVIRONMENT=sandbox
-POLAR_API_KEY=your-polar-production-token
-POLAR_WEBHOOK_SECRET=your-polar-production-webhook-secret
-POLAR_SANDBOX_API_TOKEN=your-polar-sandbox-token
-POLAR_SANDBOX_WEBHOOK_SECRET=your-polar-sandbox-webhook-secret
-
-# Client
-NEXT_PUBLIC_APP_TITLE=Pulse
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-## Database Setup
-
-This project uses **Neon** (serverless PostgreSQL) with **Drizzle ORM**.
-
-### Database Commands
+## Tests
 
 ```bash
-# Generate migrations
-bun run db:generate
-
-# Push schema changes to database
-bun run db:push
-
-# Run migrations
-bun run db:migrate
-
-# Open Drizzle Studio (database GUI)
-bun run db:studio
+bun run test        # Vitest: unit and API tests
+bun run test:e2e    # Playwright: browser journeys against a running app
 ```
 
-### Neon Setup
-
-Create a Neon Postgres database, copy the connection string into `DATABASE_URL`, then run `bun run db:push` to apply the Drizzle schema.
-
-## Project Structure
-
-```
-pulse/
-├── app/
-│   ├── api/[[...slugs]]/   # Elysia API mounted inside Next.js
-│   ├── dashboard/          # Business dashboard
-│   ├── f/[id]/             # Public QR-code feedback page
-│   ├── login/              # OTP login page
-│   └── ...                 # Other App Router routes
-├── src/
-│   ├── components/          # React components
-│   │   ├── ui/             # Shadcn UI components
-│   │   └── ...
-│   ├── lib/                # Utility libraries
-│   │   ├── ai/             # AI integrations (ElevenLabs + Gemini)
-│   │   ├── storage/        # Storage utilities (R2)
-│   │   └── utils/          # Helper utilities
-│   ├── db/                 # Database schema and migrations
-│   ├── emails/             # React Email templates
-│   ├── contexts/           # React contexts (Auth, etc.)
-│   └── styles.css          # Global styles
-├── public/                 # Static assets
-└── package.json
-```
-
-## Available Scripts
-
-```bash
-# Development
-bun run dev              # Start dev server on port 3000
-
-# Building
-bun run build           # Build for production
-bun run start           # Start production server
-
-# Database
-bun run db:generate     # Generate migrations
-bun run db:push         # Push schema to database
-bun run db:migrate      # Run migrations
-bun run db:studio       # Open Drizzle Studio
-
-# Code Quality
-bun run lint            # Run ESLint
-bun run format          # Format with Prettier
-bun run check           # Format and lint
-
-# Tunnels
-bun run dev:tunnel      # Expose local app with ngrok
-
-# Tests
-bun run test            # Unit and API tests (Vitest)
-bun run test:e2e        # Browser journey (Playwright) against a running app
-```
-
-### Tests
-
-Vitest runs against a real Postgres database called `pulse_test` on `localhost:5440`. It wipes that database between tests, so never point it anywhere else. Create and migrate it once:
+**Vitest** runs against a real Postgres database, so locks, unique constraints and concurrent updates behave as they do in production. It defaults to `postgres://postgres@localhost:5440/pulse_test` (override with `TEST_DATABASE_URL`) and **empties that database before every test**. Create it once:
 
 ```bash
 createdb -h localhost -p 5440 -U postgres pulse_test
 DATABASE_URL=postgres://postgres@localhost:5440/pulse_test bun run db:migrate
 ```
 
-The Playwright journey signs a business up, records feedback as a customer, waits for the real ElevenLabs transcript, plays it back and checks the out-of-pulses state. It needs the dev server running with real ElevenLabs, AI, R2 and Resend keys. It reads login codes from the app's database, set with `E2E_DATABASE_URL` (default `postgres://postgres@localhost:5440/pulse_dev`). Run `bunx playwright install chromium` once first.
+External services (R2, ElevenLabs, the AI providers, Resend, Polar) are mocked in Vitest.
 
-## Key Features Implementation
-
-### Authentication
-- OTP-based email authentication
-- Session management with HTTP-only cookies
-- Protected dashboard routes via server-side auth checks
-
-### Voice Feedback
-- Customers record up to 2 minutes, listen back, then send one upload
-- Each submission spends one pulse atomically; a failed upload gives it back
-- Transcription with ElevenLabs runs after the response, so customers never wait
-- Sentiment and customer name come from the AI SDK (OpenAI, then OpenRouter)
-- Submissions are rate limited per connection and per business
-
-### Storage
-- Audio files stored in Cloudflare R2
-- Presigned URLs for secure access
-- Keys are made on the server: `feedback/{userId}/{feedbackId}.{ext}`
-
-### Payments
-- Credit-based system (Pulses)
-- Integration with Polar.sh for payment processing
-- Packs of 10, 25, 50 and 100 pulses, or a custom amount priced at the matching pack rate
-- The `order.paid` webhook credits pulses once per Polar order; `order.refunded` removes them pro rata
-- New accounts start with 5 free pulses
-
-## Adding Components
-
-This project uses [Shadcn UI](https://ui.shadcn.com/). To add new components:
+**Playwright** drives desktop Chrome and a Pixel 7 against the dev server (`PLAYWRIGHT_BASE_URL`, default `http://localhost:3000`). The services are real, so start the server with `EMAIL_DELIVERY=log`:
 
 ```bash
-pnpx shadcn@latest add button
-pnpx shadcn@latest add card
-# etc.
+bunx playwright install chromium   # once
+EMAIL_DELIVERY=log bun run dev
+bun run test:e2e
 ```
 
-## Type Safety
+- `journey.spec.ts`: sign up, add a spot, a customer records through the spot's link, the real transcript and analysis arrive, playback, the spot filter, running out of credit, the buy page.
+- `insights.spec.ts`: the Insights charts, then the real model writes a digest.
 
-- **Environment Variables**: Type-safe with `@t3-oss/env-core`
-- **API Routes**: End-to-end type safety with Eden Treaty
-- **Database**: Type-safe queries with Drizzle ORM
-- **Forms**: Schema validation with Zod
+The specs read login codes from the app's database (`E2E_DATABASE_URL`, default `postgres://postgres@localhost:5440/pulse_dev`). Chrome's fake microphone hangs on macOS without a system microphone grant, so the specs give the page a Web Audio stream of `tests/e2e/fixtures/feedback.wav` instead; the app still records it with `MediaRecorder` and uploads real audio.
 
-## Learn More
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs)
-- [ElysiaJS Documentation](https://elysiajs.com/)
-- [Drizzle ORM Documentation](https://orm.drizzle.team/)
-- [Neon Documentation](https://neon.tech/docs)
+| Command | Does |
+| --- | --- |
+| `bun run dev` | Dev server on port 3000 |
+| `bun run build`, `bun run start` | Production build and server |
+| `bun run db:generate` | New migration in `drizzle/` from `src/db/schema.ts` |
+| `bun run db:migrate` | Apply migrations to `DATABASE_URL` |
+| `bun run db:studio` | Drizzle Studio |
+| `bun run lint`, `bun run check` | ESLint; Prettier then ESLint with fixes |
+| `bun run dev:tunnel` | Public ngrok URL for the local app, for Polar webhooks |
+
+## Deploying
+
+Pulse runs on Vercel. Before deploying a change that adds a migration, apply it to the production database with `bun run db:migrate`.
+
+`vercel.json` schedules the weekly digest cron at 08:00 and 14:00 UTC on Mondays. The second run picks up anyone the first missed; nobody is emailed twice. It needs `CRON_SECRET` set in the Vercel project.
+
+Polar sends `order.paid` and `order.refunded` to `/api/webhook/polar`.
+
+<details>
+<summary>How it works</summary>
+
+**Stack**: Next.js 16 (App Router) with an [Elysia](https://elysiajs.com) API mounted at `app/api/[[...slugs]]/route.ts`, Drizzle on Postgres (Neon in production), Tailwind with shadcn components, TanStack Query, jose session cookies.
+
+**Recording a piece of feedback** (`src/server/feedback-submission.ts`):
+1. The browser uploads one file with `MediaRecorder` (mp4 on Safari, webm on Chrome, ogg on Firefox).
+2. The server checks type and size (8 MB), spends one pulse with a single `update … where pulses_remaining > 0`, uploads to R2 under a server-made key and stores the row as `processing`. If the upload fails the pulse is returned.
+3. It replies, then transcribes and analyses with Next's `after()`. ElevenLabs detects the language. One structured AI call returns sentiment, name, language, English translation, summary and themes. The transcript is kept even if analysis fails.
+4. Viewing a recording with no transcript retries it, at most 3 times; a run stuck in `processing` for 10 minutes is taken over.
+
+Submissions are rate limited per connection and per business (`src/server/rate-limit.ts`).
+
+**Payments** (`src/server/billing.ts`): checkout is created on the server with the price from `src/lib/pricing.ts`; the browser never sends a price. The webhook credits each Polar order exactly once (unique order id, one SQL statement) and removes refunded pulses pro rata to the pre-tax amount.
+
+**Sign-in** (`app/actions/auth.ts`): 6-digit codes from `crypto.randomInt`, valid 10 minutes, at most 5 guesses each (counted atomically), codes rate limited per email and per IP.
+
+**Weekly digest** (`src/server/digest.ts`): each owner's week is claimed with a row in `weekly_digests` before any work. Retries resend the stored digest under the same Resend idempotency key, so a send is never duplicated.
+
+</details>
 
 ## License
 
-Private - All rights reserved
-
----
-
-Built with ❤️ by [Timothy Osaretin Ogbemudia](https://glamboyosa.xyz)
+Private. All rights reserved.

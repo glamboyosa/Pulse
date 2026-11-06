@@ -27,11 +27,30 @@ export const users = pgTable('users', {
 })
 
 // Feedback submissions from customers
+// A place a QR code points to: a branch, a table, an event. Owners archive
+// rather than delete, so old feedback keeps its label.
+export const spots = pgTable(
+  'spots',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .references(() => users.id)
+      .notNull(),
+    name: text('name').notNull(),
+    // In the QR link: /f/<business code>?spot=<slug>
+    slug: text('slug').notNull(),
+    archivedAt: timestamp('archived_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [unique().on(table.userId, table.slug)],
+)
+
 export const feedback = pgTable('feedback', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
     .references(() => users.id)
     .notNull(),
+  spotId: uuid('spot_id').references(() => spots.id),
   customerName: text('customer_name'),
   audioUrl: text('audio_url'), // Presigned URL to stored audio file (expires)
   audioKey: text('audio_key'), // R2 key for the audio file (permanent, can regenerate URLs)

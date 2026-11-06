@@ -6,6 +6,7 @@ import { transcribeAudioWithElevenLabs } from '@/lib/ai/elevenlabs'
 import { analyseTranscript } from '@/lib/ai/text-analysis'
 import { sendFeedbackReceivedEmail } from '@/lib/email/feedback-received'
 import { sendLowPulseEmail } from '@/lib/email/low-pulse'
+import { findSpot } from '@/server/spots'
 import {
   AUDIO_KEY_PREFIX,
   deleteAudio,
@@ -89,6 +90,8 @@ export type SubmissionInput = {
   audio: Blob
   durationSeconds: number
   customerName: string | null
+  /** The spot slug from the QR link, if any. */
+  spot?: string | null
 }
 
 /**
@@ -119,9 +122,11 @@ export const submitFeedback = async (
       Buffer.from(await input.audio.arrayBuffer()),
       audioType,
     )
+    const spot = await findSpot(business.id, input.spot)
     await db.insert(feedback).values({
       id: feedbackId,
       userId: business.id,
+      spotId: spot?.id ?? null,
       customerName: input.customerName,
       audioKey,
       duration: Math.min(

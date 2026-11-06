@@ -6,6 +6,7 @@ import QRCodeSVG from 'react-qr-code'
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { downloadQrPng } from '@/lib/qr-download'
 
 interface QRCodeSectionProps {
   uniqueCode: string
@@ -13,19 +14,19 @@ interface QRCodeSectionProps {
 
 export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
   const [copied, setCopied] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const [feedbackUrl, setFeedbackUrl] = useState<string>('')
   const qrCodeRef = useRef<HTMLDivElement>(null)
 
   // Get the current host URL on the client side
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      console.log('Window is defined')
       const baseUrl = window.location.origin
-      console.log('Base URL:', baseUrl)
       setFeedbackUrl(`${baseUrl}/f/${uniqueCode}`)
     } else {
       // Fallback for SSR
-      const fallbackUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pulseapp.click'
+      const fallbackUrl =
+        process.env.NEXT_PUBLIC_APP_URL || 'https://pulseapp.click'
       setFeedbackUrl(`${fallbackUrl}/f/${uniqueCode}`)
     }
   }, [uniqueCode])
@@ -59,104 +60,15 @@ export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
     }
   }
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     if (!qrCodeRef.current) return
-
-    try {
-      // Get the SVG element
-      const svgElement = qrCodeRef.current.querySelector('svg')
-      if (!svgElement) {
-        console.error('SVG element not found')
-        return
-      }
-
-      // Clone the SVG to avoid modifying the original
-      const clonedSvg = svgElement.cloneNode(true) as SVGElement
-
-      // Set explicit dimensions if not already set
-      if (!clonedSvg.getAttribute('width')) {
-        clonedSvg.setAttribute('width', '400')
-      }
-      if (!clonedSvg.getAttribute('height')) {
-        clonedSvg.setAttribute('height', '400')
-      }
-
-      // Convert SVG to data URL
-      const svgData = new XMLSerializer().serializeToString(clonedSvg)
-      const svgBlob = new Blob([svgData], {
-        type: 'image/svg+xml;charset=utf-8',
-      })
-      const svgUrl = URL.createObjectURL(svgBlob)
-
-      // Create a canvas to convert SVG to PNG
-      const canvas = document.createElement('canvas')
-      canvas.width = 400
-      canvas.height = 400
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        URL.revokeObjectURL(svgUrl)
-        return
-      }
-
-      // Fill white background
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-      // Create image and wait for it to load
-      const img = new Image()
-      
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => {
-          try {
-            // Draw the image
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-            resolve()
-          } catch (err) {
-            reject(err)
-          }
-        }
-        img.onerror = () => {
-          URL.revokeObjectURL(svgUrl)
-          reject(new Error('Failed to load SVG image'))
-        }
-        img.src = svgUrl
-      })
-
-      // Convert to blob and download
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            console.error('Failed to create blob from canvas')
-            URL.revokeObjectURL(svgUrl)
-            return
-          }
-          
-          const downloadUrl = URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = downloadUrl
-          link.download = `pulse-qr-code-${uniqueCode}.png`
-          link.style.display = 'none'
-          document.body.appendChild(link)
-          link.click()
-          
-          // Cleanup
-          setTimeout(() => {
-            document.body.removeChild(link)
-            URL.revokeObjectURL(downloadUrl)
-            URL.revokeObjectURL(svgUrl)
-          }, 100)
-        },
-        'image/png',
-        1.0,
-      )
-    } catch (error) {
-      console.error('Error downloading QR code:', error)
-      alert('Failed to download QR code. Please try again.')
-    }
+    downloadQrPng(qrCodeRef.current, `pulse-qr-${uniqueCode}.png`).catch(() =>
+      setDownloadError("Couldn't save the QR code. Try again."),
+    )
   }
 
   return (
-    <Card className="p-6 border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-card sticky top-8">
+    <Card className="p-6 border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-card">
       <div className="flex items-center gap-3 mb-4">
         <QrCode className="w-6 h-6 text-primary" strokeWidth={2.5} />
         <h2 className="text-2xl font-black">YOUR QR CODE</h2>
@@ -196,6 +108,11 @@ export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
           <Download className="w-4 h-4 mr-2" />
           DOWNLOAD QR
         </Button>
+        {downloadError && (
+          <p role="alert" className="text-sm font-bold text-red-700">
+            {downloadError}
+          </p>
+        )}
       </div>
       <div className="mt-6 pt-6 border-t-4 border-foreground">
         <p className="text-sm font-semibold leading-relaxed">

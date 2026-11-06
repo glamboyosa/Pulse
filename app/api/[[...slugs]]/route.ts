@@ -28,6 +28,7 @@ import {
   submitFeedback,
 } from '@/server/feedback-submission'
 import { listFeedback } from '@/server/feedback-queries'
+import { SpotError, archiveSpot, createSpot, listSpots } from '@/server/spots'
 import {
   MIN_FEEDBACK_FOR_DIGEST,
   countReadyFeedback,
@@ -111,6 +112,7 @@ const app = new Elysia({ prefix: '/api' })
           audio: body.audio,
           durationSeconds: body.duration,
           customerName: body.customerName?.trim().slice(0, 80) || null,
+          spot: body.spot,
         })
         const audio = {
           buffer: Buffer.from(await body.audio.arrayBuffer()),
@@ -131,6 +133,7 @@ const app = new Elysia({ prefix: '/api' })
         audio: t.File(),
         duration: t.Numeric({ minimum: 0 }),
         customerName: t.Optional(t.String({ maxLength: 200 })),
+        spot: t.Optional(t.String({ maxLength: 64 })),
       }),
     },
   )
@@ -245,6 +248,38 @@ const app = new Elysia({ prefix: '/api' })
         pulses: t.Optional(t.Integer()),
       }),
     },
+  )
+  .get('/spots', async ({ request }) => {
+    const user = await getUserFromSession(request)
+    if (!user) return json(401, { error: 'Unauthorized' })
+    return { spots: await listSpots(user.id) }
+  })
+  .post(
+    '/spots',
+    async ({ body, request }) => {
+      const user = await getUserFromSession(request)
+      if (!user) return json(401, { error: 'Unauthorized' })
+      try {
+        return { spot: await createSpot(user.id, body.name) }
+      } catch (error) {
+        if (error instanceof SpotError) {
+          return json(error.status, { error: error.message })
+        }
+        throw error
+      }
+    },
+    { body: t.Object({ name: t.String({ maxLength: 200 }) }) },
+  )
+  .delete(
+    '/spots/:id',
+    async ({ params, request }) => {
+      const user = await getUserFromSession(request)
+      if (!user) return json(401, { error: 'Unauthorized' })
+      return (await archiveSpot(user.id, params.id))
+        ? { success: true }
+        : json(404, { error: 'Spot not found' })
+    },
+    { params: t.Object({ id: t.String({ format: 'uuid' }) }) },
   )
   .post('/insights/digest', async ({ request }) => {
     const user = await getUserFromSession(request)

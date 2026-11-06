@@ -25,10 +25,19 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     expect(rows[0].pulses_remaining).toBe(5)
   })
 
+  await test.step('owner adds a spot for the patio', async () => {
+    await page.getByLabel('New spot name').fill('Patio')
+    await page.getByRole('button', { name: 'ADD' }).click()
+    await expect(
+      page.getByRole('button', { name: 'Download QR code for Patio' }),
+    ).toBeVisible()
+  })
+
   await test.step('a customer records, listens back and sends', async () => {
     const customer = await browser.newContext()
     const feedbackPage = await customerWithVoice(customer)
-    await feedbackPage.goto(`/f/${code}`)
+    await feedbackPage.goto(`/f/${code}?spot=patio`)
+    await expect(feedbackPage.getByText('Patio')).toBeVisible()
     await feedbackPage.getByLabel('Your name (optional)').fill('Grace')
     await feedbackPage.getByRole('button', { name: 'START RECORDING' }).click()
     await expect(
@@ -66,6 +75,25 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
       page.getByRole('button', { name: 'Pause recording' }),
     ).toBeVisible()
     await expect(page.getByText(/couldn.t play/i)).toHaveCount(0)
+  })
+
+  await test.step('the feedback is tagged with its spot and can be filtered', async () => {
+    // Once in the spots list, once as the tag on the feedback card.
+    await expect(
+      page.getByRole('listitem').filter({ hasText: /^Patio$/ }),
+    ).toHaveCount(2)
+    // A recording from the main QR code, with no spot.
+    await db.query(
+      `insert into feedback (user_id, status, customer_name, transcript)
+       select id, 'ready', 'Tunde', 'Good food.' from users where email = $1`,
+      [email],
+    )
+    await page.reload()
+    await expect(page.getByText('Tunde')).toBeVisible()
+
+    await page.getByLabel('Spot', { exact: true }).selectOption('Patio')
+    await expect(page.getByText('Grace').first()).toBeVisible()
+    await expect(page.getByText('Tunde')).toHaveCount(0)
   })
 
   await test.step('the detail page shows the full transcript', async () => {

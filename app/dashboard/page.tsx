@@ -18,6 +18,8 @@ import {
 } from '@/server/digest'
 import { listFeedback } from '@/server/feedback-queries'
 import { getInsights } from '@/server/insights'
+import { listSpots } from '@/server/spots'
+import { SpotsSection } from '@/components/spots-section'
 
 const tabClass = (active: boolean) =>
   `px-5 py-2 border-4 border-foreground font-black transition-transform ${
@@ -62,6 +64,7 @@ export default async function DashboardPage({
         [],
       ])
     : [null, null, false, await listFeedback(user.id)]
+  const spots = showInsights ? [] : await listSpots(user.id)
 
   return (
     <div className="min-h-screen bg-secondary">
@@ -115,8 +118,12 @@ export default async function DashboardPage({
                   initialData={formattedFeedback}
                 />
               </div>
-              <div>
+              <div className="space-y-8">
                 <QRCodeSection uniqueCode={user.uniqueCode || ''} />
+                <SpotsSection
+                  code={user.uniqueCode || ''}
+                  initialSpots={spots}
+                />
               </div>
             </div>
           )}

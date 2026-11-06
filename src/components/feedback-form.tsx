@@ -41,7 +41,14 @@ const primaryButton =
 const outlineButton =
   'font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-transparent'
 
-export function FeedbackForm({ businessId }: { businessId: string }) {
+export function FeedbackForm({
+  businessId,
+  spot,
+}: {
+  businessId: string
+  /** The spot slug from the QR link, sent with the recording. */
+  spot: string | null
+}) {
   const [stage, setStage] = useState<Stage>({ name: 'loading' })
   const [elapsed, setElapsed] = useState(0)
   const [name, setName] = useState('')
@@ -168,6 +175,7 @@ export function FeedbackForm({ businessId }: { businessId: string }) {
     form.append('audio', stage.audio, `feedback.${extension}`)
     form.append('duration', String(stage.seconds))
     if (name.trim()) form.append('customerName', name.trim())
+    if (spot) form.append('spot', spot)
 
     try {
       const response = await fetch('/api/feedback/submit', {

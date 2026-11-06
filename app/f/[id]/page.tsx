@@ -1,21 +1,30 @@
+import { notFound } from 'next/navigation'
+
 import { FeedbackForm } from '@/components/feedback-form'
 import { PulseLogo } from '@/components/pulse-logo'
 import { getUserByUniqueCode } from '@/lib/auth'
-import { notFound } from 'next/navigation'
+import { findSpot } from '@/server/spots'
 
 interface FeedbackPageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ spot?: string | Array<string> }>
 }
 
-export default async function FeedbackPage({ params }: FeedbackPageProps) {
+export default async function FeedbackPage({
+  params,
+  searchParams,
+}: FeedbackPageProps) {
   const { id } = await params
+  const { spot: spotParam } = await searchParams
 
-  // Verify that the business exists
   const user = await getUserByUniqueCode(id)
-
   if (!user) {
     notFound()
   }
+  const spot = await findSpot(
+    user.id,
+    typeof spotParam === 'string' ? spotParam : null,
+  )
 
   return (
     <main className="min-h-screen bg-secondary flex items-center justify-center p-4">
@@ -31,10 +40,14 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
           <p className="text-lg md:text-xl font-semibold leading-relaxed text-balance">
             {'Your voice matters. Record a quick message and help us improve.'}
           </p>
+          {spot && (
+            <p className="mt-4 inline-block border-2 border-foreground bg-card px-3 py-1 text-sm font-bold uppercase">
+              {spot.name}
+            </p>
+          )}
         </div>
-        <FeedbackForm businessId={id} />
+        <FeedbackForm businessId={id} spot={spot?.slug ?? null} />
       </div>
     </main>
   )
 }
-
