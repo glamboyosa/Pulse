@@ -78,7 +78,7 @@ export const analyseTranscript = (
     analysisSchema,
     `You analyse voice feedback a customer left for a business, transcribed by speech-to-text.
 
-Sentiment is the overall verdict: mixed feedback with a real complaint is negative. Keep themes consistent between recordings: reuse plain topics like "wait time", "food quality", "service", "price", "cleanliness", "atmosphere", "staff friendliness".
+Do not use em dashes in the summary. Sentiment is the overall verdict: mixed feedback with a real complaint is negative. Keep themes consistent between recordings: reuse plain topics like "wait time", "food quality", "service", "price", "cleanliness", "atmosphere", "staff friendliness".
 
 Transcript:
 ${transcript}`,

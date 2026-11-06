@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 import { LegalPage } from '@/components/legal-page'
 
-export const metadata = { title: 'Privacy · Pulse' }
+export const metadata = { title: 'Privacy' }
 
 const SUBPROCESSORS = [
   ['Vercel', 'Hosts the app and runs it'],
@@ -59,6 +59,10 @@ export default function PrivacyPage() {
           <li>
             It is transcribed and, if needed, translated into English by AI. The
             AI also writes a one-line summary and picks out topics.
+          </li>
+          <li>
+            The AI services that transcribe and summarise your feedback
+            don&apos;t use it to train their models.
           </li>
           <li>Your name is only stored if you give it or say it.</li>
           <li>

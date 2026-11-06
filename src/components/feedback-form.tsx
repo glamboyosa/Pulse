@@ -472,7 +472,7 @@ export function FeedbackForm({
           ) : (
             <>
               <div
-                className="flex flex-col items-center rounded-lg border-2 border-foreground bg-secondary px-6 py-8 text-center"
+                className="flex flex-col items-center rounded-md bg-secondary px-6 py-8 text-center"
                 aria-live="polite"
               >
                 {recorded ? (

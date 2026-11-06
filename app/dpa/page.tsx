@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 import { LegalPage } from '@/components/legal-page'
 
-export const metadata = { title: 'Data processing agreement · Pulse' }
+export const metadata = { title: 'Data processing agreement' }
 
 export default function DpaPage() {
   return (
@@ -57,6 +57,10 @@ export default function DpaPage() {
         <h2>3. Pulse&apos;s obligations</h2>
         <ul>
           <li>Process the data only to provide Pulse to you.</li>
+          <li>
+            Use sub-processors that don&apos;t train AI models on your
+            customers&apos; feedback.
+          </li>
           <li>
             Make sure anyone with access to it is bound to keep it confidential.
           </li>

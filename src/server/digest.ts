@@ -105,7 +105,7 @@ export const writeDigest = async (
     digestSchema,
     `You write a weekly feedback digest for a small business owner. Below are ${recent.length} voice feedback transcripts from one week, newest first, with sentiment and themes.
 
-Be specific and honest. Only mention fixes customers actually raised; return fewer than three if fewer were raised. Quotes must be copied from the transcripts, not invented. Count how many customers raised each fix.
+Be specific and honest. Write plainly, with no em dashes. Only mention fixes customers actually raised; return fewer than three if fewer were raised. Quotes must be copied from the transcripts, not invented. Count how many customers raised each fix.
 
 ${lines.join('\n')}`,
     // Reading a week of feedback takes longer than one recording.

@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 import { LegalPage } from '@/components/legal-page'
 
-export const metadata = { title: 'Terms · Pulse' }
+export const metadata = { title: 'Terms' }
 
 export default function TermsPage() {
   return (

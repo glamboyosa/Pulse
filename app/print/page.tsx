@@ -5,7 +5,7 @@ import { PrintSheets } from '@/components/print-sheets'
 import { brandingFor } from '@/server/branding'
 import { listSpots } from '@/server/spots'
 
-export const metadata = { title: 'Print QR codes · Pulse' }
+export const metadata = { title: 'Print QR codes' }
 
 export default async function PrintPage({
   searchParams,

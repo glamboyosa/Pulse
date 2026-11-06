@@ -56,7 +56,7 @@ export function FeedbackTranscript({
   return (
     <div className="bg-secondary border-2 border-foreground p-6">
       <h2 className="text-xl font-black mb-4">
-        {language ? `ORIGINAL (${language.toUpperCase()})` : 'TRANSCRIPT'}
+        {language ? `Original (${language})` : 'Transcript'}
       </h2>
       {transcript ? (
         <p className="font-semibold leading-relaxed whitespace-pre-wrap">

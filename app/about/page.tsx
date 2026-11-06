@@ -1,14 +1,17 @@
 import Link from 'next/link'
 
 import { PulseLogo } from '@/components/pulse-logo'
+import { Button } from '@/components/ui/button'
+
+export const metadata = { title: 'About' }
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b-2 border-foreground bg-background">
-        <div className="container mx-auto px-4 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <PulseLogo className="w-10 h-10 text-primary" />
+    <div className="min-h-dvh bg-background">
+      <header className="border-b-2 border-foreground">
+        <div className="mx-auto max-w-3xl px-4 py-4">
+          <Link href="/" className="inline-flex items-center gap-2.5">
+            <PulseLogo className="size-8" />
             <span className="font-display text-2xl font-extrabold tracking-tight">
               Pulse
             </span>
@@ -16,109 +19,79 @@ export default function AboutPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-12 max-w-4xl">
-        <h1 className="text-5xl font-black mb-8">About Pulse</h1>
+      <main className="mx-auto max-w-3xl space-y-10 px-4 py-12 text-lg leading-relaxed">
+        <h1 className="text-4xl font-extrabold tracking-tight md:text-5xl">
+          About Pulse
+        </h1>
 
-        <div className="space-y-8 text-lg leading-relaxed">
-          <section>
-            <h2 className="text-3xl font-black mb-4">What is Pulse?</h2>
-            <p className="font-medium mb-4">
-              Pulse is a simple, powerful tool for businesses to collect
-              authentic voice feedback from customers. No apps, no complicated
-              forms—just scan a QR code and speak. We believe that voice
-              feedback captures the nuance, emotion, and authenticity that
-              written feedback often misses.
-            </p>
-          </section>
+        <section className="space-y-4">
+          <p>
+            Most customers will never fill in a feedback form. Plenty of them
+            will happily talk for half a minute if it takes one tap. Pulse is
+            built on that: a QR code on the table, one record button, and no app
+            or account for the customer.
+          </p>
+          <p>
+            For the owner, every voice note arrives transcribed and summarised,
+            in English even when the customer spoke Yoruba, Pidgin, French or
+            Portuguese. Unhappy customers trigger an email straight away, and
+            every Monday brings a short list of what to fix, in customers’ own
+            words.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-3xl font-black mb-4">Our Mission</h2>
-            <p className="font-medium mb-4">
-              We're on a mission to make customer feedback collection effortless
-              for businesses and frictionless for customers. By leveraging voice
-              technology and AI transcription, we're helping businesses hear
-              their customers in a whole new way.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-3xl font-black mb-4">The Creator</h2>
-            <p className="font-medium mb-4">
-              Pulse is a product by{' '}
-              <span className="font-black">Timothy Osaretin Ogbemudia</span>, a
-              product engineer with 5 years of experience building user-focused
-              applications and digital products.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 mt-6">
-              <a
-                href="https://github.com/glamboyosa"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-bold text-primary hover:underline border-2 border-foreground px-6 py-3 shadow-brutal-sm hover:shadow-brutal transition-[transform,box-shadow,background-color] inline-block"
-              >
-                View GitHub →
-              </a>
+        <section className="space-y-4">
+          <h2 className="text-2xl font-extrabold tracking-tight">
+            Who makes it
+          </h2>
+          <p>
+            Pulse is built by Timothy Osaretin Ogbemudia, a product engineer
+            with five years of experience building products people use every
+            day.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild variant="outline">
               <a
                 href="https://glamboyosa.xyz"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-bold text-primary hover:underline border-2 border-foreground px-6 py-3 shadow-brutal-sm hover:shadow-brutal transition-[transform,box-shadow,background-color] inline-block"
               >
-                Visit Portfolio →
+                Portfolio
               </a>
-            </div>
-          </section>
+            </Button>
+            <Button asChild variant="outline">
+              <a
+                href="https://github.com/glamboyosa"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                GitHub
+              </a>
+            </Button>
+          </div>
+        </section>
 
-          <section>
-            <h2 className="text-3xl font-black mb-4">Why Voice Feedback?</h2>
-            <p className="font-medium mb-4">
-              Traditional feedback methods—surveys, forms, ratings—often miss
-              the human element. Voice feedback captures tone, emotion, and
-              context that written words can't convey. It's faster for
-              customers, more authentic for businesses, and leads to better
-              insights.
-            </p>
-          </section>
+        <section className="space-y-4">
+          <h2 className="text-2xl font-extrabold tracking-tight">
+            Get in touch
+          </h2>
+          <p>
+            Questions, ideas or a feature you need for your business? Email{' '}
+            <a
+              href="mailto:support@pulseapp.click"
+              className="font-bold underline"
+            >
+              support@pulseapp.click
+            </a>
+            . A person reads every message.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-3xl font-black mb-4">Our Values</h2>
-            <ul className="space-y-3 font-medium list-disc list-inside">
-              <li>
-                <strong className="font-black">Simplicity:</strong> We believe
-                in making complex things simple
-              </li>
-              <li>
-                <strong className="font-black">Privacy:</strong> Your data and
-                your customers' data are protected
-              </li>
-              <li>
-                <strong className="font-black">Transparency:</strong> No hidden
-                fees, no subscriptions, just clear pricing
-              </li>
-              <li>
-                <strong className="font-black">Quality:</strong> We're committed
-                to building a product that works reliably
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-3xl font-black mb-4">Get in Touch</h2>
-            <p className="font-medium mb-4">
-              Have questions, feedback, or ideas? We'd love to hear from you.
-            </p>
-            <div className="space-y-2">
-              <p className="font-bold">support@pulseapp.click</p>
-              <p className="font-bold">osa@pulseapp.click</p>
-            </div>
-          </section>
-        </div>
-
-        <div className="mt-12 pt-8 border-t-2 border-foreground">
-          <Link href="/" className="font-bold text-primary hover:underline">
-            ← Back to Home
+        <p className="border-t-2 border-foreground pt-8">
+          <Link href="/" className="font-bold underline underline-offset-4">
+            Back to Pulse
           </Link>
-        </div>
+        </p>
       </main>
     </div>
   )

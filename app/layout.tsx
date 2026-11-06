@@ -16,10 +16,19 @@ const bricolage = Bricolage_Grotesque({
   display: 'swap',
 })
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pulseapp.click'
-const title = "Pulse — Hear your customers, don't just read them"
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.pulseapp.click'
+const title = 'Pulse: hear what your customers really think'
 const description =
-  'QR-based voice feedback with instant transcription and saved audio. Limited time: 5 free pulses for new businesses.'
+  'Customers scan a QR code and leave a voice note in their own language. You get the transcript, an English translation, alerts when someone is unhappy and a weekly list of what to fix. 5 free pulses to start.'
+
+// Link previews: a 1200x630 image and a short muted video of the landing hero,
+// both in /public.
+const preview = {
+  url: '/og-preview.jpg',
+  width: 1200,
+  height: 630,
+  alt: 'Pulse: a voice note in Nigerian Pidgin, translated and summarised, with an unhappy-customer alert',
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
@@ -34,13 +43,22 @@ export const metadata: Metadata = {
     url: '/',
     siteName: 'Pulse',
     type: 'website',
-    images: ['/opengraph-image'],
+    images: [{ ...preview, type: 'image/jpeg' }],
+    videos: [
+      {
+        url: new URL('/og-preview.mp4', appUrl).href,
+        secureUrl: new URL('/og-preview.mp4', appUrl).href,
+        type: 'video/mp4',
+        width: 1200,
+        height: 630,
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title,
     description,
-    images: ['/twitter-image'],
+    images: [preview],
   },
 }
 
