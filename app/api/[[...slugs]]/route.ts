@@ -29,6 +29,7 @@ import {
   submitTypedFeedback,
 } from '@/server/feedback-submission'
 import { listFeedback } from '@/server/feedback-queries'
+import { deleteFeedback, exportAccount } from '@/server/account-data'
 import { SpotError, archiveSpot, createSpot, listSpots } from '@/server/spots'
 import { ReplyError, contactEmailFrom, replyToFeedback } from '@/server/replies'
 import {
@@ -366,6 +367,29 @@ const app = new Elysia({ prefix: '/api' })
       body: t.Object({ message: t.String({ maxLength: 5000 }) }),
     },
   )
+  .delete(
+    '/feedback/:id',
+    async ({ params, request }) => {
+      const user = await getUserFromSession(request)
+      if (!user) return json(401, { error: 'Unauthorized' })
+      return (await deleteFeedback(user.id, params.id))
+        ? { success: true }
+        : json(404, { error: 'Feedback not found' })
+    },
+    { params: t.Object({ id: t.String({ format: 'uuid' }) }) },
+  )
+  .get('/account/export', async ({ request }) => {
+    const user = await getUserFromSession(request)
+    if (!user) return json(401, { error: 'Unauthorized' })
+    const day = new Date().toISOString().slice(0, 10)
+    return new Response(JSON.stringify(await exportAccount(user.id), null, 2), {
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'content-disposition': `attachment; filename="pulse-export-${day}.json"`,
+        'cache-control': 'no-store',
+      },
+    })
+  })
   .get('/spots', async ({ request }) => {
     const user = await getUserFromSession(request)
     if (!user) return json(401, { error: 'Unauthorized' })

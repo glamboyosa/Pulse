@@ -212,4 +212,40 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     await expect(page.getByText('50 pulses', { exact: true })).toBeVisible()
     await expect(page.getByText('$30').first()).toBeVisible()
   })
+
+  await test.step('the owner deletes one piece of feedback', async () => {
+    await page.goto('/dashboard')
+    const before = await page
+      .getByRole('button', { name: 'View transcript' })
+      .count()
+    await page.getByRole('button', { name: 'View transcript' }).first().click()
+    await page.waitForURL('**/feedback/**')
+    page.once('dialog', (dialog) => dialog.accept())
+    await page.getByRole('button', { name: 'DELETE FEEDBACK' }).click()
+    await page.waitForURL('**/dashboard')
+    await expect(
+      page.getByRole('button', { name: 'View transcript' }),
+    ).toHaveCount(before - 1)
+  })
+
+  await test.step('the owner exports their data, then deletes the account', async () => {
+    await page.goto('/settings')
+    const download = page.waitForEvent('download')
+    await page.getByRole('link', { name: 'EXPORT AS JSON' }).click()
+    expect((await download).suggestedFilename()).toMatch(
+      /^pulse-export-.+\.json$/,
+    )
+
+    const remove = page.getByRole('button', { name: 'DELETE MY ACCOUNT' })
+    await expect(remove).toBeDisabled()
+    await page.getByLabel(/^Type .+ to confirm$/).fill(code)
+    await remove.click()
+    await page.waitForURL((url) => url.pathname === '/')
+    const { rows } = await db.query('select 1 from users where email = $1', [
+      email,
+    ])
+    expect(rows).toHaveLength(0)
+    await page.goto('/dashboard')
+    await page.waitForURL('**/login')
+  })
 })

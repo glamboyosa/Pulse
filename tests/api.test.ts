@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { encrypt } from '../lib/session'
 import { DELETE, GET, POST, PUT } from '../app/api/[[...slugs]]/route'
 import { GET as cronGET } from '../app/api/cron/weekly-digest/route'
+import { GET as retentionGET } from '../app/api/cron/retention/route'
 import { createBusiness, pulsesOf, resetDatabase } from './support/db'
 import { orderPayload, signedWebhook } from './support/polar'
 import { feedback, otpCodes } from '@/db/schema'
@@ -654,5 +655,59 @@ describe('logos API', () => {
   it('says when a business has no logo', async () => {
     const owner = await createBusiness()
     expect((await get(`/businesses/${owner.uniqueCode}/logo`)).status).toBe(404)
+  })
+})
+
+describe('your data', () => {
+  it('needs a session to export or delete feedback', async () => {
+    expect((await get('/account/export')).status).toBe(401)
+    expect(
+      (
+        await DELETE(
+          new Request(`${base}/feedback/${crypto.randomUUID()}`, {
+            method: 'DELETE',
+          }),
+        )
+      ).status,
+    ).toBe(401)
+  })
+
+  it('downloads the export as a JSON file', async () => {
+    const owner = await createBusiness()
+    const response = await get('/account/export', await sessionCookie(owner))
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-disposition')).toMatch(
+      /^attachment; filename="pulse-export-\d{4}-\d{2}-\d{2}\.json"$/,
+    )
+    expect(
+      ((await response.json()) as { account: { email: string } }).account.email,
+    ).toBe(owner.email)
+  })
+
+  it("can't delete another owner's feedback", async () => {
+    const owner = await createBusiness()
+    const other = await createBusiness()
+    const [row] = await db
+      .insert(feedback)
+      .values({ userId: other.id })
+      .returning()
+    const response = await DELETE(
+      new Request(`${base}/feedback/${row.id}`, {
+        method: 'DELETE',
+        headers: { cookie: await sessionCookie(owner) },
+      }),
+    )
+    expect(response.status).toBe(404)
+  })
+
+  it('runs the retention clean-up only for Vercel Cron', async () => {
+    const run = (authorization?: string) =>
+      retentionGET(
+        new Request(`${base}/cron/retention`, {
+          headers: authorization ? { authorization } : {},
+        }),
+      )
+    expect((await run()).status).toBe(401)
+    expect((await run('Bearer test-cron-secret')).status).toBe(200)
   })
 })

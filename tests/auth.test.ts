@@ -1,12 +1,20 @@
 import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { loginAction } from '../app/actions/auth'
-import { resetDatabase } from './support/db'
+import { deleteAccountAction, loginAction } from '../app/actions/auth'
+import { encrypt } from '../lib/session'
+import { createBusiness, resetDatabase } from './support/db'
 import { db } from '@/db/index'
 import { otpCodes, users } from '@/db/schema'
 
-const cookieJar = vi.hoisted(() => ({ set: vi.fn() }))
+const cookieJar = vi.hoisted(() => ({
+  set: vi.fn(),
+  get: vi.fn(),
+  delete: vi.fn(),
+}))
+vi.mock('@/lib/storage/r2', () => ({
+  deleteAudio: vi.fn().mockResolvedValue(undefined),
+}))
 vi.mock('next/headers', () => ({
   cookies: () => Promise.resolve(cookieJar),
 }))
@@ -39,6 +47,8 @@ const login = (otpCode: string) => {
 beforeEach(async () => {
   await resetDatabase()
   cookieJar.set.mockClear()
+  cookieJar.get.mockReset()
+  cookieJar.delete.mockClear()
 })
 
 describe('loginAction', () => {
@@ -94,5 +104,42 @@ describe('loginAction', () => {
     expect(compared).toHaveLength(5)
     const [row] = await db.select().from(otpCodes)
     expect(row.attempts).toBe(5)
+  })
+})
+
+describe('deleteAccountAction', () => {
+  const signedInAs = async (user: { id: string; email: string }) => {
+    const token = await encrypt({
+      userId: user.id,
+      email: user.email,
+      expiresAt: new Date(Date.now() + 3600_000),
+    })
+    cookieJar.get.mockReturnValue({ value: token })
+  }
+  const confirm = (word: string) => {
+    const form = new FormData()
+    form.append('confirm', word)
+    return deleteAccountAction(undefined, form).catch((e: Error) => e.message)
+  }
+
+  it('refuses unless the owner types their feedback code', async () => {
+    const owner = await createBusiness()
+    await signedInAs(owner)
+    expect(await confirm('delete')).toEqual({
+      error: 'Type your feedback code exactly to confirm.',
+    })
+    expect(
+      await db.select().from(users).where(eq(users.id, owner.id)),
+    ).toHaveLength(1)
+  })
+
+  it('deletes the account and signs the owner out', async () => {
+    const owner = await createBusiness()
+    await signedInAs(owner)
+    expect(await confirm(` ${owner.uniqueCode} `)).toBe('redirect:/')
+    expect(
+      await db.select().from(users).where(eq(users.id, owner.id)),
+    ).toHaveLength(0)
+    expect(cookieJar.delete).toHaveBeenCalledWith('session')
   })
 })

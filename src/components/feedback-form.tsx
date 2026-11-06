@@ -539,7 +539,10 @@ export function FeedbackForm({
         </div>
       </Card>
       <p className="text-center text-sm font-semibold text-muted-foreground mt-6">
-        Your feedback goes only to this business.
+        Your feedback goes only to this business, and is processed by AI.{' '}
+        <a href="/privacy#customers" className="underline underline-offset-4">
+          Privacy
+        </a>
       </p>
     </form>
   )

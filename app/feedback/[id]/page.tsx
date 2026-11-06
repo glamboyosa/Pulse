@@ -12,6 +12,7 @@ import { db } from '@/db/index'
 import { feedback } from '@/db/schema'
 import { retryAnalysis } from '@/server/feedback-submission'
 import { ReplyBox } from '@/components/reply-box'
+import { DeleteFeedbackButton } from '@/components/delete-feedback-button'
 
 interface FeedbackPageProps {
   params: Promise<{ id: string }>
@@ -184,6 +185,8 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
                 ))}
               </ul>
             )}
+
+            <DeleteFeedbackButton feedbackId={feedbackId} />
 
             {sentiment && (
               <div className="bg-secondary border-4 border-foreground p-4">

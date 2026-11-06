@@ -22,6 +22,8 @@ Live at [pulseapp.click](https://www.pulseapp.click).
 
 **Printing**: `/print` lays out table tents (one A4 sheet, folded) and sticker sheets (6 per A4) for the main QR code or any spot, ready for the browser's "Save as PDF".
 
+**Your data** (`/settings`): export everything as JSON, delete any piece of feedback, or delete the whole account and every stored file. Recordings are deleted automatically after 12 months; transcripts stay. Reply addresses are forgotten within a day of the reply, or after 90 days. `/privacy` lists every service Pulse uses; `/dpa` is a template data processing agreement for business customers.
+
 **Emails** to the owner:
 - each new recording; negative ones arrive as an "Unhappy customer" alert with the summary;
 - a low-balance warning when credit drops to 9, 4 and 0;
@@ -114,7 +116,10 @@ The specs read login codes from the app's database (`E2E_DATABASE_URL`, default 
 
 Pulse runs on Vercel. Before deploying a change that adds a migration, apply it to the production database with `bun run db:migrate`.
 
-`vercel.json` schedules the weekly digest cron at 08:00 and 14:00 UTC on Mondays. The second run picks up anyone the first missed; nobody is emailed twice. It needs `CRON_SECRET` set in the Vercel project.
+`vercel.json` schedules two crons, both authorised by `CRON_SECRET`:
+
+- the weekly digest at 08:00 and 14:00 UTC on Mondays. The second run picks up anyone the first missed; nobody is emailed twice.
+- the retention clean-up daily at 03:00 UTC (`src/server/account-data.ts`). If a stored file can't be deleted (an R2 outage), the row is still cleared and the failure is logged; the file is not retried.
 
 Polar sends `order.paid` and `order.refunded` to `/api/webhook/polar`.
 

@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { eq } from 'drizzle-orm'
 
 import { getCurrentUser } from '../actions/auth'
+import { AccountData } from '@/components/account-data'
 import { BrandingForm } from '@/components/branding-form'
 import { db } from '@/db/index'
 import { users } from '@/db/schema'
@@ -54,6 +55,9 @@ export default async function SettingsPage() {
               : null
           }
         />
+        <div className="mt-10">
+          <AccountData confirmWord={user.uniqueCode ?? 'DELETE'} />
+        </div>
       </div>
     </div>
   )

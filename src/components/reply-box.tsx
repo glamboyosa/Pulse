@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Send } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -24,6 +25,7 @@ export function ReplyBox({
     | { state: 'sent'; text: string; sentOn: string }
 }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,6 +68,8 @@ export function ReplyBox({
     }).catch(() => null)
     setSending(false)
     if (response?.ok) {
+      // So the dashboard's "Wants a reply" tag updates too.
+      queryClient.removeQueries({ queryKey: ['feedback'] })
       router.refresh()
       return
     }

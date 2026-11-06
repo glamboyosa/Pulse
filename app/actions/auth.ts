@@ -8,6 +8,7 @@ import { db } from '@/db/index'
 import { otpCodes, users } from '@/db/schema'
 import { OTP_MAX_ATTEMPTS } from '@/lib/otp'
 import { getUserById } from '@/lib/auth-helpers'
+import { deleteAccount } from '@/server/account-data'
 
 // New businesses get this many pulses to try Pulse.
 const FREE_PULSES_ON_SIGNUP = 5
@@ -105,6 +106,27 @@ export async function loginAction(
   }
 
   redirect('/dashboard')
+}
+
+/**
+ * Deletes the signed-in owner's account after they type their feedback code
+ * to confirm, then signs them out.
+ */
+export async function deleteAccountAction(
+  _prev: { error?: string } | undefined,
+  formData: FormData,
+): Promise<{ error: string } | never> {
+  const user = await getCurrentUser()
+  if (!user) redirect('/login')
+  const typed = formData.get('confirm')
+  // An owner who never finished onboarding has no code to type.
+  const expected = user.uniqueCode ?? 'DELETE'
+  if (typeof typed !== 'string' || typed.trim() !== expected) {
+    return { error: 'Type your feedback code exactly to confirm.' }
+  }
+  await deleteAccount(user.id)
+  await deleteSession()
+  redirect('/')
 }
 
 export async function logoutAction() {

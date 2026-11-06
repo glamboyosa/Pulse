@@ -1,153 +1,183 @@
 import Link from 'next/link'
 
-import { PulseLogo } from '@/components/pulse-logo'
+import { LegalPage } from '@/components/legal-page'
+
+export const metadata = { title: 'Privacy · Pulse' }
+
+const SUBPROCESSORS = [
+  ['Vercel', 'Hosts the app and runs it'],
+  ['Neon', 'Database: accounts, transcripts, settings'],
+  ['Cloudflare R2', 'Stores recordings and logos'],
+  ['ElevenLabs', 'Turns recordings into text'],
+  [
+    'OpenAI (OpenRouter as a fallback)',
+    'Translates, summarises and tags feedback, and writes weekly digests',
+  ],
+  ['Resend', 'Sends login codes, alerts, digests and replies'],
+  ['Polar', 'Takes payments for pulses, as merchant of record'],
+] as const
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b-4 border-foreground bg-background">
-        <div className="container mx-auto px-4 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <PulseLogo className="w-10 h-10 text-primary" />
-            <span className="text-2xl font-bold tracking-tight">PULSE</span>
-          </Link>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-12 max-w-4xl">
-        <h1 className="text-5xl font-black mb-8">PRIVACY POLICY</h1>
-        <p className="text-sm font-semibold text-muted-foreground mb-12">
-          Last updated:{' '}
-          {new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
+    <LegalPage title="Privacy" updated="6 November 2026">
+      <section>
+        <p>
+          Pulse lets businesses collect voice feedback through a QR code. This
+          page explains what we keep, why, for how long, and how to get it
+          deleted. Questions go to{' '}
+          <a
+            href="mailto:support@pulseapp.click"
+            className="font-bold underline"
+          >
+            support@pulseapp.click
+          </a>
+          .
         </p>
+      </section>
 
-        <div className="space-y-8 text-lg leading-relaxed">
-          <section>
-            <h2 className="text-3xl font-black mb-4">1. Introduction</h2>
-            <p className="font-medium mb-4">
-              Pulse ("we," "our," or "us") is committed to protecting your
-              privacy. This Privacy Policy explains how we collect, use,
-              disclose, and safeguard your information when you use our voice
-              feedback collection service.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-3xl font-black mb-4">
-              2. Information We Collect
-            </h2>
-            <div className="space-y-4 font-medium">
-              <div>
-                <h3 className="text-xl font-bold mb-2">Account Information</h3>
-                <p>
-                  When you create an account, we collect your email address and
-                  business information (business name, type, and unique code).
-                </p>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold mb-2">Voice Feedback</h3>
-                <p>
-                  We collect and store voice recordings submitted by your
-                  customers through our service. These recordings are
-                  automatically transcribed and stored securely.
-                </p>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold mb-2">Usage Data</h3>
-                <p>
-                  We collect information about how you use our service,
-                  including feedback submission counts, pulse usage, and
-                  dashboard interactions.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-3xl font-black mb-4">
-              3. How We Use Your Information
-            </h2>
-            <ul className="space-y-2 font-medium list-disc list-inside">
-              <li>To provide and maintain our service</li>
-              <li>To process and transcribe voice feedback</li>
-              <li>To send you service-related communications</li>
-              <li>To improve our service and develop new features</li>
-              <li>To comply with legal obligations</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-3xl font-black mb-4">
-              4. Data Storage and Security
-            </h2>
-            <p className="font-medium mb-4">
-              All voice recordings and transcripts are encrypted and stored
-              securely using industry-standard security measures. We use
-              Cloudflare R2 for audio storage and implement access controls to
-              protect your data.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-3xl font-black mb-4">5. Data Retention</h2>
-            <p className="font-medium mb-4">
-              We retain your account information and feedback data for as long
-              as your account is active. You may request deletion of your data
-              at any time by contacting us.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-3xl font-black mb-4">6. Your Rights</h2>
-            <p className="font-medium mb-4">
-              Under GDPR and other privacy laws, you have the right to:
-            </p>
-            <ul className="space-y-2 font-medium list-disc list-inside">
-              <li>Access your personal data</li>
-              <li>Request correction of inaccurate data</li>
-              <li>Request deletion of your data</li>
-              <li>Object to processing of your data</li>
-              <li>Data portability</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-3xl font-black mb-4">
-              7. Third-Party Services
-            </h2>
-            <p className="font-medium mb-4">
-              We use the following third-party services:
-            </p>
-            <ul className="space-y-2 font-medium list-disc list-inside">
-              <li>Google Gemini API for audio transcription</li>
-              <li>Cloudflare R2 for audio storage</li>
-              <li>Resend for email delivery</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-3xl font-black mb-4">8. Contact Us</h2>
-            <p className="font-medium mb-4">
-              If you have questions about this Privacy Policy, please contact us
-              at:
-            </p>
-            <div className="space-y-2">
-              <p className="font-bold">support@pulseapp.click</p>
-              <p className="font-bold">osa@pulseapp.click</p>
-            </div>
-          </section>
-        </div>
-
-        <div className="mt-12 pt-8 border-t-4 border-foreground">
-          <Link href="/" className="font-bold text-primary hover:underline">
-            ← Back to Home
+      <section>
+        <h2>Who is responsible for what</h2>
+        <p>
+          For business accounts, Pulse decides how that data is used (we are the
+          controller). For feedback a customer leaves, the business they leave
+          it with is in charge, and Pulse handles it on their behalf (we are the
+          processor). Businesses can sign our{' '}
+          <Link href="/dpa" className="font-bold underline">
+            data processing agreement
           </Link>
+          .
+        </p>
+      </section>
+
+      <section id="customers">
+        <h2>If you leave feedback</h2>
+        <ul>
+          <li>
+            Your recording, or what you type, goes to the business whose QR code
+            you scanned. Nobody else sees it.
+          </li>
+          <li>
+            It is transcribed and, if needed, translated into English by AI. The
+            AI also writes a one-line summary and picks out topics.
+          </li>
+          <li>Your name is only stored if you give it or say it.</li>
+          <li>
+            If you leave an email for a reply, the business can send you one
+            reply through Pulse. They don&apos;t see your address unless you
+            write back. We forget it within a day of their reply, or after 90
+            days.
+          </li>
+          <li>
+            To have your feedback deleted, ask the business, or email us with
+            the business name and roughly when you left it.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>If you run a business on Pulse</h2>
+        <ul>
+          <li>
+            We keep your email, business details, settings, spots, the feedback
+            you receive and a record of pulses you buy.
+          </li>
+          <li>Polar handles payments. We never see your card details.</li>
+          <li>
+            We email you login codes, new feedback, low-balance warnings and a
+            weekly digest. Nothing is sold or shared for advertising.
+          </li>
+          <li>
+            In Settings you can export everything as a file, delete any piece of
+            feedback, or delete your whole account straight away.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>How long we keep things</h2>
+        <ul>
+          <li>Recordings: 12 months, then deleted automatically.</li>
+          <li>
+            Transcripts, summaries and settings: until you delete them or your
+            account.
+          </li>
+          <li>Reply addresses: until a day after the reply, or 90 days.</li>
+          <li>Login codes: they stop working after 10 minutes.</li>
+          <li>
+            Deleted data can remain in our providers&apos; backups for up to 30
+            days.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Services we use</h2>
+        <p>
+          These companies process data for us, each under its own data
+          processing terms. Some are in the United States; transfers rely on
+          their standard contractual clauses.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full border-4 border-foreground text-left text-base">
+            <thead className="bg-secondary">
+              <tr>
+                <th scope="col" className="border-b-4 border-foreground p-3">
+                  Service
+                </th>
+                <th scope="col" className="border-b-4 border-foreground p-3">
+                  What it does
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {SUBPROCESSORS.map(([name, role]) => (
+                <tr
+                  key={name}
+                  className="border-b-2 border-foreground last:border-b-0"
+                >
+                  <td className="p-3 font-bold">{name}</td>
+                  <td className="p-3">{role}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </main>
-    </div>
+      </section>
+
+      <section>
+        <h2>Security</h2>
+        <p>
+          Everything travels over HTTPS and is encrypted at rest by our storage
+          and database providers. Recordings are only reachable through
+          short-lived signed links, and each business can only see its own
+          feedback.
+        </p>
+      </section>
+
+      <section>
+        <h2>Cookies</h2>
+        <p>
+          Pulse sets one cookie, to keep you signed in. There are no analytics
+          or advertising cookies.
+        </p>
+      </section>
+
+      <section>
+        <h2>Your rights</h2>
+        <p>
+          You can ask to see, correct, export or delete your data, or object to
+          how we use it. Business owners can do most of this themselves in
+          Settings; anyone else can email{' '}
+          <a
+            href="mailto:support@pulseapp.click"
+            className="font-bold underline"
+          >
+            support@pulseapp.click
+          </a>{' '}
+          and we will reply within 30 days. You can also complain to your data
+          protection authority.
+        </p>
+      </section>
+    </LegalPage>
   )
 }
