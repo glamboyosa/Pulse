@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { LogOut, Zap } from 'lucide-react'
+import { LogOut, Settings, Zap } from 'lucide-react'
 
 import { logoutAction } from '../../app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -58,6 +58,13 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                 {user.email}
               </p>
             </div>
+            <Link
+              href="/settings"
+              aria-label="Feedback page settings"
+              className="inline-flex size-10 items-center justify-center border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-background"
+            >
+              <Settings className="size-4" />
+            </Link>
             <Button
               variant="outline"
               onClick={handleLogout}

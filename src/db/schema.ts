@@ -22,6 +22,12 @@ export const users = pgTable('users', {
   uniqueCode: text('unique_code').unique(), // Unique code for QR/link (e.g., "acme-cafe")
   isVerified: boolean('is_verified').default(false).notNull(),
   pulsesRemaining: integer('pulses_remaining').default(0).notNull(), // Credit system
+  // Branding on the customer page, all optional. See src/server/branding.ts.
+  feedbackQuestion: text('feedback_question'),
+  accentColor: text('accent_color'),
+  logoKey: text('logo_key'),
+  googleReviewUrl: text('google_review_url'),
+  thankYouMessage: text('thank_you_message'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

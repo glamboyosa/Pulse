@@ -30,6 +30,13 @@ import {
 import { listFeedback } from '@/server/feedback-queries'
 import { SpotError, archiveSpot, createSpot, listSpots } from '@/server/spots'
 import {
+  BrandingError,
+  logoUrlFor,
+  removeLogo,
+  setLogo,
+  updateBranding,
+} from '@/server/branding'
+import {
   MIN_FEEDBACK_FOR_DIGEST,
   countReadyFeedback,
   currentWeek,
@@ -51,6 +58,10 @@ const app = new Elysia({ prefix: '/api' })
     if (error instanceof RateLimitError) {
       set.status = 429
       set.headers['retry-after'] = String(error.retryAfterSeconds)
+      return { error: error.message }
+    }
+    if (error instanceof BrandingError) {
+      set.status = error.status
       return { error: error.message }
     }
   })
@@ -249,6 +260,50 @@ const app = new Elysia({ prefix: '/api' })
       }),
     },
   )
+  // Public: a stable logo address that redirects to a short-lived R2 link.
+  .get('/businesses/:code/logo', async ({ params }) => {
+    const url = await logoUrlFor(params.code)
+    if (!url) return json(404, { error: 'No logo' })
+    return new Response(null, {
+      status: 302,
+      headers: { location: url, 'cache-control': 'public, max-age=3000' },
+    })
+  })
+  .put(
+    '/settings/branding',
+    async ({ body, request }) => {
+      const user = await getUserFromSession(request)
+      if (!user) return json(401, { error: 'Unauthorized' })
+      await updateBranding(user.id, body)
+      return { success: true }
+    },
+    {
+      body: t.Object({
+        feedbackQuestion: t.String({ maxLength: 1000 }),
+        accentColor: t.String({ maxLength: 20 }),
+        googleReviewUrl: t.String({ maxLength: 2000 }),
+        thankYouMessage: t.String({ maxLength: 1000 }),
+      }),
+    },
+  )
+  .post(
+    '/settings/logo',
+    async ({ body, request }) => {
+      const user = await getUserFromSession(request)
+      if (!user) return json(401, { error: 'Unauthorized' })
+      await setLogo(user.id, body.logo)
+      return { success: true }
+    },
+    // setLogo enforces the 1 MB limit with a clear message; Vercel caps the
+    // whole request at 4.5 MB before it gets here.
+    { body: t.Object({ logo: t.File() }) },
+  )
+  .delete('/settings/logo', async ({ request }) => {
+    const user = await getUserFromSession(request)
+    if (!user) return json(401, { error: 'Unauthorized' })
+    await removeLogo(user.id)
+    return { success: true }
+  })
   .get('/spots', async ({ request }) => {
     const user = await getUserFromSession(request)
     if (!user) return json(401, { error: 'Unauthorized' })

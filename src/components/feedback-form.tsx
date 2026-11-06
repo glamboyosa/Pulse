@@ -44,11 +44,19 @@ const outlineButton =
 export function FeedbackForm({
   businessId,
   spot,
+  accent,
+  thankYouMessage,
+  googleReviewUrl,
 }: {
   businessId: string
   /** The spot slug from the QR link, sent with the recording. */
   spot: string | null
+  /** The owner's accent colour, used on the main button. */
+  accent: string
+  thankYouMessage: string | null
+  googleReviewUrl: string | null
 }) {
+  const accentStyle = { backgroundColor: accent, color: '#ffffff' }
   const [stage, setStage] = useState<Stage>({ name: 'loading' })
   const [elapsed, setElapsed] = useState(0)
   const [name, setName] = useState('')
@@ -214,6 +222,21 @@ export function FeedbackForm({
         <p className="text-lg font-semibold leading-relaxed">
           Your feedback is on its way. Thanks for taking the time.
         </p>
+        {thankYouMessage && (
+          <p className="mt-6 border-4 border-dashed border-foreground p-4 text-xl font-black">
+            {thankYouMessage}
+          </p>
+        )}
+        {googleReviewUrl && (
+          <a
+            href={googleReviewUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-6 inline-flex items-center gap-2 border-4 border-foreground bg-card px-5 py-3 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+          >
+            Leave a Google review too
+          </a>
+        )}
       </Card>
     )
   }
@@ -351,6 +374,7 @@ export function FeedbackForm({
                 onClick={startRecording}
                 disabled={stage.name === 'loading' || stage.name === 'asking'}
                 className={primaryButton}
+                style={accentStyle}
               >
                 <Mic className="w-5 h-5 mr-2" />
                 {stage.name === 'denied' ? 'TRY AGAIN' : 'START RECORDING'}
@@ -363,6 +387,7 @@ export function FeedbackForm({
               type="submit"
               disabled={stage.name === 'sending'}
               className={`w-full ${primaryButton}`}
+              style={accentStyle}
             >
               <Send className="w-5 h-5 mr-2" />
               {stage.name === 'sending' ? 'SENDING…' : 'SEND FEEDBACK'}

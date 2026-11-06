@@ -2,7 +2,7 @@ import { eq, sql } from 'drizzle-orm'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { encrypt } from '../lib/session'
-import { GET, POST } from '../app/api/[[...slugs]]/route'
+import { DELETE, GET, POST, PUT } from '../app/api/[[...slugs]]/route'
 import { GET as cronGET } from '../app/api/cron/weekly-digest/route'
 import { createBusiness, pulsesOf, resetDatabase } from './support/db'
 import { orderPayload, signedWebhook } from './support/polar'
@@ -448,5 +448,110 @@ describe('spots API', () => {
       { cookie: await sessionCookie(owner) },
     )
     expect(response.status).toBe(400)
+  })
+})
+
+describe('feedback page settings', () => {
+  it('need a session', async () => {
+    const put = await PUT(
+      new Request(`${base}/settings/branding`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          feedbackQuestion: '',
+          accentColor: 'black',
+          googleReviewUrl: '',
+          thankYouMessage: '',
+        }),
+      }),
+    )
+    expect(put.status).toBe(401)
+  })
+
+  it('explain a bad review link', async () => {
+    const owner = await createBusiness()
+    const response = await PUT(
+      new Request(`${base}/settings/branding`, {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json',
+          cookie: await sessionCookie(owner),
+        },
+        body: JSON.stringify({
+          feedbackQuestion: '',
+          accentColor: 'black',
+          googleReviewUrl: 'https://evil.test',
+          thankYouMessage: '',
+        }),
+      }),
+    )
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      error: 'Use a Google review link (g.page, google.com or maps.app.goo.gl)',
+    })
+  })
+})
+
+describe('logos API', () => {
+  it('needs a session to change the logo', async () => {
+    const form = new FormData()
+    form.append(
+      'logo',
+      new Blob([new Uint8Array(10)], { type: 'image/png' }),
+      'logo.png',
+    )
+    expect(
+      (
+        await POST(
+          new Request(`${base}/settings/logo`, { method: 'POST', body: form }),
+        )
+      ).status,
+    ).toBe(401)
+    expect(
+      (await DELETE(new Request(`${base}/settings/logo`, { method: 'DELETE' })))
+        .status,
+    ).toBe(401)
+  })
+
+  it('refuses a file that is not an image', async () => {
+    const owner = await createBusiness()
+    const form = new FormData()
+    form.append(
+      'logo',
+      new Blob(['<svg onload=alert(1)>'], { type: 'image/png' }),
+      'logo.png',
+    )
+    const response = await POST(
+      new Request(`${base}/settings/logo`, {
+        method: 'POST',
+        headers: { cookie: await sessionCookie(owner) },
+        body: form,
+      }),
+    )
+    expect(response.status).toBe(415)
+  })
+
+  it('explains when a logo is over 1 MB', async () => {
+    const owner = await createBusiness()
+    const form = new FormData()
+    form.append(
+      'logo',
+      new Blob([new Uint8Array(1024 * 1024 + 1)], { type: 'image/png' }),
+      'logo.png',
+    )
+    const response = await POST(
+      new Request(`${base}/settings/logo`, {
+        method: 'POST',
+        headers: { cookie: await sessionCookie(owner) },
+        body: form,
+      }),
+    )
+    expect(response.status).toBe(413)
+    expect(await response.json()).toEqual({ error: 'Use a logo under 1 MB' })
+  })
+
+  it('says when a business has no logo', async () => {
+    const owner = await createBusiness()
+    expect((await get(`/businesses/${owner.uniqueCode}/logo`)).status).toBe(404)
   })
 })

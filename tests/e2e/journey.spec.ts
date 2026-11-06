@@ -25,6 +25,25 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     expect(rows[0].pulses_remaining).toBe(5)
   })
 
+  await test.step('owner brands the feedback page', async () => {
+    await page.getByRole('link', { name: 'Feedback page settings' }).click()
+    await page.waitForURL('**/settings')
+    await page.getByLabel('YOUR QUESTION').fill('How was your meal tonight?')
+    await page
+      .locator('label', { has: page.getByRole('radio', { name: 'green' }) })
+      .click()
+    await expect(page.getByRole('radio', { name: 'green' })).toBeChecked()
+    await page.getByLabel('THANK-YOU MESSAGE').fill('Show this for 10% off')
+    await page
+      .getByLabel('GOOGLE REVIEW LINK')
+      .fill('https://g.page/r/test-review/review')
+    await page.locator('#logo').setInputFiles('tests/e2e/fixtures/logo.png')
+    await expect(page.getByRole('img', { name: /logo/ })).toBeVisible()
+    await page.getByRole('button', { name: 'SAVE' }).click()
+    await expect(page.getByRole('button', { name: 'SAVED' })).toBeVisible()
+    await page.goto('/dashboard')
+  })
+
   await test.step('owner adds a spot for the patio', async () => {
     await page.getByLabel('New spot name').fill('Patio')
     await page.getByRole('button', { name: 'ADD' }).click()
@@ -38,6 +57,9 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     const feedbackPage = await customerWithVoice(customer)
     await feedbackPage.goto(`/f/${code}?spot=patio`)
     await expect(feedbackPage.getByText('Patio')).toBeVisible()
+    await expect(
+      feedbackPage.getByRole('heading', { name: 'How was your meal tonight?' }),
+    ).toBeVisible()
     await feedbackPage.getByLabel('Your name (optional)').fill('Grace')
     await feedbackPage.getByRole('button', { name: 'START RECORDING' }).click()
     await expect(
@@ -48,6 +70,10 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     await expect(feedbackPage.getByLabel('Your recording')).toBeVisible()
     await feedbackPage.getByRole('button', { name: 'SEND FEEDBACK' }).click()
     await expect(feedbackPage.getByText('THANK YOU!')).toBeVisible()
+    await expect(feedbackPage.getByText('Show this for 10% off')).toBeVisible()
+    await expect(
+      feedbackPage.getByRole('link', { name: 'Leave a Google review too' }),
+    ).toHaveAttribute('href', 'https://g.page/r/test-review/review')
     await customer.close()
   })
 

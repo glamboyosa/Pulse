@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 
 import { FeedbackForm } from '@/components/feedback-form'
 import { PulseLogo } from '@/components/pulse-logo'
-import { getUserByUniqueCode } from '@/lib/auth'
+import { brandingFor } from '@/server/branding'
 import { findSpot } from '@/server/spots'
 
 interface FeedbackPageProps {
@@ -17,28 +17,36 @@ export default async function FeedbackPage({
   const { id } = await params
   const { spot: spotParam } = await searchParams
 
-  const user = await getUserByUniqueCode(id)
-  if (!user) {
+  const branding = await brandingFor(id)
+  if (!branding) {
     notFound()
   }
   const spot = await findSpot(
-    user.id,
+    branding.userId,
     typeof spotParam === 'string' ? spotParam : null,
   )
 
   return (
-    <main className="min-h-screen bg-secondary flex items-center justify-center p-4">
+    <main className="min-h-dvh bg-secondary flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-6">
-            <PulseLogo className="w-12 h-12 text-primary" />
-            <span className="text-3xl font-bold tracking-tight">PULSE</span>
+            {branding.logoUrl ? (
+              <img
+                src={branding.logoUrl}
+                alt=""
+                className="size-14 border-4 border-foreground bg-card object-contain"
+              />
+            ) : null}
+            <span className="text-2xl font-black tracking-tight">
+              {branding.businessName}
+            </span>
           </div>
           <h1 className="text-4xl md:text-5xl font-black mb-4 text-balance">
-            SHARE YOUR FEEDBACK
+            {branding.question ?? 'SHARE YOUR FEEDBACK'}
           </h1>
           <p className="text-lg md:text-xl font-semibold leading-relaxed text-balance">
-            {'Your voice matters. Record a quick message and help us improve.'}
+            Record a quick voice note. It goes straight to the team.
           </p>
           {spot && (
             <p className="mt-4 inline-block border-2 border-foreground bg-card px-3 py-1 text-sm font-bold uppercase">
@@ -46,8 +54,21 @@ export default async function FeedbackPage({
             </p>
           )}
         </div>
-        <FeedbackForm businessId={id} spot={spot?.slug ?? null} />
+        <FeedbackForm
+          businessId={id}
+          spot={spot?.slug ?? null}
+          accent={branding.accent}
+          thankYouMessage={branding.thankYouMessage}
+          googleReviewUrl={branding.googleReviewUrl}
+        />
       </div>
+      <a
+        href="https://www.pulseapp.click"
+        className="mt-10 inline-flex items-center gap-2 text-sm font-bold text-muted-foreground"
+      >
+        <PulseLogo className="size-5" />
+        Powered by Pulse
+      </a>
     </main>
   )
 }
