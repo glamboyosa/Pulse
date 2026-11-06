@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Download, QrCode, Share2 } from 'lucide-react'
+import { Download, Printer, QrCode, Share2 } from 'lucide-react'
+import Link from 'next/link'
 import QRCodeSVG from 'react-qr-code'
 
 import { Button } from '@/components/ui/button'
@@ -108,6 +109,13 @@ export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
           <Download className="w-4 h-4 mr-2" />
           DOWNLOAD QR
         </Button>
+        <Link
+          href="/print"
+          className="flex w-full items-center justify-center gap-2 border-4 border-foreground bg-background py-2 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+        >
+          <Printer className="w-4 h-4" />
+          PRINT TABLE TENTS
+        </Link>
         {downloadError && (
           <p role="alert" className="text-sm font-bold text-red-700">
             {downloadError}

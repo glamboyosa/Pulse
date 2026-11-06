@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Download, Link2, MapPin, Plus, Trash2 } from 'lucide-react'
+import { Download, Link2, MapPin, Plus, Printer, Trash2 } from 'lucide-react'
+import Link from 'next/link'
 import QRCodeSVG from 'react-qr-code'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -83,6 +84,14 @@ function SpotRow({
       >
         <Download className="size-4" />
       </Button>
+      <Button asChild size="icon" variant="ghost">
+        <Link
+          href={`/print?spot=${spot.slug}`}
+          aria-label={`Print table tents for ${spot.name}`}
+        >
+          <Printer className="size-4" />
+        </Link>
+      </Button>
       <Button
         size="icon"
         variant="ghost"
@@ -144,8 +153,9 @@ export function SpotsSection({
       })
       if (!response.ok) throw new Error(await readError(response))
     },
-    onSuccess: async () => {
-      setName('')
+    onSuccess: async (_, added) => {
+      // Keep anything typed for the next spot while this one was saving.
+      setName((current) => (current === added ? '' : current))
       setError(null)
       await refresh()
     },
