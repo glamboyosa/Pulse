@@ -87,10 +87,10 @@ export function BuyPulsesForm() {
           <Card
             key={pkg.amount}
             onClick={() => setSelectedPackage(pkg.amount)}
-            className={`relative p-6 border-4 cursor-pointer transition-all ${
+            className={`relative p-6 border-2 cursor-pointer transition-[transform,box-shadow,background-color] ${
               selectedPackage === pkg.amount
-                ? 'border-primary bg-primary/5 shadow-[8px_8px_0px_0px_rgba(59,130,246,1)]'
-                : 'border-foreground bg-card shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]'
+                ? 'bg-accent shadow-brutal-lg'
+                : 'border-foreground bg-card shadow-brutal hover:shadow-brutal-lg'
             }`}
           >
             {pkg.popular && (
@@ -109,11 +109,13 @@ export function BuyPulsesForm() {
                 </div>
               )}
             </div>
-            <div className="text-4xl font-black mb-2">{pkg.amount}</div>
+            <div className="text-4xl font-black mb-2 tabular-nums">
+              {pkg.amount}
+            </div>
             <div className="text-sm font-bold text-muted-foreground mb-4">
               PULSES
             </div>
-            <div className="text-2xl font-black">${pkg.price}</div>
+            <div className="text-2xl font-black tabular-nums">${pkg.price}</div>
             <div className="text-xs font-semibold text-muted-foreground mt-1">
               ${(pkg.price / pkg.amount).toFixed(2)} per pulse
             </div>
@@ -123,10 +125,10 @@ export function BuyPulsesForm() {
 
       <Card
         onClick={() => setSelectedPackage('custom')}
-        className={`p-6 border-4 cursor-pointer transition-all ${
+        className={`p-6 border-2 cursor-pointer transition-[transform,box-shadow,background-color] ${
           selectedPackage === 'custom'
-            ? 'border-primary bg-primary/5 shadow-[8px_8px_0px_0px_rgba(59,130,246,1)]'
-            : 'border-foreground bg-card shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]'
+            ? 'bg-accent shadow-brutal-lg'
+            : 'border-foreground bg-card shadow-brutal'
         }`}
       >
         <div className="flex items-center gap-4">
@@ -141,7 +143,7 @@ export function BuyPulsesForm() {
             )}
           </div>
           <div className="flex-1">
-            <h3 className="text-xl font-black mb-2">CUSTOM AMOUNT</h3>
+            <h3 className="text-xl font-black mb-2">Custom amount</h3>
             <p className="text-sm font-semibold text-muted-foreground mb-3">
               Need a different amount? Priced at the rate of the matching pack.
             </p>
@@ -150,7 +152,7 @@ export function BuyPulsesForm() {
                 <span className="text-sm font-bold">
                   {customAmount[0]} pulses
                 </span>
-                <span className="text-lg font-black">
+                <span className="text-lg font-black tabular-nums">
                   {formatPrice(customPriceCents(customAmount[0]))}
                 </span>
               </div>
@@ -174,10 +176,10 @@ export function BuyPulsesForm() {
         </div>
       </Card>
 
-      <Card className="p-6 border-4 border-foreground bg-accent shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+      <Card className="p-6 border-2 border-foreground bg-accent shadow-brutal-lg">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-2xl font-black mb-1">ORDER SUMMARY</h3>
+            <h3 className="text-2xl font-black mb-1">Order summary</h3>
             <p className="text-sm font-semibold text-muted-foreground">
               {getAmount()} pulses = {getAmount()} voice feedback submissions
             </p>
@@ -186,7 +188,7 @@ export function BuyPulsesForm() {
             <div className="text-sm font-bold text-muted-foreground mb-1">
               TOTAL
             </div>
-            <div className="text-4xl font-black">
+            <div className="text-4xl font-black tabular-nums">
               {formatPrice(getPriceCents())}
             </div>
           </div>
@@ -198,12 +200,12 @@ export function BuyPulsesForm() {
             getAmount() === 0 ||
             (selectedPackage !== 'custom' && !getSelectedPackage())
           }
-          className="w-full border-3 border-foreground font-bold text-lg py-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+          className="w-full border-3 border-foreground font-bold text-lg py-6 shadow-brutal-sm hover:shadow-brutal"
         >
           {isRedirecting ? 'OPENING CHECKOUT…' : 'PROCEED TO CHECKOUT'}
         </Button>
         {error && (
-          <p role="alert" className="mt-3 font-bold text-red-700">
+          <p role="alert" className="mt-3 font-bold text-destructive">
             {error}
           </p>
         )}

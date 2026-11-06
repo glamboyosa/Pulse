@@ -23,7 +23,7 @@ export default async function BuyPulsesPage() {
           Back to Dashboard
         </Link>
         <div className="mb-8">
-          <h1 className="text-5xl font-black mb-4">BUY PULSES</h1>
+          <h1 className="text-5xl font-black mb-4">Buy pulses</h1>
           <p className="text-xl font-semibold text-muted-foreground">
             Each pulse = one voice feedback submission. Top up anytime.
           </p>

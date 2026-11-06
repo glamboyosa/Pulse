@@ -175,10 +175,10 @@ export function SpotsSection({
   })
 
   return (
-    <Card className="p-6 border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-card">
+    <Card className="p-6 border-2 border-foreground shadow-brutal-lg bg-card">
       <div className="flex items-center gap-3 mb-2">
         <MapPin className="size-6" strokeWidth={2.5} />
-        <h2 className="text-2xl font-black">SPOTS</h2>
+        <h2 className="text-2xl font-extrabold tracking-tight">Spots</h2>
       </div>
       <p className="text-sm font-semibold text-muted-foreground mb-4">
         A QR code per branch, table or event. Feedback from each is tagged so
@@ -201,12 +201,12 @@ export function SpotsSection({
           onChange={(event) => setName(event.target.value)}
           placeholder="Table 4, Lekki branch…"
           maxLength={60}
-          className="border-4 border-foreground font-semibold text-base"
+          className="border-2 border-foreground font-semibold text-base"
         />
         <Button
           type="submit"
           disabled={add.isPending || !name.trim()}
-          className="border-4 border-foreground font-bold"
+          className="border-2 border-foreground font-bold"
         >
           <Plus className="size-4 mr-1" />
           ADD
@@ -214,7 +214,7 @@ export function SpotsSection({
       </form>
 
       {error && (
-        <p role="alert" className="text-sm font-bold text-red-700 mb-3">
+        <p role="alert" className="text-sm font-bold text-destructive mb-3">
           {error}
         </p>
       )}

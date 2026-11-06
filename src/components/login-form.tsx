@@ -72,7 +72,7 @@ export function LoginForm() {
       <form action={loginFormAction} className="space-y-6">
         <input type="hidden" name="email" value={email} />
         <input type="hidden" name="otpCode" value={otpCode} />
-        <div className="bg-card border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8">
+        <div className="bg-card border-2 border-foreground shadow-brutal-lg p-8">
           <div className="space-y-4">
             <div className="text-center mb-4">
               <p className="font-bold text-lg mb-2">
@@ -118,7 +118,7 @@ export function LoginForm() {
             </div>
 
             {(error || loginState?.error) && (
-              <div className="bg-destructive/10 border-4 border-destructive text-destructive-foreground p-4">
+              <div className="bg-destructive/10 border-2 border-destructive text-destructive-foreground p-4">
                 <p className="font-bold text-sm">
                   {error || loginState?.error}
                 </p>
@@ -128,9 +128,9 @@ export function LoginForm() {
             <Button
               type="submit"
               disabled={isPending || otpCode.length !== 6}
-              className="w-full text-lg font-bold border-4 border-foreground shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all"
+              className="w-full text-lg font-bold border-2 border-foreground shadow-brutal hover:shadow-brutal-lg hover:translate-x-[-2px] hover:translate-y-[-2px] transition-[transform,box-shadow,background-color]"
             >
-              {isPending ? 'VERIFYING...' : 'VERIFY CODE'}
+              {isPending ? 'VERIFYING…' : 'VERIFY CODE'}
             </Button>
 
             <Button
@@ -153,7 +153,7 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleEmailSubmit} className="space-y-6">
-      <div className="bg-card border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-8">
+      <div className="bg-card border-2 border-foreground shadow-brutal-lg p-8">
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-sm font-bold uppercase">
@@ -166,12 +166,12 @@ export function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="border-4 border-foreground font-semibold"
+              className="border-2 border-foreground font-semibold"
             />
           </div>
 
           {error && (
-            <div className="bg-destructive/10 border-4 border-destructive text-destructive-foreground p-4">
+            <div className="bg-destructive/10 border-2 border-destructive text-destructive-foreground p-4">
               <p className="font-bold text-sm">{error}</p>
             </div>
           )}
@@ -179,9 +179,9 @@ export function LoginForm() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full text-lg font-bold border-4 border-foreground shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all"
+            className="w-full text-lg font-bold border-2 border-foreground shadow-brutal hover:shadow-brutal-lg hover:translate-x-[-2px] hover:translate-y-[-2px] transition-[transform,box-shadow,background-color]"
           >
-            {isLoading ? 'SENDING CODE...' : 'SEND LOGIN CODE'}
+            {isLoading ? 'SENDING CODE…' : 'SEND LOGIN CODE'}
           </Button>
         </div>
       </div>

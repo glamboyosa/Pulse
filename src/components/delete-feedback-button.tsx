@@ -44,12 +44,12 @@ export function DeleteFeedbackButton({ feedbackId }: { feedbackId: string }) {
         variant="outline"
         onClick={remove}
         disabled={deleting}
-        className="border-4 border-foreground font-bold"
+        className="border-2 border-foreground font-bold"
       >
         <Trash2 className="mr-2 size-4" />
         {deleting ? 'DELETING…' : 'DELETE FEEDBACK'}
       </Button>
-      <p aria-live="polite" className="font-bold text-red-700">
+      <p aria-live="polite" className="font-bold text-destructive">
         {error}
       </p>
     </div>

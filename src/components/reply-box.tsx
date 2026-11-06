@@ -34,7 +34,7 @@ export function ReplyBox({
   if (reply.state === 'none') {
     return (
       <section aria-live="polite">
-        <p className="border-4 border-dashed border-foreground p-4 font-semibold text-muted-foreground">
+        <p className="border-2 border-dashed border-foreground p-4 font-semibold text-muted-foreground">
           {customerName ?? 'This customer'} didn&apos;t leave a way to reply.
         </p>
       </section>
@@ -46,9 +46,9 @@ export function ReplyBox({
       // The same live region as the form, so the switch to "sent" is announced.
       <section
         aria-live="polite"
-        className="border-4 border-foreground bg-card p-6"
+        className="border-2 border-foreground bg-card p-6"
       >
-        <h2 className="mb-1 text-xl font-black">YOUR REPLY</h2>
+        <h2 className="mb-1 text-xl font-black">Your reply</h2>
         <p className="mb-3 text-sm font-semibold text-muted-foreground">
           Sent on {reply.sentOn}. If they answer, it comes to your email.
         </p>
@@ -83,7 +83,7 @@ export function ReplyBox({
     <section aria-live="polite">
       <form
         onSubmit={send}
-        className="space-y-3 border-4 border-foreground bg-card p-6"
+        className="space-y-3 border-2 border-foreground bg-card p-6"
       >
         <Label htmlFor="reply" className="text-xl font-black">
           REPLY TO {who.toUpperCase()}
@@ -105,17 +105,17 @@ export function ReplyBox({
           aria-describedby={error ? 'reply-hint reply-error' : 'reply-hint'}
           aria-invalid={error ? true : undefined}
           placeholder="Thanks for telling us. We've…"
-          className="w-full border-4 border-foreground bg-background p-3 text-base font-semibold"
+          className="w-full border-2 border-foreground bg-background p-3 text-base font-semibold"
         />
         {error && (
-          <p id="reply-error" className="font-bold text-red-700">
+          <p id="reply-error" className="font-bold text-destructive">
             {error}
           </p>
         )}
         <Button
           type="submit"
           disabled={sending || !message.trim()}
-          className="border-4 border-foreground font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+          className="border-2 border-foreground font-bold shadow-brutal-sm"
         >
           <Send className="mr-2 size-4" />
           {sending ? 'SENDING…' : 'SEND REPLY'}

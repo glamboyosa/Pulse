@@ -19,10 +19,10 @@ export function AccountData({ confirmWord }: { confirmWord: string }) {
   return (
     <section
       aria-labelledby="your-data"
-      className="space-y-6 border-4 border-foreground bg-card p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+      className="space-y-6 border-2 border-foreground bg-card p-6 shadow-brutal"
     >
       <h2 id="your-data" className="text-xl font-black">
-        YOUR DATA
+        Your data
       </h2>
       <div className="space-y-2">
         <p className="font-semibold">
@@ -31,7 +31,7 @@ export function AccountData({ confirmWord }: { confirmWord: string }) {
         </p>
         <a
           href="/api/account/export"
-          className="inline-flex items-center gap-2 border-4 border-foreground bg-background px-4 py-2 font-bold"
+          className="inline-flex items-center gap-2 border-2 border-foreground bg-background px-4 py-2 font-bold"
         >
           <Download className="size-4" />
           EXPORT AS JSON
@@ -43,7 +43,7 @@ export function AccountData({ confirmWord }: { confirmWord: string }) {
       </p>
       <form
         action={action}
-        className="space-y-3 border-t-4 border-foreground pt-6"
+        className="space-y-3 border-t-2 border-foreground pt-6"
       >
         <h3 className="text-lg font-black">Delete your account</h3>
         <p className="font-semibold">
@@ -61,12 +61,12 @@ export function AccountData({ confirmWord }: { confirmWord: string }) {
           autoComplete="off"
           aria-describedby="delete-error"
           aria-invalid={state?.error ? true : undefined}
-          className="max-w-sm border-4 border-foreground font-semibold text-base"
+          className="max-w-sm border-2 border-foreground font-semibold text-base"
         />
         <p
           id="delete-error"
           aria-live="polite"
-          className="font-bold text-red-700"
+          className="font-bold text-destructive"
         >
           {state?.error}
         </p>
@@ -74,7 +74,7 @@ export function AccountData({ confirmWord }: { confirmWord: string }) {
           type="submit"
           variant="destructive"
           disabled={pending || typed.trim() !== confirmWord}
-          className="border-4 border-foreground font-bold"
+          className="border-2 border-foreground font-bold"
         >
           <Trash2 className="mr-2 size-4" />
           {pending ? 'DELETING…' : 'DELETE MY ACCOUNT'}

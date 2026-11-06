@@ -35,7 +35,7 @@ export default async function SettingsPage() {
           Back to Dashboard
         </Link>
         <h1 className="text-4xl md:text-5xl font-black mb-2">
-          YOUR FEEDBACK PAGE
+          Your feedback page
         </h1>
         <p className="text-lg font-semibold text-muted-foreground mb-8">
           What customers see when they scan your QR code.

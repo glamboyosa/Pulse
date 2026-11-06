@@ -12,6 +12,7 @@ import { db } from '@/db/index'
 import { feedback } from '@/db/schema'
 import { retryAnalysis } from '@/server/feedback-submission'
 import { ReplyBox } from '@/components/reply-box'
+import { SENTIMENT_STYLE, isSentiment } from '@/lib/sentiment'
 import { DeleteFeedbackButton } from '@/components/delete-feedback-button'
 
 interface FeedbackPageProps {
@@ -56,19 +57,6 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
     after(() => retryAnalysis(feedbackId))
   }
 
-  const getSentimentColor = (sentiment: string | null) => {
-    switch (sentiment) {
-      case 'positive':
-        return 'bg-green-500'
-      case 'negative':
-        return 'bg-red-500'
-      case 'neutral':
-        return 'bg-yellow-500'
-      default:
-        return 'bg-gray-500'
-    }
-  }
-
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
@@ -88,27 +76,29 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
 
   return (
     <div className="min-h-screen bg-secondary">
-      <div className="container mx-auto px-4 py-8">
+      <div className="mx-auto max-w-3xl px-4 py-8">
         <Link href="/dashboard">
           <Button
             variant="outline"
-            className="mb-6 font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            className="mb-6 font-bold border-2 border-foreground shadow-brutal-sm"
           >
             ← Back to Dashboard
           </Button>
         </Link>
 
-        <Card className="p-8 border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-card">
+        <Card className="p-8 border-2 border-foreground shadow-brutal-lg bg-card">
           <div className="flex items-start justify-between mb-6">
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-3xl font-black">
                   {customerName || 'Anonymous'}
                 </h1>
-                {sentiment && (
-                  <div
-                    className={`w-4 h-4 ${getSentimentColor(sentiment)} border-2 border-foreground`}
-                  />
+                {isSentiment(sentiment) && (
+                  <span
+                    className={`rounded-md border-2 border-foreground px-2 py-0.5 text-sm font-bold uppercase ${SENTIMENT_STYLE[sentiment].className}`}
+                  >
+                    {SENTIMENT_STYLE[sentiment].label}
+                  </span>
                 )}
               </div>
               <div className="flex items-center gap-4 text-sm font-semibold text-muted-foreground">
@@ -139,8 +129,8 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
             )}
 
             {feedbackData.translation && (
-              <div className="bg-accent border-4 border-foreground p-6">
-                <h2 className="text-xl font-black mb-4">IN ENGLISH</h2>
+              <div className="bg-accent border-2 border-foreground p-6">
+                <h2 className="text-xl font-black mb-4">In English</h2>
                 <p className="font-semibold leading-relaxed whitespace-pre-wrap">
                   {feedbackData.translation}
                 </p>
@@ -186,16 +176,9 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
               </ul>
             )}
 
-            <DeleteFeedbackButton feedbackId={feedbackId} />
-
-            {sentiment && (
-              <div className="bg-secondary border-4 border-foreground p-4">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">Sentiment:</span>
-                  <span className="font-black uppercase">{sentiment}</span>
-                </div>
-              </div>
-            )}
+            <div className="border-t-2 border-foreground pt-6">
+              <DeleteFeedbackButton feedbackId={feedbackId} />
+            </div>
           </div>
         </Card>
       </div>

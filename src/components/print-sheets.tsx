@@ -160,7 +160,7 @@ export function PrintSheets({
           Print on A4, or choose “Save as PDF” to send to a print shop. Fold
           tents along the middle.
         </p>
-        <div className="flex flex-wrap items-end gap-4 border-4 border-foreground bg-card p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+        <div className="flex flex-wrap items-end gap-4 border-4 border-foreground bg-card p-4 shadow-brutal">
           <label className="flex flex-col gap-1 font-bold">
             Layout
             <select
@@ -194,7 +194,7 @@ export function PrintSheets({
             type="button"
             onClick={() => window.print()}
             disabled={!origin}
-            className="ml-auto border-4 border-foreground px-6 py-5 text-lg font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            className="ml-auto border-4 border-foreground px-6 py-5 text-lg font-bold shadow-brutal-sm"
           >
             <Printer className="mr-2 size-5" />
             PRINT

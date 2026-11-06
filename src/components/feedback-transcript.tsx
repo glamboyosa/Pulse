@@ -54,7 +54,7 @@ export function FeedbackTranscript({
   }, [feedbackId, state, router])
 
   return (
-    <div className="bg-secondary border-4 border-foreground p-6">
+    <div className="bg-secondary border-2 border-foreground p-6">
       <h2 className="text-xl font-black mb-4">
         {language ? `ORIGINAL (${language.toUpperCase()})` : 'TRANSCRIPT'}
       </h2>

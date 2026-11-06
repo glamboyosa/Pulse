@@ -28,18 +28,20 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
   }
 
   return (
-    <header className="border-b-4 border-foreground bg-background">
-      <div className="container mx-auto px-4 py-4">
+    <header className="border-b-2 border-foreground bg-background">
+      <div className="mx-auto max-w-6xl px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <PulseLogo className="w-10 h-10 text-primary" />
-            <span className="text-2xl font-bold tracking-tight">PULSE</span>
+            <PulseLogo className="size-8" />
+            <span className="font-display text-2xl font-extrabold tracking-tight">
+              Pulse
+            </span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/buy-pulses">
               <Button
                 variant="outline"
-                className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-accent hover:bg-accent/80"
+                className="font-bold border-2 border-foreground shadow-brutal-sm bg-accent hover:bg-accent/80"
               >
                 <Zap className="w-4 h-4 mr-2" fill="currentColor" />
                 <span className="hidden sm:inline">
@@ -61,14 +63,14 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
             <Link
               href="/settings"
               aria-label="Feedback page settings"
-              className="inline-flex size-10 items-center justify-center border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-background"
+              className="inline-flex size-10 items-center justify-center border-2 border-foreground shadow-brutal-sm bg-background"
             >
               <Settings className="size-4" />
             </Link>
             <Button
               variant="outline"
               onClick={handleLogout}
-              className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-transparent"
+              className="font-bold border-2 border-foreground shadow-brutal-sm bg-transparent"
             >
               <LogOut className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">Logout</span>

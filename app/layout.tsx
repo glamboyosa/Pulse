@@ -1,26 +1,19 @@
-import { Fascinate, Inter, Rampart_One, Rye } from 'next/font/google'
+import { Bricolage_Grotesque, Inter } from 'next/font/google'
 import type { Metadata } from 'next'
 import './globals.css'
 import { Providers } from '@/components/providers'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-
-const fascinate = Fascinate({
-  weight: '400',
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-fascinate',
+  variable: '--font-inter',
+  display: 'swap',
 })
 
-const rye = Rye({
-  weight: '400',
+// One display face for headings, Inter for everything else.
+const bricolage = Bricolage_Grotesque({
   subsets: ['latin'],
-  variable: '--font-rye',
-})
-
-const rampartOne = Rampart_One({
-  weight: '400',
-  subsets: ['latin'],
-  variable: '--font-rampart',
+  variable: '--font-bricolage',
+  display: 'swap',
 })
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://pulseapp.click'
@@ -61,9 +54,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.svg" />
       </head>
-      <body
-        className={`${inter.variable} ${fascinate.variable} ${rye.variable} ${rampartOne.variable} ${inter.className}`}
-      >
+      <body className={`${inter.variable} ${bricolage.variable} font-sans`}>
         <Providers>{children}</Providers>
       </body>
     </html>

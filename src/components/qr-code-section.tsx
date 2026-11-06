@@ -69,14 +69,14 @@ export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
   }
 
   return (
-    <Card className="p-6 border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-card">
+    <Card className="p-6 border-2 border-foreground shadow-brutal-lg bg-card">
       <div className="flex items-center gap-3 mb-4">
         <QrCode className="w-6 h-6 text-primary" strokeWidth={2.5} />
-        <h2 className="text-2xl font-black">YOUR QR CODE</h2>
+        <h2 className="text-2xl font-extrabold tracking-tight">Your QR code</h2>
       </div>
       <div
         ref={qrCodeRef}
-        className="bg-background border-4 border-foreground p-4 mb-4 flex items-center justify-center"
+        className="bg-background border-2 border-foreground p-4 mb-4 flex items-center justify-center"
       >
         <QRCodeSVG
           value={feedbackUrl}
@@ -86,7 +86,7 @@ export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
         />
       </div>
       <div className="space-y-3">
-        <div className="bg-secondary border-4 border-foreground p-3">
+        <div className="bg-secondary border-2 border-foreground p-3">
           <p className="text-xs font-bold uppercase mb-1 text-muted-foreground">
             Feedback URL
           </p>
@@ -96,7 +96,7 @@ export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
         </div>
         <Button
           onClick={handleCopy}
-          className="w-full font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all"
+          className="w-full font-bold border-2 border-foreground shadow-brutal-sm hover:shadow-brutal hover:translate-x-[-2px] hover:translate-y-[-2px] transition-[transform,box-shadow,background-color]"
         >
           <Share2 className="w-4 h-4 mr-2" />
           {copied ? 'COPIED!' : 'COPY LINK'}
@@ -104,29 +104,23 @@ export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
         <Button
           variant="outline"
           onClick={handleDownload}
-          className="w-full font-bold border-4 border-foreground bg-background shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all"
+          className="w-full font-bold border-2 border-foreground bg-background shadow-brutal-sm hover:shadow-brutal hover:translate-x-[-2px] hover:translate-y-[-2px] transition-[transform,box-shadow,background-color]"
         >
           <Download className="w-4 h-4 mr-2" />
           DOWNLOAD QR
         </Button>
         <Link
           href="/print"
-          className="flex w-full items-center justify-center gap-2 border-4 border-foreground bg-background py-2 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+          className="flex w-full items-center justify-center gap-2 border-2 border-foreground bg-background py-2 font-bold shadow-brutal-sm"
         >
           <Printer className="w-4 h-4" />
           PRINT TABLE TENTS
         </Link>
         {downloadError && (
-          <p role="alert" className="text-sm font-bold text-red-700">
+          <p role="alert" className="text-sm font-bold text-destructive">
             {downloadError}
           </p>
         )}
-      </div>
-      <div className="mt-6 pt-6 border-t-4 border-foreground">
-        <p className="text-sm font-semibold leading-relaxed">
-          Print this QR code on receipts, table tents, or packaging to collect
-          voice feedback.
-        </p>
       </div>
     </Card>
   )

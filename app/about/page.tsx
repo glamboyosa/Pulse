@@ -5,17 +5,19 @@ import { PulseLogo } from '@/components/pulse-logo'
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b-4 border-foreground bg-background">
+      <header className="border-b-2 border-foreground bg-background">
         <div className="container mx-auto px-4 py-4">
           <Link href="/" className="flex items-center gap-3">
             <PulseLogo className="w-10 h-10 text-primary" />
-            <span className="text-2xl font-bold tracking-tight">PULSE</span>
+            <span className="font-display text-2xl font-extrabold tracking-tight">
+              Pulse
+            </span>
           </Link>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-12 max-w-4xl">
-        <h1 className="text-5xl font-black mb-8">ABOUT PULSE</h1>
+        <h1 className="text-5xl font-black mb-8">About Pulse</h1>
 
         <div className="space-y-8 text-lg leading-relaxed">
           <section>
@@ -52,7 +54,7 @@ export default function AboutPage() {
                 href="https://github.com/glamboyosa"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-bold text-primary hover:underline border-4 border-foreground px-6 py-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all inline-block"
+                className="font-bold text-primary hover:underline border-2 border-foreground px-6 py-3 shadow-brutal-sm hover:shadow-brutal transition-[transform,box-shadow,background-color] inline-block"
               >
                 View GitHub →
               </a>
@@ -60,7 +62,7 @@ export default function AboutPage() {
                 href="https://glamboyosa.xyz"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-bold text-primary hover:underline border-4 border-foreground px-6 py-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all inline-block"
+                className="font-bold text-primary hover:underline border-2 border-foreground px-6 py-3 shadow-brutal-sm hover:shadow-brutal transition-[transform,box-shadow,background-color] inline-block"
               >
                 Visit Portfolio →
               </a>
@@ -112,7 +114,7 @@ export default function AboutPage() {
           </section>
         </div>
 
-        <div className="mt-12 pt-8 border-t-4 border-foreground">
+        <div className="mt-12 pt-8 border-t-2 border-foreground">
           <Link href="/" className="font-bold text-primary hover:underline">
             ← Back to Home
           </Link>

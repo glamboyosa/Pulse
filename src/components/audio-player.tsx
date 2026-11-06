@@ -14,7 +14,9 @@ export function AudioPlayer({
   audioKey,
   initialAudioUrl,
 }: AudioPlayerProps) {
-  const [audioUrl, setAudioUrl] = useState<string | null>(initialAudioUrl || null)
+  const [audioUrl, setAudioUrl] = useState<string | null>(
+    initialAudioUrl || null,
+  )
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -78,7 +80,7 @@ export function AudioPlayer({
 
   if (error && !audioUrl) {
     return (
-      <div className="bg-destructive/10 border-4 border-destructive p-4">
+      <div className="bg-destructive/10 border-2 border-destructive p-4">
         <div className="flex items-center gap-2 text-destructive">
           <AlertCircle className="w-5 h-5" />
           <p className="font-semibold">{error}</p>
@@ -97,17 +99,15 @@ export function AudioPlayer({
 
   if (isLoading && !audioUrl) {
     return (
-      <div className="bg-secondary border-4 border-foreground p-4">
-        <p className="font-semibold text-muted-foreground">
-          Loading audio...
-        </p>
+      <div className="bg-secondary border-2 border-foreground p-4">
+        <p className="font-semibold text-muted-foreground">Loading audio…</p>
       </div>
     )
   }
 
   if (!audioUrl) {
     return (
-      <div className="bg-secondary border-4 border-foreground p-4">
+      <div className="bg-secondary border-2 border-foreground p-4">
         <p className="font-semibold text-muted-foreground">
           Audio not available
         </p>
@@ -116,7 +116,7 @@ export function AudioPlayer({
   }
 
   return (
-    <div className="bg-secondary border-4 border-foreground p-4">
+    <div className="bg-secondary border-2 border-foreground p-4">
       <audio
         ref={audioRef}
         controls
@@ -135,4 +135,3 @@ export function AudioPlayer({
     </div>
   )
 }
-

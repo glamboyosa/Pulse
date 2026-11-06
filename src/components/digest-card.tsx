@@ -48,7 +48,7 @@ export function DigestCard({
   }
 
   return (
-    <Card className="p-6 md:p-8 border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-yellow-200 text-foreground">
+    <Card className="p-6 md:p-8 border-2 border-foreground shadow-brutal-lg bg-accent text-foreground">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider mb-2">
@@ -67,7 +67,7 @@ export function DigestCard({
             onClick={write}
             disabled={writing}
             variant="outline"
-            className="font-bold border-4 border-foreground bg-card shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            className="font-bold border-2 border-foreground bg-card shadow-brutal-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-brutal-sm"
           >
             <RefreshCw
               className={`size-4 mr-2 ${writing ? 'animate-spin' : ''}`}
@@ -78,7 +78,7 @@ export function DigestCard({
       </div>
 
       {error && (
-        <p role="alert" className="font-bold text-red-800 mb-4">
+        <p role="alert" className="font-bold text-destructive mb-4">
           {error}
         </p>
       )}
@@ -86,7 +86,7 @@ export function DigestCard({
       {digest && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {digest.content.fixes.map((fix, i) => (
-            <div key={i} className="bg-card border-4 border-foreground p-4">
+            <div key={i} className="bg-card border-2 border-foreground p-4">
               <p className="text-4xl font-black tabular-nums mb-2">{i + 1}</p>
               <p className="font-black text-lg leading-snug mb-1">
                 {fix.title}
@@ -95,7 +95,7 @@ export function DigestCard({
                 {fix.customers} customer{fix.customers === 1 ? '' : 's'}:{' '}
                 {fix.why}
               </p>
-              <blockquote className="border-l-4 border-foreground pl-3 text-sm font-semibold italic">
+              <blockquote className="border-l-2 border-foreground pl-3 text-sm font-semibold italic">
                 “{fix.quote}”
               </blockquote>
             </div>

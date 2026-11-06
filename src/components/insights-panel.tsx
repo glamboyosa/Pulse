@@ -5,8 +5,7 @@ import type { DigestContent } from '@/server/digest'
 import { DigestCard } from '@/components/digest-card'
 import { Card } from '@/components/ui/card'
 
-const cardClass =
-  'p-6 border-4 border-foreground shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-card'
+const cardClass = 'p-6 border-2 border-foreground shadow-brutal bg-card'
 
 const percent = (part: number, whole: number) =>
   whole === 0 ? 0 : Math.round((part / whole) * 100)
@@ -46,9 +45,9 @@ export function InsightsPanel({
     insights.previousTotal,
   )
   const segments = [
-    { label: 'Positive', count: sentiment.positive, className: 'bg-green-500' },
-    { label: 'Neutral', count: sentiment.neutral, className: 'bg-yellow-400' },
-    { label: 'Negative', count: sentiment.negative, className: 'bg-red-500' },
+    { label: 'Positive', count: sentiment.positive, className: 'bg-positive' },
+    { label: 'Neutral', count: sentiment.neutral, className: 'bg-neutral' },
+    { label: 'Negative', count: sentiment.negative, className: 'bg-negative' },
   ]
   const busiestTheme = Math.max(1, ...themes.map((t) => t.mentions))
 
@@ -58,7 +57,7 @@ export function InsightsPanel({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card className={cardClass}>
-          <h2 className="text-2xl font-black mb-1">HOW CUSTOMERS FEEL</h2>
+          <h2 className="text-2xl font-black mb-1">How customers feel</h2>
           <p className="text-sm font-semibold text-muted-foreground mb-6">
             Last {insights.days} days · {total} recording
             {total === 1 ? '' : 's'}
@@ -71,7 +70,7 @@ export function InsightsPanel({
           ) : (
             <>
               <div
-                className="flex h-10 border-4 border-foreground overflow-hidden"
+                className="flex h-10 border-2 border-foreground overflow-hidden"
                 role="img"
                 aria-label={segments
                   .map((s) => `${s.label} ${percent(s.count, total)}%`)
@@ -82,7 +81,7 @@ export function InsightsPanel({
                     s.count > 0 && (
                       <div
                         key={s.label}
-                        className={`${s.className} border-r-4 border-foreground last:border-r-0`}
+                        className={`${s.className} border-r-2 border-foreground last:border-r-0`}
                         style={{ width: `${percent(s.count, total)}%` }}
                       />
                     ),
@@ -113,7 +112,7 @@ export function InsightsPanel({
         </Card>
 
         <Card className={cardClass}>
-          <h2 className="text-2xl font-black mb-1">WHAT THEY TALK ABOUT</h2>
+          <h2 className="text-2xl font-black mb-1">What they talk about</h2>
           <p className="text-sm font-semibold text-muted-foreground mb-6">
             Most complained about first
           </p>
@@ -138,7 +137,7 @@ export function InsightsPanel({
                   </div>
                   <div className="flex h-4 border-2 border-foreground bg-secondary">
                     <div
-                      className="bg-red-500"
+                      className="bg-negative"
                       style={{
                         width: `${(theme.negative / busiestTheme) * 100}%`,
                       }}
@@ -151,7 +150,7 @@ export function InsightsPanel({
                     />
                   </div>
                   {theme.negative > 0 && (
-                    <p className="text-xs font-bold text-red-700 mt-1">
+                    <p className="text-xs font-bold text-destructive mt-1">
                       {theme.negative} unhappy
                     </p>
                   )}

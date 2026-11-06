@@ -22,10 +22,10 @@ import { listSpots } from '@/server/spots'
 import { SpotsSection } from '@/components/spots-section'
 
 const tabClass = (active: boolean) =>
-  `px-5 py-2 border-4 border-foreground font-black transition-transform ${
+  `rounded-md border-2 border-foreground px-5 py-2 font-bold transition-[transform,box-shadow] duration-150 ${
     active
       ? 'bg-foreground text-background'
-      : 'bg-card shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-0.5'
+      : 'bg-card shadow-brutal-sm hover:-translate-y-0.5 hover:shadow-brutal'
   }`
 
 export default async function DashboardPage({
@@ -69,19 +69,16 @@ export default async function DashboardPage({
   return (
     <div className="min-h-screen bg-secondary">
       <DashboardHeader user={user} />
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl md:text-5xl font-black mb-2">
-            WELCOME BACK, {user.name.toUpperCase()}
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        <div className="mb-6">
+          <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            Welcome back
+          </p>
+          <h1 className="text-4xl font-extrabold tracking-tight md:text-5xl">
+            {user.businessName ?? user.name}
           </h1>
-          {user.businessName && (
-            <p className="text-lg font-semibold text-muted-foreground">
-              {user.businessName}
-            </p>
-          )}
         </div>
         <DashboardStats
-          hasFeedback={hasFeedback}
           pulsesRemaining={user.pulsesRemaining || 0}
           totalFeedback={totals.count}
           avgDuration={totals.avgDuration ? Number(totals.avgDuration) : 0}
@@ -93,14 +90,14 @@ export default async function DashboardPage({
             aria-current={showInsights ? undefined : 'page'}
             className={tabClass(!showInsights)}
           >
-            FEEDBACK
+            Feedback
           </Link>
           <Link
             href="/dashboard?tab=insights"
             aria-current={showInsights ? 'page' : undefined}
             className={tabClass(showInsights)}
           >
-            INSIGHTS
+            Insights
           </Link>
         </nav>
         <div className="mt-8">

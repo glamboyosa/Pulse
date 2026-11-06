@@ -118,13 +118,13 @@ export default function PrivacyPage() {
           their standard contractual clauses.
         </p>
         <div className="overflow-x-auto">
-          <table className="w-full border-4 border-foreground text-left text-base">
+          <table className="w-full border-2 border-foreground text-left text-base">
             <thead className="bg-secondary">
               <tr>
-                <th scope="col" className="border-b-4 border-foreground p-3">
+                <th scope="col" className="border-b-2 border-foreground p-3">
                   Service
                 </th>
-                <th scope="col" className="border-b-4 border-foreground p-3">
+                <th scope="col" className="border-b-2 border-foreground p-3">
                   What it does
                 </th>
               </tr>

@@ -1,136 +1,56 @@
-import { Clock, Mic, Zap } from 'lucide-react'
-
-import { Card } from '@/components/ui/card'
+import Link from 'next/link'
 
 interface DashboardStatsProps {
-  hasFeedback?: boolean
-  pulsesRemaining?: number
-  totalFeedback?: number
-  avgDuration?: number // in seconds
-  thisWeekCount?: number
+  pulsesRemaining: number
+  totalFeedback: number
+  avgDuration: number // in seconds
+  thisWeekCount: number
 }
 
+const LOW_PULSES = 4
+
+const formatDuration = (seconds: number) =>
+  seconds > 0
+    ? `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
+    : '–'
+
+/** One compact row of figures; the feedback below is the main content. */
 export function DashboardStats({
-  hasFeedback = true,
-  pulsesRemaining = 0,
-  totalFeedback = 0,
-  avgDuration = 0,
-  thisWeekCount = 0,
+  pulsesRemaining,
+  totalFeedback,
+  avgDuration,
+  thisWeekCount,
 }: DashboardStatsProps) {
-  if (!hasFeedback) {
-    const emptyStats = [
-      {
-        icon: Mic,
-        label: 'Total Feedback',
-        value: '0',
-        change: 'Get started by sharing your QR code',
-      },
-      {
-        icon: Zap,
-        label: 'Pulses Remaining',
-        value: pulsesRemaining.toString(),
-        change:
-          pulsesRemaining > 0
-            ? 'Ready to collect feedback'
-            : 'Buy pulses to get started',
-      },
-      {
-        icon: Clock,
-        label: 'Avg. Duration',
-        value: '--',
-        change: 'No data yet',
-      },
-    ]
-
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {emptyStats.map((stat, i) => (
-          <Card
-            key={i}
-            className="p-6 border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-card"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <stat.icon
-                className="w-8 h-8 text-muted-foreground"
-                strokeWidth={2.5}
-              />
-            </div>
-            <div className="text-4xl font-black mb-2 text-muted-foreground">
-              {stat.value}
-            </div>
-            <div className="font-bold text-sm mb-1">{stat.label}</div>
-            <div className="text-sm font-medium text-muted-foreground">
-              {stat.change}
-            </div>
-          </Card>
-        ))}
-      </div>
-    )
-  }
-
-  // Format average duration (seconds to MM:SS)
-  const formatDuration = (seconds: number): string => {
-    if (!seconds || seconds === 0) return '0:00'
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${String(secs).padStart(2, '0')}`
-  }
-
-  // Format week change text
-  const weekChangeText =
-    thisWeekCount > 0
-      ? `+${thisWeekCount} this week`
-      : thisWeekCount === 0 && totalFeedback > 0
-        ? 'No new feedback this week'
-        : 'Get started by sharing your QR code'
-
-  const stats = [
-    {
-      icon: Mic,
-      label: 'Total Feedback',
-      value: totalFeedback.toString(),
-      change: weekChangeText,
-    },
-    {
-      icon: Zap,
-      label: 'Pulses Remaining',
-      value: pulsesRemaining.toString(),
-      change:
-        pulsesRemaining > 50 ? 'Plenty available' : 'Consider topping up',
-    },
-    {
-      icon: Clock,
-      label: 'Avg. Duration',
-      value: formatDuration(avgDuration),
-      change:
-        avgDuration > 0
-          ? avgDuration >= 90
-            ? 'Perfect length'
-            : avgDuration >= 60
-              ? 'Good length'
-              : 'Short feedback'
-          : 'No data yet',
-    },
-  ]
+  const low = pulsesRemaining <= LOW_PULSES
+  const cell = 'flex flex-col gap-0.5 p-4 md:p-5'
+  const label =
+    'text-xs font-bold uppercase tracking-wider text-muted-foreground'
+  const value = 'font-display text-3xl font-extrabold tabular-nums md:text-4xl'
+  const note = 'text-xs font-semibold text-muted-foreground md:text-sm'
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {stats.map((stat, i) => (
-        <Card
-          key={i}
-          className="p-6 border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-card"
-        >
-          <div className="flex items-start justify-between mb-4">
-            <stat.icon className="w-8 h-8 text-primary" strokeWidth={2.5} />
-          </div>
-          <div className="text-4xl font-black mb-2">{stat.value}</div>
-          <div className="font-bold text-sm mb-1">{stat.label}</div>
-          <div className="text-sm font-medium text-muted-foreground">
-            {stat.change}
-          </div>
-        </Card>
-      ))}
-    </div>
+    <dl className="grid grid-cols-3 divide-x-2 divide-foreground overflow-hidden rounded-lg border-2 border-foreground bg-card shadow-brutal">
+      <div className={cell}>
+        <dt className={label}>Feedback</dt>
+        <dd className={value}>{totalFeedback}</dd>
+        <dd className={note}>
+          {thisWeekCount > 0 ? `+${thisWeekCount} this week` : 'None this week'}
+        </dd>
+      </div>
+      <div className={`${cell} ${low ? 'bg-accent' : ''}`}>
+        <dt className={label}>Pulses left</dt>
+        <dd className={value}>{pulsesRemaining}</dd>
+        <dd className={note}>
+          <Link href="/buy-pulses" className="underline underline-offset-2">
+            {low ? 'Top up now' : 'Buy more'}
+          </Link>
+        </dd>
+      </div>
+      <div className={cell}>
+        <dt className={label}>Avg. length</dt>
+        <dd className={value}>{formatDuration(avgDuration)}</dd>
+        <dd className={note}>per voice note</dd>
+      </div>
+    </dl>
   )
 }
-

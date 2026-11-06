@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/empty-state'
+import { SENTIMENT_STYLE } from '@/lib/sentiment'
 
 export interface Feedback {
   id: string
@@ -35,6 +36,17 @@ export interface Feedback {
 interface FeedbackListProps {
   hasFeedback?: boolean
   initialData?: Array<Feedback>
+}
+
+/** Equal apart from case, spacing and end punctuation. */
+const sameText = (a: string, b: string | null) => {
+  const plain = (text: string) =>
+    text
+      .trim()
+      .toLowerCase()
+      .replace(/[\s.!?…]+$/, '')
+      .replace(/\s+/g, ' ')
+  return b !== null && plain(a) === plain(b)
 }
 
 const formatDuration = (seconds: number): string => {
@@ -157,19 +169,6 @@ export function FeedbackList({
       })
   }
 
-  const getSentimentColor = (sentiment: string | null) => {
-    switch (sentiment) {
-      case 'positive':
-        return 'bg-green-500'
-      case 'negative':
-        return 'bg-red-500'
-      case 'neutral':
-        return 'bg-yellow-500'
-      default:
-        return 'bg-gray-500'
-    }
-  }
-
   const handleViewFeedback = (feedbackId: string) => {
     router.push(`/feedback/${feedbackId}`)
   }
@@ -177,7 +176,7 @@ export function FeedbackList({
   if (error) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-red-500">{error}</p>
+        <p className="text-destructive">{error}</p>
       </div>
     )
   }
@@ -190,7 +189,9 @@ export function FeedbackList({
     return (
       <div>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-3xl font-black">RECENT FEEDBACK</h2>
+          <h2 className="text-3xl font-extrabold tracking-tight">
+            Recent feedback
+          </h2>
         </div>
         <EmptyState
           icon={Mic}
@@ -206,39 +207,41 @@ export function FeedbackList({
     return (
       <div>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-3xl font-black">RECENT FEEDBACK</h2>
+          <h2 className="text-3xl font-extrabold tracking-tight">
+            Recent feedback
+          </h2>
           <div className="flex gap-2">
             <Button
               variant={filter === 'all' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setFilter('all')}
-              className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+              className="font-bold border-2 border-foreground shadow-brutal-sm"
             >
-              ALL
+              All
             </Button>
             <Button
               variant={filter === 'positive' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setFilter('positive')}
-              className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+              className="font-bold border-2 border-foreground shadow-brutal-sm"
             >
-              POSITIVE
+              Positive
             </Button>
             <Button
               variant={filter === 'neutral' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setFilter('neutral')}
-              className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+              className="font-bold border-2 border-foreground shadow-brutal-sm"
             >
-              NEUTRAL
+              Neutral
             </Button>
             <Button
               variant={filter === 'negative' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setFilter('negative')}
-              className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+              className="font-bold border-2 border-foreground shadow-brutal-sm"
             >
-              NEGATIVE
+              Negative
             </Button>
           </div>
         </div>
@@ -253,40 +256,42 @@ export function FeedbackList({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-black">RECENT FEEDBACK</h2>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-3xl font-extrabold tracking-tight">
+          Recent feedback
+        </h2>
         <div className="flex gap-2">
           <Button
             variant={filter === 'all' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setFilter('all')}
-            className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            className="font-bold border-2 border-foreground shadow-brutal-sm"
           >
-            ALL
+            All
           </Button>
           <Button
             variant={filter === 'positive' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setFilter('positive')}
-            className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            className="font-bold border-2 border-foreground shadow-brutal-sm"
           >
-            POSITIVE
+            Positive
           </Button>
           <Button
             variant={filter === 'neutral' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setFilter('neutral')}
-            className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            className="font-bold border-2 border-foreground shadow-brutal-sm"
           >
-            NEUTRAL
+            Neutral
           </Button>
           <Button
             variant={filter === 'negative' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setFilter('negative')}
-            className="font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            className="font-bold border-2 border-foreground shadow-brutal-sm"
           >
-            NEGATIVE
+            Negative
           </Button>
         </div>
       </div>
@@ -300,7 +305,7 @@ export function FeedbackList({
             id="spot-filter"
             value={spotFilter}
             onChange={(event) => setSpotFilter(event.target.value)}
-            className="border-4 border-foreground bg-card px-3 py-1.5 text-base font-bold"
+            className="border-2 border-foreground bg-card px-3 py-1.5 text-base font-bold"
           >
             <option value="all">All spots</option>
             {spotOptions.map(([id, label]) => (
@@ -315,16 +320,18 @@ export function FeedbackList({
       {playError && (
         <p
           role="alert"
-          className="mb-4 border-4 border-foreground bg-red-100 p-3 font-bold"
+          className="mb-4 border-2 border-foreground bg-destructive/10 p-3 font-bold"
         >
           {playError}
         </p>
       )}
       <div className="space-y-4">
-        {filteredFeedback.map((item) => (
+        {filteredFeedback.map((item, index) => (
           <Card
             key={item.id}
-            className="p-6 border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-card cursor-pointer hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] hover:border-primary transition-all group"
+            // New cards arrive with a short stagger; existing ones keep still.
+            style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+            className="group cursor-pointer gap-0 rounded-lg border-2 border-foreground bg-card p-5 shadow-brutal transition-[transform,box-shadow] duration-150 ease-out animate-in fade-in slide-in-from-bottom-2 fill-mode-both hover:-translate-y-0.5 hover:shadow-brutal-lg md:p-6"
             onClick={() => handleViewFeedback(item.id)}
           >
             <div className="flex items-start gap-4">
@@ -336,18 +343,18 @@ export function FeedbackList({
                   aria-label={
                     playingId === item.id ? 'Pause recording' : 'Play recording'
                   }
-                  className="shrink-0 w-12 h-12 border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-primary hover:text-primary-foreground transition-colors"
+                  className="shrink-0 w-12 h-12 border-2 border-foreground shadow-brutal-sm hover:bg-primary hover:text-primary-foreground transition-colors"
                 >
                   {playingId === item.id ? (
                     <Pause className="w-5 h-5" fill="currentColor" />
                   ) : (
-                    <Play className="w-5 h-5" fill="currentColor" />
+                    <Play className="ml-0.5 w-5 h-5" fill="currentColor" />
                   )}
                 </Button>
               ) : (
                 <span
                   aria-hidden="true"
-                  className="shrink-0 flex w-12 h-12 items-center justify-center border-4 border-foreground"
+                  className="shrink-0 flex w-12 h-12 items-center justify-center border-2 border-foreground"
                 >
                   <FileText className="w-5 h-5" />
                 </span>
@@ -356,12 +363,14 @@ export function FeedbackList({
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-black text-lg group-hover:text-primary transition-colors">
-                        {item.displayName}
-                      </h3>
-                      <div
-                        className={`w-3 h-3 ${getSentimentColor(item.sentiment)} border-2 border-foreground`}
-                      />
+                      <h3 className="text-lg font-bold">{item.displayName}</h3>
+                      {item.sentiment && (
+                        <span
+                          className={`rounded-md border-2 border-foreground px-1.5 text-xs font-bold uppercase ${SENTIMENT_STYLE[item.sentiment].className}`}
+                        >
+                          {SENTIMENT_STYLE[item.sentiment].label}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 text-sm font-semibold text-muted-foreground">
                       <span>{item.date}</span>
@@ -386,25 +395,29 @@ export function FeedbackList({
                     >
                       <FileText className="w-5 h-5" />
                     </Button>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
                 {item.summary && (
-                  <p className="font-black text-lg leading-snug mb-3">
+                  <p className="mb-3 font-display text-xl font-bold leading-snug">
                     {item.summary}
                   </p>
                 )}
-                <div className="bg-secondary border-4 border-foreground p-4">
-                  {item.transcript ? (
-                    <p className="font-semibold leading-relaxed line-clamp-2">
+                {item.transcript ? (
+                  // Short notes often say the same as the summary; skip the repeat.
+                  !sameText(
+                    item.translation ?? item.transcript,
+                    item.summary,
+                  ) && (
+                    <p className="line-clamp-2 rounded-md border-2 border-foreground bg-secondary p-3 font-medium leading-relaxed">
                       {item.translation ?? item.transcript}
                     </p>
-                  ) : (
-                    <p className="font-semibold leading-relaxed text-muted-foreground italic">
-                      Transcription pending...
-                    </p>
-                  )}
-                </div>
+                  )
+                ) : (
+                  <p className="rounded-md border-2 border-dashed border-foreground p-3 font-medium text-muted-foreground">
+                    Transcribing…
+                  </p>
+                )}
                 {(item.themes.length > 0 ||
                   item.language ||
                   item.spot ||

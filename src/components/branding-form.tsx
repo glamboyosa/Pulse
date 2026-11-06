@@ -12,8 +12,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 const cardClass =
-  'p-6 border-4 border-foreground shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] bg-card space-y-3'
-const inputClass = 'border-4 border-foreground font-semibold text-base'
+  'p-6 border-2 border-foreground shadow-brutal bg-card space-y-3'
+const inputClass = 'border-2 border-foreground font-semibold text-base'
 
 const readError = async (response: Response) =>
   ((await response.json().catch(() => ({}))) as { error?: string }).error ??
@@ -94,9 +94,9 @@ export function BrandingForm({
   return (
     <form onSubmit={save} className="space-y-6">
       <Card className={cardClass}>
-        <h2 className="text-xl font-black">LOGO</h2>
+        <h2 className="text-xl font-black">Logo</h2>
         <div className="flex items-center gap-4">
-          <div className="size-20 border-4 border-foreground bg-background flex items-center justify-center overflow-hidden">
+          <div className="size-20 border-2 border-foreground bg-background flex items-center justify-center overflow-hidden">
             {logoUrl ? (
               <img
                 src={logoUrl}
@@ -112,7 +112,7 @@ export function BrandingForm({
           <div className="flex flex-wrap gap-2">
             <Label
               htmlFor="logo"
-              className="inline-flex cursor-pointer items-center gap-2 border-4 border-foreground bg-background px-4 py-2 font-bold has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2"
+              className="inline-flex cursor-pointer items-center gap-2 border-2 border-foreground bg-background px-4 py-2 font-bold has-[:disabled]:opacity-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2"
             >
               <ImagePlus className="size-4" />
               {logoUrl ? 'REPLACE' : 'UPLOAD'}
@@ -135,7 +135,7 @@ export function BrandingForm({
                 variant="outline"
                 disabled={logoBusy}
                 onClick={deleteLogo}
-                className="border-4 border-foreground font-bold"
+                className="border-2 border-foreground font-bold"
               >
                 <Trash2 className="size-4 mr-2" />
                 REMOVE
@@ -150,7 +150,7 @@ export function BrandingForm({
 
       <Card className={cardClass}>
         <Label htmlFor="question" className="text-xl font-black">
-          YOUR QUESTION
+          Your question
         </Label>
         <Input
           id="question"
@@ -161,13 +161,13 @@ export function BrandingForm({
           className={inputClass}
         />
         <p className="text-sm font-semibold text-muted-foreground">
-          The headline customers see. Leave blank for “Share your feedback”.
+          The headline customers see. Leave blank for “How did we do?”.
         </p>
       </Card>
 
       <Card className={cardClass}>
         <fieldset>
-          <legend className="text-xl font-black mb-3">ACCENT</legend>
+          <legend className="text-xl font-black mb-3">Accent</legend>
           <div className="flex flex-wrap gap-3">
             {Object.entries(ACCENTS).map(([name, hex]) => (
               <label key={name} className="cursor-pointer">
@@ -180,7 +180,7 @@ export function BrandingForm({
                   className="peer sr-only"
                 />
                 <span
-                  className="flex size-11 items-center justify-center border-4 border-foreground peer-checked:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2"
+                  className="flex size-11 items-center justify-center border-2 border-foreground peer-checked:shadow-brutal-sm peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2"
                   style={{ backgroundColor: hex }}
                 >
                   {values.accentColor === name && (
@@ -196,7 +196,7 @@ export function BrandingForm({
 
       <Card className={cardClass}>
         <Label htmlFor="thank-you" className="text-xl font-black">
-          THANK-YOU MESSAGE
+          Thank-you message
         </Label>
         <Input
           id="thank-you"
@@ -213,7 +213,7 @@ export function BrandingForm({
 
       <Card className={cardClass}>
         <Label htmlFor="review" className="text-xl font-black">
-          GOOGLE REVIEW LINK
+          Google review link
         </Label>
         <Input
           id="review"
@@ -234,7 +234,7 @@ export function BrandingForm({
       {error && (
         <p
           role="alert"
-          className="border-4 border-foreground bg-red-100 p-3 font-bold"
+          className="border-2 border-foreground bg-destructive/10 p-3 font-bold"
         >
           {error}
         </p>
@@ -244,7 +244,7 @@ export function BrandingForm({
         <Button
           type="submit"
           disabled={state === 'saving'}
-          className="text-lg font-bold border-4 border-foreground shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] px-8 py-6 active:translate-x-0.5 active:translate-y-0.5 active:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
+          className="text-lg font-bold border-2 border-foreground shadow-brutal px-8 py-6 active:translate-x-0.5 active:translate-y-0.5 active:shadow-brutal-sm"
         >
           {state === 'saving'
             ? 'SAVING…'

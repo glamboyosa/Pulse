@@ -15,11 +15,13 @@ export function LegalPage({
 }) {
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b-4 border-foreground">
+      <header className="border-b-2 border-foreground">
         <div className="container mx-auto px-4 py-4">
           <Link href="/" className="inline-flex items-center gap-3">
             <PulseLogo className="size-10" />
-            <span className="text-2xl font-bold tracking-tight">PULSE</span>
+            <span className="font-display text-2xl font-extrabold tracking-tight">
+              Pulse
+            </span>
           </Link>
         </div>
       </header>
@@ -31,7 +33,7 @@ export function LegalPage({
         <div className="space-y-10 text-lg leading-relaxed [&_h2]:mb-4 [&_h2]:text-2xl [&_h2]:font-black [&_li]:mb-2 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-6">
           {children}
         </div>
-        <p className="mt-12 border-t-4 border-foreground pt-8">
+        <p className="mt-12 border-t-2 border-foreground pt-8">
           <Link href="/" className="font-bold underline underline-offset-4">
             Back to Pulse
           </Link>

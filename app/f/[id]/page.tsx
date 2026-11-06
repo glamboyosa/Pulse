@@ -35,7 +35,7 @@ export default async function FeedbackPage({
               <img
                 src={branding.logoUrl}
                 alt=""
-                className="size-14 border-4 border-foreground bg-card object-contain"
+                className="size-14 border-2 border-foreground bg-card object-contain"
               />
             ) : null}
             <span className="text-2xl font-black tracking-tight">
@@ -43,7 +43,7 @@ export default async function FeedbackPage({
             </span>
           </div>
           <h1 className="text-4xl md:text-5xl font-black mb-4 text-balance">
-            {branding.question ?? 'SHARE YOUR FEEDBACK'}
+            {branding.question ?? 'How did we do?'}
           </h1>
           <p className="text-lg md:text-xl font-semibold leading-relaxed text-balance">
             Record a quick voice note. It goes straight to the team.

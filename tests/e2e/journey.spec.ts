@@ -63,7 +63,8 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     await expect(
       feedbackPage.getByRole('heading', { name: 'How was your meal tonight?' }),
     ).toBeVisible()
-    await feedbackPage.getByLabel('Your name (optional)').fill('Grace')
+    // Voice first: the first screen is just the record button.
+    await expect(feedbackPage.getByLabel('Your name (optional)')).toHaveCount(0)
     await feedbackPage.getByRole('button', { name: 'START RECORDING' }).click()
     await expect(
       feedbackPage.getByText(/Recording… stops on its own/),
@@ -71,6 +72,7 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     await feedbackPage.waitForTimeout(7000)
     await feedbackPage.getByRole('button', { name: 'STOP' }).click()
     await expect(feedbackPage.getByLabel('Your recording')).toBeVisible()
+    await feedbackPage.getByLabel('Your name (optional)').fill('Grace')
     await feedbackPage
       .getByLabel('Want a reply? Your email (optional)')
       .fill('grace@example.test')
@@ -138,7 +140,7 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     // The one-line summary and themes from the analysis sit above it.
     const { rows } = await db.query<{ summary: string; themes: Array<string> }>(
       `select f.summary, f.themes from feedback f join users u on u.id = f.user_id
-       where u.email = $1`,
+       where u.email = $1 and f.customer_name = 'Grace'`,
       [email],
     )
     expect(rows[0].themes.length).toBeGreaterThan(0)

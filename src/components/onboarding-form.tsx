@@ -51,7 +51,7 @@ export function OnboardingForm() {
   const error = completeState?.error
 
   return (
-    <div className="border-4 border-foreground bg-card p-8">
+    <div className="border-2 border-foreground bg-card p-8">
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
           {[1, 2, 3].map((num) => (
@@ -83,9 +83,21 @@ export function OnboardingForm() {
       >
         {step === 3 && (
           <>
-            <input type="hidden" name="businessName" value={formData.businessName} />
-            <input type="hidden" name="businessType" value={formData.businessType} />
-            <input type="hidden" name="uniqueCode" value={formData.uniqueCode} />
+            <input
+              type="hidden"
+              name="businessName"
+              value={formData.businessName}
+            />
+            <input
+              type="hidden"
+              name="businessType"
+              value={formData.businessType}
+            />
+            <input
+              type="hidden"
+              name="uniqueCode"
+              value={formData.uniqueCode}
+            />
           </>
         )}
         {step === 1 && (
@@ -188,11 +200,16 @@ export function OnboardingForm() {
           )}
           <Button
             type="submit"
-            disabled={isPending || (step === 3 && (!formData.uniqueCode.trim() || !/^[a-z0-9-]+$/.test(formData.uniqueCode)))}
+            disabled={
+              isPending ||
+              (step === 3 &&
+                (!formData.uniqueCode.trim() ||
+                  !/^[a-z0-9-]+$/.test(formData.uniqueCode)))
+            }
             className="flex-1 border-3 border-foreground"
           >
             {isPending
-              ? 'Processing...'
+              ? 'Processing…'
               : step === 3
                 ? 'Complete Setup'
                 : 'Continue'}

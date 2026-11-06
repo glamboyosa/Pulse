@@ -33,12 +33,63 @@ type Stage =
 const formatTime = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 
-const cardClass =
-  'p-8 border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-card'
+const cardClass = 'p-8 border-2 border-foreground shadow-brutal-lg bg-card'
 const primaryButton =
-  'flex-1 text-lg font-bold border-4 border-foreground shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all'
+  'flex-1 text-lg font-bold border-2 border-foreground shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-[transform,box-shadow]'
 const outlineButton =
-  'font-bold border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-transparent'
+  'font-bold border-2 border-foreground shadow-brutal-sm bg-transparent'
+
+const LEVEL_BARS = 16
+
+/** Live bars that move with the customer's voice, so they know it's working. */
+function LevelMeter({ stream }: { stream: MediaStream | null }) {
+  const [levels, setLevels] = useState<Array<number>>(() =>
+    Array.from({ length: LEVEL_BARS }, () => 0),
+  )
+
+  useEffect(() => {
+    if (!stream) return
+    const audio = new AudioContext()
+    // Safari starts a context made outside the tap suspended; resume it so
+    // the bars actually move.
+    void audio.resume()
+    const analyser = audio.createAnalyser()
+    analyser.fftSize = 64
+    audio.createMediaStreamSource(stream).connect(analyser)
+    const data = new Uint8Array(analyser.frequencyBinCount)
+    let frame = 0
+    let last = 0
+    const tick = (now: number) => {
+      frame = requestAnimationFrame(tick)
+      if (now - last < 50) return
+      last = now
+      analyser.getByteFrequencyData(data)
+      setLevels(Array.from({ length: LEVEL_BARS }, (_, i) => data[i + 1] / 255))
+    }
+    frame = requestAnimationFrame(tick)
+    return () => {
+      cancelAnimationFrame(frame)
+      void audio.close()
+    }
+  }, [stream])
+
+  // Kept under reduced motion: it is the customer's only sign the microphone
+  // is hearing them. It scales, so nothing around it reflows.
+  return (
+    <div
+      aria-hidden="true"
+      className="mt-6 mb-4 flex h-10 items-center justify-center gap-1"
+    >
+      {levels.map((level, i) => (
+        <span
+          key={i}
+          className="h-full w-1.5 origin-center rounded-full bg-foreground"
+          style={{ transform: `scaleY(${Math.max(0.12, level)})` }}
+        />
+      ))}
+    </div>
+  )
+}
 
 export function FeedbackForm({
   businessId,
@@ -68,6 +119,8 @@ export function FeedbackForm({
   const [text, setText] = useState('')
   const [sendingText, setSendingText] = useState(false)
 
+  // Stop unmounts the record button; focus moves here instead of the page.
+  const listenBackRef = useRef<HTMLParagraphElement>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const startedAtRef = useRef(0)
@@ -95,6 +148,16 @@ export function FeedbackForm({
   }
 
   useEffect(() => releaseMicrophone, [])
+
+  // Only right after Stop: a failed send also returns to 'recorded', and
+  // focus should then stay on the Send button.
+  const previousStage = useRef(stage.name)
+  useEffect(() => {
+    if (stage.name === 'recorded' && previousStage.current === 'recording') {
+      listenBackRef.current?.focus()
+    }
+    previousStage.current = stage.name
+  }, [stage.name])
 
   const stopRecording = useCallback(() => {
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
@@ -273,15 +336,15 @@ export function FeedbackForm({
   if (stage.name === 'sent') {
     return (
       <Card className={`${cardClass} text-center`}>
-        <div className="w-20 h-20 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-foreground">
+        <div className="w-20 h-20 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-foreground">
           <Check className="w-10 h-10" strokeWidth={3} />
         </div>
-        <h2 className="text-3xl font-black mb-4">THANK YOU!</h2>
+        <h2 className="text-3xl font-black mb-4">Thank you!</h2>
         <p className="text-lg font-semibold leading-relaxed">
           Your feedback is on its way. Thanks for taking the time.
         </p>
         {thankYouMessage && (
-          <p className="mt-6 border-4 border-dashed border-foreground p-4 text-xl font-black">
+          <p className="mt-6 border-2 border-dashed border-foreground p-4 text-xl font-black">
             {thankYouMessage}
           </p>
         )}
@@ -290,7 +353,7 @@ export function FeedbackForm({
             href={googleReviewUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-6 inline-flex items-center gap-2 border-4 border-foreground bg-card px-5 py-3 font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            className="mt-6 inline-flex items-center gap-2 border-2 border-foreground bg-card px-5 py-3 font-bold shadow-brutal-sm"
           >
             Leave a Google review too
           </a>
@@ -303,7 +366,7 @@ export function FeedbackForm({
     return (
       <Card className={`${cardClass} text-center`}>
         <h2 className="text-2xl font-black mb-3">
-          NOT TAKING FEEDBACK RIGHT NOW
+          Not taking feedback right now
         </h2>
         <p className="font-semibold text-muted-foreground">
           This business isn&apos;t collecting voice feedback at the moment.
@@ -312,6 +375,26 @@ export function FeedbackForm({
       </Card>
     )
   }
+
+  // Name and reply address come after recording, so the first screen is just
+  // the record button.
+  const nameField = (
+    <div className="space-y-2">
+      <Label htmlFor="name" className="text-sm font-bold uppercase">
+        Your name (optional)
+      </Label>
+      <Input
+        id="name"
+        type="text"
+        autoComplete="given-name"
+        maxLength={80}
+        placeholder="Leave blank to stay anonymous"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        className="border-2 border-foreground font-semibold text-base"
+      />
+    </div>
+  )
 
   // Offered once there is something to send, so the first screen stays simple.
   const contactField = (
@@ -329,7 +412,7 @@ export function FeedbackForm({
         value={contactEmail}
         onChange={(e) => setContactEmail(e.target.value)}
         aria-describedby="contact-hint"
-        className="border-4 border-foreground font-semibold text-base"
+        className="border-2 border-foreground font-semibold text-base"
       />
       <p
         id="contact-hint"
@@ -347,22 +430,6 @@ export function FeedbackForm({
     <form onSubmit={submit}>
       <Card className={cardClass}>
         <div className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="name" className="text-sm font-bold uppercase">
-              Your name (optional)
-            </Label>
-            <Input
-              id="name"
-              type="text"
-              autoComplete="given-name"
-              maxLength={80}
-              placeholder="Leave blank to stay anonymous"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="border-4 border-foreground font-semibold text-base"
-            />
-          </div>
-
           {typing ? (
             <div className="space-y-4">
               <div className="space-y-2">
@@ -377,7 +444,7 @@ export function FeedbackForm({
                   rows={6}
                   placeholder="What went well, and what could be better?"
                   aria-describedby="typed-hint"
-                  className="w-full border-4 border-foreground bg-background p-3 text-base font-semibold"
+                  className="w-full border-2 border-foreground bg-background p-3 text-base font-semibold"
                 />
               </div>
               <p
@@ -386,6 +453,7 @@ export function FeedbackForm({
               >
                 At least 3 characters, up to 2,000.
               </p>
+              {nameField}
               {contactField}
               <Button
                 type="submit"
@@ -404,25 +472,16 @@ export function FeedbackForm({
           ) : (
             <>
               <div
-                className="bg-secondary border-4 border-foreground p-8 text-center"
+                className="flex flex-col items-center rounded-lg border-2 border-foreground bg-secondary px-6 py-8 text-center"
                 aria-live="polite"
               >
-                {stage.name === 'recording' ? (
+                {recorded ? (
                   <>
-                    <Mic
-                      className="w-16 h-16 mx-auto mb-4 text-destructive animate-pulse"
-                      strokeWidth={2}
-                    />
-                    <p className="text-3xl font-black mb-2 text-destructive tabular-nums">
-                      {formatTime(elapsed)}
-                    </p>
-                    <p className="text-sm font-semibold text-muted-foreground">
-                      Recording… stops on its own at {formatTime(MAX_SECONDS)}
-                    </p>
-                  </>
-                ) : recorded ? (
-                  <>
-                    <p className="text-sm font-bold uppercase mb-3">
+                    <p
+                      ref={listenBackRef}
+                      tabIndex={-1}
+                      className="mb-3 text-sm font-bold uppercase tracking-wider"
+                    >
                       Listen back before you send
                     </p>
                     <audio
@@ -431,78 +490,100 @@ export function FeedbackForm({
                       className="w-full"
                       aria-label="Your recording"
                     />
-                  </>
-                ) : stage.name === 'denied' ? (
-                  <>
-                    <MicOff
-                      className="w-16 h-16 mx-auto mb-4"
-                      strokeWidth={2}
-                    />
-                    <p className="text-lg font-bold mb-2">
-                      Microphone is blocked
-                    </p>
-                    <p className="text-sm font-semibold text-muted-foreground">
-                      Allow microphone access for this site in your browser
-                      settings and try again, or type your feedback instead.
-                    </p>
+                    <Button
+                      type="button"
+                      onClick={recordAgain}
+                      variant="ghost"
+                      disabled={stage.name === 'sending'}
+                      className="mt-3 font-bold"
+                    >
+                      <RotateCcw className="size-4" />
+                      Record again
+                    </Button>
                   </>
                 ) : (
                   <>
-                    <Mic
-                      className="w-16 h-16 mx-auto mb-4 text-primary"
-                      strokeWidth={2}
-                    />
-                    <p className="text-lg font-bold mb-2">
-                      {stage.name === 'asking'
-                        ? 'Allow the microphone to start'
-                        : 'Tell us how it went'}
-                    </p>
-                    <p className="text-sm font-semibold text-muted-foreground">
-                      Up to {MAX_SECONDS / 60} minutes. No app or account
-                      needed.
-                    </p>
+                    <button
+                      type="button"
+                      onClick={
+                        stage.name === 'recording'
+                          ? stopRecording
+                          : startRecording
+                      }
+                      disabled={
+                        stage.name === 'loading' || stage.name === 'asking'
+                      }
+                      aria-label={
+                        stage.name === 'recording'
+                          ? 'Stop recording'
+                          : stage.name === 'denied'
+                            ? 'Try recording again'
+                            : 'Start recording'
+                      }
+                      className="relative flex size-28 cursor-pointer items-center justify-center rounded-full border-2 border-foreground shadow-brutal transition-transform duration-150 ease-out active:translate-x-[3px] active:translate-y-[3px] active:shadow-none disabled:cursor-wait disabled:opacity-60"
+                      style={
+                        stage.name === 'recording'
+                          ? {
+                              backgroundColor: 'var(--ink)',
+                              color: 'var(--paper)',
+                            }
+                          : accentStyle
+                      }
+                    >
+                      {stage.name === 'recording' ? (
+                        <>
+                          <span
+                            aria-hidden="true"
+                            className="absolute inset-0 animate-ping rounded-full border-2 border-foreground opacity-30 motion-reduce:hidden"
+                          />
+                          <Square className="size-9" fill="currentColor" />
+                        </>
+                      ) : stage.name === 'denied' ? (
+                        <MicOff className="size-11" strokeWidth={2.25} />
+                      ) : (
+                        <Mic className="size-11" strokeWidth={2.25} />
+                      )}
+                    </button>
+
+                    {stage.name === 'recording' ? (
+                      <>
+                        <LevelMeter stream={streamRef.current} />
+                        <p className="font-display text-4xl font-extrabold tabular-nums">
+                          {formatTime(elapsed)}
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-muted-foreground">
+                          Recording… stops on its own at{' '}
+                          {formatTime(MAX_SECONDS)}
+                        </p>
+                      </>
+                    ) : stage.name === 'denied' ? (
+                      <>
+                        <p className="mt-5 text-lg font-bold">
+                          Microphone is blocked
+                        </p>
+                        <p className="mt-1 max-w-[36ch] text-sm font-semibold text-muted-foreground">
+                          Allow microphone access for this site in your browser
+                          settings and try again, or type your feedback instead.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="mt-5 text-lg font-bold">
+                          {stage.name === 'asking'
+                            ? 'Allow the microphone to start'
+                            : 'Tap to record'}
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-muted-foreground">
+                          Up to {MAX_SECONDS / 60} minutes. No app or account
+                          needed.
+                        </p>
+                      </>
+                    )}
                   </>
                 )}
               </div>
 
-              <div className="flex gap-3">
-                {stage.name === 'recording' ? (
-                  <Button
-                    type="button"
-                    onClick={stopRecording}
-                    variant="destructive"
-                    className={primaryButton}
-                  >
-                    <Square className="w-5 h-5 mr-2" />
-                    STOP
-                  </Button>
-                ) : recorded ? (
-                  <Button
-                    type="button"
-                    onClick={recordAgain}
-                    variant="outline"
-                    disabled={stage.name === 'sending'}
-                    className={`flex-1 ${outlineButton}`}
-                  >
-                    <RotateCcw className="w-5 h-5 mr-2" />
-                    RECORD AGAIN
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    onClick={startRecording}
-                    disabled={
-                      stage.name === 'loading' || stage.name === 'asking'
-                    }
-                    className={primaryButton}
-                    style={accentStyle}
-                  >
-                    <Mic className="w-5 h-5 mr-2" />
-                    {stage.name === 'denied' ? 'TRY AGAIN' : 'START RECORDING'}
-                  </Button>
-                )}
-              </div>
-
+              {recorded && nameField}
               {recorded && contactField}
               {recorded && (
                 <Button
@@ -532,7 +613,7 @@ export function FeedbackForm({
           )}
 
           {error && (
-            <p role="alert" className="font-bold text-red-700">
+            <p role="alert" className="font-bold text-destructive">
               {error}
             </p>
           )}
