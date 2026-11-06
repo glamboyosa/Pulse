@@ -38,7 +38,10 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
       .getByLabel('GOOGLE REVIEW LINK')
       .fill('https://g.page/r/test-review/review')
     await page.locator('#logo').setInputFiles('tests/e2e/fixtures/logo.png')
-    await expect(page.getByRole('img', { name: /logo/ })).toBeVisible()
+    // The upload goes to R2, which can take several seconds.
+    await expect(page.getByRole('img', { name: /logo/ })).toBeVisible({
+      timeout: 20_000,
+    })
     await page.getByRole('button', { name: 'SAVE' }).click()
     await expect(page.getByRole('button', { name: 'SAVED' })).toBeVisible()
     await page.goto('/dashboard')
@@ -68,8 +71,14 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     await feedbackPage.waitForTimeout(7000)
     await feedbackPage.getByRole('button', { name: 'STOP' }).click()
     await expect(feedbackPage.getByLabel('Your recording')).toBeVisible()
+    await feedbackPage
+      .getByLabel('Want a reply? Your email (optional)')
+      .fill('grace@example.test')
     await feedbackPage.getByRole('button', { name: 'SEND FEEDBACK' }).click()
-    await expect(feedbackPage.getByText('THANK YOU!')).toBeVisible()
+    // Sending uploads the recording to R2 first.
+    await expect(feedbackPage.getByText('THANK YOU!')).toBeVisible({
+      timeout: 20_000,
+    })
     await expect(feedbackPage.getByText('Show this for 10% off')).toBeVisible()
     await expect(
       feedbackPage.getByRole('link', { name: 'Leave a Google review too' }),
@@ -134,6 +143,20 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     )
     expect(rows[0].themes.length).toBeGreaterThan(0)
     await expect(page.getByText(rows[0].summary)).toBeVisible()
+  })
+
+  await test.step('the owner replies to Grace, who asked for one', async () => {
+    // The owner never sees the customer's address.
+    await expect(page.getByText('grace@example.test')).toHaveCount(0)
+    await page
+      .getByLabel('REPLY TO GRACE')
+      .fill('Sorry about the wait, Grace. Your next jollof is on us.')
+    await page.getByRole('button', { name: 'SEND REPLY' }).click()
+    await expect(
+      page.getByRole('heading', { name: 'YOUR REPLY' }),
+    ).toBeVisible()
+    await expect(page.getByText('Your next jollof is on us.')).toBeVisible()
+    await expect(page.getByLabel('REPLY TO GRACE')).toHaveCount(0)
   })
 
   await test.step('a customer whose microphone is blocked can type instead', async () => {

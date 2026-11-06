@@ -92,6 +92,8 @@ export type SubmissionInput = {
   customerName: string | null
   /** The spot slug from the QR link, if any. */
   spot?: string | null
+  /** An address the customer left for a reply, already validated. */
+  contactEmail?: string | null
 }
 
 export const MIN_TYPED_LENGTH = 3
@@ -106,6 +108,7 @@ export const submitTypedFeedback = async (input: {
   text: string
   customerName: string | null
   spot?: string | null
+  contactEmail?: string | null
 }): Promise<{ feedbackId: string; business: Business }> => {
   const text = input.text.trim()
   if (text.length < MIN_TYPED_LENGTH) {
@@ -131,6 +134,7 @@ export const submitTypedFeedback = async (input: {
       userId: business.id,
       spotId: spot?.id ?? null,
       customerName: input.customerName,
+      contactEmail: input.contactEmail ?? null,
       source: 'text',
       transcript: text,
       status: 'processing',
@@ -176,6 +180,7 @@ export const submitFeedback = async (
       userId: business.id,
       spotId: spot?.id ?? null,
       customerName: input.customerName,
+      contactEmail: input.contactEmail ?? null,
       audioKey,
       duration: Math.min(
         MAX_RECORDING_SECONDS,

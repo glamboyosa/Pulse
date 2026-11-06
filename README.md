@@ -18,6 +18,10 @@ Live at [pulseapp.click](https://www.pulseapp.click).
 - **Insights** (`/dashboard?tab=insights`): sentiment over the last 30 days against the 30 before, and themes ranked by how often they come up negative;
 - **Weekly digest**: up to three things to fix, each with a customer quote and a count, emailed on Mondays; the owner can also rewrite this week's so far from the Insights tab (3 times a day).
 
+**Replies**: a customer can leave an email address after recording. The owner can send one reply from the feedback page; Pulse emails it from the business name and the address stays hidden from the owner unless the customer writes back. Addresses aren't verified, so replies are limited to 20 a day per business (see `src/server/replies.ts`).
+
+**Printing**: `/print` lays out table tents (one A4 sheet, folded) and sticker sheets (6 per A4) for the main QR code or any spot, ready for the browser's "Save as PDF".
+
 **Emails** to the owner:
 - each new recording; negative ones arrive as an "Unhappy customer" alert with the summary;
 - a low-balance warning when credit drops to 9, 4 and 0;

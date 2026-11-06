@@ -267,6 +267,58 @@ describe('typed feedback API', () => {
     })
   })
 
+  it('keeps the contact address private and refuses a bad one before spending a pulse', async () => {
+    const owner = await createBusiness({ pulsesRemaining: 3 })
+    const bad = await postJson(
+      '/feedback/submit-text',
+      { code: owner.uniqueCode, text: 'Too loud.', contactEmail: 'nope' },
+      { 'x-forwarded-for': '10.4.4.4' },
+    )
+    expect(bad.status).toBe(400)
+    expect(await pulsesOf(owner.id)).toBe(3)
+
+    await postJson(
+      '/feedback/submit-text',
+      {
+        code: owner.uniqueCode,
+        text: 'Too loud.',
+        contactEmail: 'Ada@Example.test',
+      },
+      { 'x-forwarded-for': '10.4.4.4' },
+    )
+    const [row] = await db.select().from(feedback)
+    expect(row.contactEmail).toBe('ada@example.test')
+    const listed = await (
+      await get('/feedback', await sessionCookie(owner))
+    ).text()
+    expect(listed).not.toContain('ada@example.test')
+    expect(JSON.parse(listed).feedback[0].reply).toBe('wanted')
+  })
+
+  it('explains why a reply is refused', async () => {
+    const owner = await createBusiness()
+    const [row] = await db
+      .insert(feedback)
+      .values({ userId: owner.id, transcript: 'Fine.' })
+      .returning()
+    const response = await postJson(
+      `/feedback/${row.id}/reply`,
+      { message: 'Hi' },
+      { cookie: await sessionCookie(owner) },
+    )
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({
+      error: 'This customer didn’t leave a way to reply',
+    })
+  })
+
+  it('needs a session to reply', async () => {
+    const response = await postJson(`/feedback/${crypto.randomUUID()}/reply`, {
+      message: 'Hi',
+    })
+    expect(response.status).toBe(401)
+  })
+
   it('explains text that is too short', async () => {
     const owner = await createBusiness()
     const response = await postJson('/feedback/submit-text', {

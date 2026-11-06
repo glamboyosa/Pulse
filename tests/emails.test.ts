@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { sendFeedbackReceivedEmail } from '@/lib/email/feedback-received'
 import { sendWeeklyDigestEmail } from '@/lib/email/weekly-digest'
+import { sendReplyToCustomer } from '@/lib/email/reply-to-customer'
 
 const send = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/utils/resend', () => ({
@@ -101,5 +102,46 @@ describe('weekly digest email', () => {
     expect(send.mock.calls[0][1]).toEqual({
       idempotencyKey: 'weekly-digest/u1/2026-11-02',
     })
+  })
+})
+
+describe('reply to a customer', () => {
+  it('keeps a name with a comma or line break in one quoted sender', async () => {
+    await sendReplyToCustomer({
+      to: 'ada@example.test',
+      ownerEmail: 'owner@example.test',
+      businessName: 'Smith, Jones\nCafe',
+      message: 'Thanks',
+      feedbackDate: new Date('2026-11-06T12:00:00Z'),
+      idempotencyKey: 'reply/f-2',
+    })
+    const [payload] = send.mock.calls[0] as [{ from: string; subject: string }]
+    expect(payload.from).toBe(
+      '"Smith, Jones Cafe via Pulse" <support@pulseapp.click>',
+    )
+    expect(payload.subject).toBe('Smith, Jones Cafe replied to your feedback')
+  })
+
+  it('comes from the business name, replies go to the owner, and text is escaped', async () => {
+    await sendReplyToCustomer({
+      to: 'ada@example.test',
+      ownerEmail: 'owner@example.test',
+      businessName: 'Test Cafe "<130>"',
+      message: 'Sorry! <b>We</b> fixed it.',
+      feedbackDate: new Date('2026-11-06T12:00:00Z'),
+      idempotencyKey: 'reply/f-1',
+    })
+    const [payload, options] = send.mock.calls[0] as [
+      { from: string; replyTo: string; html: string; text: string },
+      { idempotencyKey: string },
+    ]
+    expect(payload.from).toBe(
+      '"Test Cafe \\"<130>\\" via Pulse" <support@pulseapp.click>',
+    )
+    expect(payload.replyTo).toBe('owner@example.test')
+    expect(payload.html).toContain('Sorry! &lt;b&gt;We&lt;/b&gt; fixed it.')
+    expect(payload.html).not.toContain('<b>We</b>')
+    expect(payload.html).toContain("won't unless you write back")
+    expect(options).toEqual({ idempotencyKey: 'reply/f-1' })
   })
 })

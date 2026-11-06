@@ -30,6 +30,7 @@ import {
 } from '@/server/feedback-submission'
 import { listFeedback } from '@/server/feedback-queries'
 import { SpotError, archiveSpot, createSpot, listSpots } from '@/server/spots'
+import { ReplyError, contactEmailFrom, replyToFeedback } from '@/server/replies'
 import {
   BrandingError,
   logoUrlFor,
@@ -59,6 +60,10 @@ const app = new Elysia({ prefix: '/api' })
     if (error instanceof RateLimitError) {
       set.status = 429
       set.headers['retry-after'] = String(error.retryAfterSeconds)
+      return { error: error.message }
+    }
+    if (error instanceof ReplyError) {
+      set.status = error.status
       return { error: error.message }
     }
     if (error instanceof BrandingError) {
@@ -125,6 +130,7 @@ const app = new Elysia({ prefix: '/api' })
           durationSeconds: body.duration,
           customerName: body.customerName?.trim().slice(0, 80) || null,
           spot: body.spot,
+          contactEmail: contactEmailFrom(body.contactEmail),
         })
         const audio = {
           buffer: Buffer.from(await body.audio.arrayBuffer()),
@@ -146,6 +152,7 @@ const app = new Elysia({ prefix: '/api' })
         duration: t.Numeric({ minimum: 0 }),
         customerName: t.Optional(t.String({ maxLength: 200 })),
         spot: t.Optional(t.String({ maxLength: 64 })),
+        contactEmail: t.Optional(t.String({ maxLength: 300 })),
       }),
     },
   )
@@ -163,6 +170,7 @@ const app = new Elysia({ prefix: '/api' })
           text: body.text,
           customerName: body.customerName?.trim().slice(0, 80) || null,
           spot: body.spot,
+          contactEmail: contactEmailFrom(body.contactEmail),
         })
         after(() => processFeedback(feedbackId, business, { typed: true }))
         return { success: true, feedbackId }
@@ -179,6 +187,7 @@ const app = new Elysia({ prefix: '/api' })
         text: t.String({ maxLength: 5000 }),
         customerName: t.Optional(t.String({ maxLength: 200 })),
         spot: t.Optional(t.String({ maxLength: 64 })),
+        contactEmail: t.Optional(t.String({ maxLength: 300 })),
       }),
     },
   )
@@ -342,6 +351,21 @@ const app = new Elysia({ prefix: '/api' })
     await removeLogo(user.id)
     return { success: true }
   })
+  .post(
+    '/feedback/:id/reply',
+    async ({ body, params, request }) => {
+      const user = await getUserFromSession(request)
+      if (!user) return json(401, { error: 'Unauthorized' })
+      // Each reply emails an address Pulse can't verify, so keep the volume low.
+      await enforceRateLimit(`reply:${user.id}`, 20, 24 * HOUR_MS)
+      await replyToFeedback(user.id, params.id, body.message)
+      return { success: true }
+    },
+    {
+      params: t.Object({ id: t.String({ format: 'uuid' }) }),
+      body: t.Object({ message: t.String({ maxLength: 5000 }) }),
+    },
+  )
   .get('/spots', async ({ request }) => {
     const user = await getUserFromSession(request)
     if (!user) return json(401, { error: 'Unauthorized' })

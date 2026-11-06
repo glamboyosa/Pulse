@@ -11,6 +11,7 @@ import { FeedbackTranscript } from '@/components/feedback-transcript'
 import { db } from '@/db/index'
 import { feedback } from '@/db/schema'
 import { retryAnalysis } from '@/server/feedback-submission'
+import { ReplyBox } from '@/components/reply-box'
 
 interface FeedbackPageProps {
   params: Promise<{ id: string }>
@@ -149,6 +150,26 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
               feedbackId={feedbackId}
               initialTranscript={transcript}
               language={feedbackData.translation ? feedbackData.language : null}
+            />
+
+            <ReplyBox
+              feedbackId={feedbackId}
+              customerName={customerName}
+              reply={
+                feedbackData.repliedAt && feedbackData.replyText
+                  ? {
+                      state: 'sent',
+                      text: feedbackData.replyText,
+                      sentOn: new Intl.DateTimeFormat('en-GB', {
+                        day: 'numeric',
+                        month: 'long',
+                        timeZone: 'UTC',
+                      }).format(feedbackData.repliedAt),
+                    }
+                  : feedbackData.contactEmail
+                    ? { state: 'wanted' }
+                    : { state: 'none' }
+              }
             />
 
             {feedbackData.themes.length > 0 && (

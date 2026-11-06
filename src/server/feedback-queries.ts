@@ -33,6 +33,8 @@ export const listFeedback = async (
           : null,
       duration: f.duration ?? 0,
       typed: f.source === 'text',
+      // Whether a reply is possible or sent; the address itself stays private.
+      reply: f.repliedAt ? 'sent' : f.contactEmail ? 'wanted' : null,
       transcript: f.transcript ?? '',
       sentiment: f.sentiment as Feedback['sentiment'],
       summary: f.summary,

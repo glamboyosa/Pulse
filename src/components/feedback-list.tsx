@@ -17,6 +17,8 @@ export interface Feedback {
   duration: number // seconds
   /** Typed rather than recorded: no audio, no duration. */
   typed: boolean
+  /** 'wanted' when the customer left an address for a reply. */
+  reply: 'wanted' | 'sent' | null
   transcript: string
   sentiment: 'positive' | 'neutral' | 'negative' | null
   summary: string | null
@@ -406,8 +408,19 @@ export function FeedbackList({
                 {(item.themes.length > 0 ||
                   item.language ||
                   item.spot ||
-                  item.typed) && (
+                  item.typed ||
+                  item.reply) && (
                   <ul className="mt-3 flex flex-wrap gap-2">
+                    {item.reply === 'wanted' && (
+                      <li className="border-2 border-foreground bg-foreground text-background px-2 py-0.5 text-xs font-bold uppercase">
+                        Wants a reply
+                      </li>
+                    )}
+                    {item.reply === 'sent' && (
+                      <li className="border-2 border-foreground px-2 py-0.5 text-xs font-bold uppercase">
+                        Replied
+                      </li>
+                    )}
                     {item.typed && (
                       <li className="border-2 border-foreground px-2 py-0.5 text-xs font-bold uppercase">
                         Typed

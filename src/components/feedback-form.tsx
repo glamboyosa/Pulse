@@ -59,6 +59,7 @@ export function FeedbackForm({
   const [stage, setStage] = useState<Stage>({ name: 'loading' })
   const [elapsed, setElapsed] = useState(0)
   const [name, setName] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
   const [error, setError] = useState<string | null>(null)
   // Pulse is voice first. Typing appears only when voice can't work: the
   // browser can't record, or the customer blocked the microphone.
@@ -194,6 +195,7 @@ export function FeedbackForm({
         text,
         ...(name.trim() && { customerName: name.trim() }),
         ...(spot && { spot }),
+        ...(contactEmail.trim() && { contactEmail: contactEmail.trim() }),
       }),
     }).catch(() => null)
     if (response?.ok) {
@@ -204,10 +206,14 @@ export function FeedbackForm({
       setStage({ name: 'not-accepting' })
       return
     }
+    const { error: reason } = ((await response?.json().catch(() => ({}))) ??
+      {}) as { error?: string }
     setError(
       response?.status === 429
         ? 'Lots of feedback from this connection just now. Please try again in a few minutes.'
-        : "Your feedback didn't send. Please try again.",
+        : response?.status === 400 && reason
+          ? reason
+          : "Your feedback didn't send. Please try again.",
     )
     // Leave the stage as it was, so a refused microphone keeps the toggle.
     setSendingText(false)
@@ -230,6 +236,7 @@ export function FeedbackForm({
     form.append('duration', String(stage.seconds))
     if (name.trim()) form.append('customerName', name.trim())
     if (spot) form.append('spot', spot)
+    if (contactEmail.trim()) form.append('contactEmail', contactEmail.trim())
 
     try {
       const response = await fetch('/api/feedback/submit', {
@@ -245,10 +252,15 @@ export function FeedbackForm({
         setStage({ name: 'not-accepting' })
         return
       }
+      const { error: reason } = (await response.json().catch(() => ({}))) as {
+        error?: string
+      }
       setError(
         response.status === 429
           ? 'Lots of feedback from this connection just now. Please try again in a few minutes.'
-          : "Your recording didn't send. Please try again.",
+          : response.status === 400 && reason
+            ? reason
+            : "Your recording didn't send. Please try again.",
       )
     } catch {
       setError(
@@ -301,6 +313,34 @@ export function FeedbackForm({
     )
   }
 
+  // Offered once there is something to send, so the first screen stays simple.
+  const contactField = (
+    <div className="space-y-2">
+      <Label htmlFor="contact" className="text-sm font-bold uppercase">
+        Want a reply? Your email (optional)
+      </Label>
+      <Input
+        id="contact"
+        type="email"
+        autoComplete="email"
+        inputMode="email"
+        maxLength={254}
+        placeholder="you@example.com"
+        value={contactEmail}
+        onChange={(e) => setContactEmail(e.target.value)}
+        aria-describedby="contact-hint"
+        className="border-4 border-foreground font-semibold text-base"
+      />
+      <p
+        id="contact-hint"
+        className="text-sm font-semibold text-muted-foreground"
+      >
+        Only used for the team&apos;s reply. They won&apos;t see your address
+        unless you write back.
+      </p>
+    </div>
+  )
+
   const recorded = stage.name === 'recorded' || stage.name === 'sending'
 
   return (
@@ -346,6 +386,7 @@ export function FeedbackForm({
               >
                 At least 3 characters, up to 2,000.
               </p>
+              {contactField}
               <Button
                 type="submit"
                 disabled={
@@ -462,6 +503,7 @@ export function FeedbackForm({
                 )}
               </div>
 
+              {recorded && contactField}
               {recorded && (
                 <Button
                   type="submit"
