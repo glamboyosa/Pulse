@@ -27,8 +27,14 @@ vi.mock('@/lib/ai/elevenlabs', () => ({
   transcribeAudioWithElevenLabs: vi.fn().mockResolvedValue('Lovely service.'),
 }))
 vi.mock('@/lib/ai/text-analysis', () => ({
-  analyzeSentiment: vi.fn().mockResolvedValue('positive'),
-  extractNameFromTranscript: vi.fn().mockResolvedValue(null),
+  analyseTranscript: vi.fn().mockResolvedValue({
+    sentiment: 'positive',
+    customerName: null,
+    language: 'English',
+    englishTranslation: null,
+    summary: 'Lovely service.',
+    themes: ['service'],
+  }),
 }))
 const sentOtps = vi.hoisted(() => [] as Array<{ to: string; otpCode: string }>)
 vi.mock('@/lib/email', () => ({

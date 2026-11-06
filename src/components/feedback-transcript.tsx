@@ -1,10 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface FeedbackTranscriptProps {
   feedbackId: string
   initialTranscript: string | null
+  /** Set when the recording is not in English, e.g. "French". */
+  language: string | null
 }
 
 type State = 'waiting' | 'ready' | 'failed' | 'timed-out'
@@ -15,7 +18,9 @@ const GIVE_UP_MS = 5 * 60 * 1000
 export function FeedbackTranscript({
   feedbackId,
   initialTranscript,
+  language,
 }: FeedbackTranscriptProps) {
+  const router = useRouter()
   const [transcript, setTranscript] = useState(initialTranscript)
   const [state, setState] = useState<State>(
     initialTranscript ? 'ready' : 'waiting',
@@ -34,6 +39,8 @@ export function FeedbackTranscript({
       if (data.transcript) {
         setTranscript(data.transcript)
         setState('ready')
+        // The summary, translation and sentiment around this are server-rendered.
+        router.refresh()
       } else if (data.status === 'failed') {
         setState('failed')
       }
@@ -44,11 +51,13 @@ export function FeedbackTranscript({
       clearInterval(poll)
       clearTimeout(giveUp)
     }
-  }, [feedbackId, state])
+  }, [feedbackId, state, router])
 
   return (
     <div className="bg-secondary border-4 border-foreground p-6">
-      <h2 className="text-xl font-black mb-4">TRANSCRIPT</h2>
+      <h2 className="text-xl font-black mb-4">
+        {language ? `ORIGINAL (${language.toUpperCase()})` : 'TRANSCRIPT'}
+      </h2>
       {transcript ? (
         <p className="font-semibold leading-relaxed whitespace-pre-wrap">
           {transcript}

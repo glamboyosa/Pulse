@@ -15,6 +15,11 @@ export interface Feedback {
   duration: number // seconds
   transcript: string
   sentiment: 'positive' | 'neutral' | 'negative' | null
+  summary: string | null
+  themes: Array<string>
+  // Set only when the customer spoke a language other than English.
+  language: string | null
+  translation: string | null
   status: string
   // Presigned, valid for an hour; the list refetches before it expires.
   audioUrl: string | null
@@ -327,10 +332,15 @@ export function FeedbackList({
                     <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                   </div>
                 </div>
+                {item.summary && (
+                  <p className="font-black text-lg leading-snug mb-3">
+                    {item.summary}
+                  </p>
+                )}
                 <div className="bg-secondary border-4 border-foreground p-4">
                   {item.transcript ? (
                     <p className="font-semibold leading-relaxed line-clamp-2">
-                      {item.transcript}
+                      {item.translation ?? item.transcript}
                     </p>
                   ) : (
                     <p className="font-semibold leading-relaxed text-muted-foreground italic">
@@ -338,9 +348,23 @@ export function FeedbackList({
                     </p>
                   )}
                 </div>
-                <div className="mt-3 text-xs font-bold text-muted-foreground uppercase tracking-wide">
-                  Click to view full feedback →
-                </div>
+                {(item.themes.length > 0 || item.language) && (
+                  <ul className="mt-3 flex flex-wrap gap-2">
+                    {item.language && (
+                      <li className="border-2 border-foreground bg-accent px-2 py-0.5 text-xs font-bold uppercase">
+                        Translated from {item.language}
+                      </li>
+                    )}
+                    {item.themes.map((theme) => (
+                      <li
+                        key={theme}
+                        className="border-2 border-foreground px-2 py-0.5 text-xs font-bold uppercase"
+                      >
+                        {theme}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
           </Card>

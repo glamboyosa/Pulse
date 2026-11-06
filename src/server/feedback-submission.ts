@@ -3,10 +3,7 @@ import { eq, sql } from 'drizzle-orm'
 import { db } from '@/db/index'
 import { feedback } from '@/db/schema'
 import { transcribeAudioWithElevenLabs } from '@/lib/ai/elevenlabs'
-import {
-  analyzeSentiment,
-  extractNameFromTranscript,
-} from '@/lib/ai/text-analysis'
+import { analyseTranscript } from '@/lib/ai/text-analysis'
 import { sendFeedbackReceivedEmail } from '@/lib/email/feedback-received'
 import { sendLowPulseEmail } from '@/lib/email/low-pulse'
 import {
@@ -143,9 +140,9 @@ export const submitFeedback = async (
 }
 
 /**
- * Transcribes and analyses a stored recording. Each step that fails leaves
- * what already succeeded saved: a transcript is kept even if sentiment or name
- * extraction fails. Returns the saved row, or null if it no longer exists.
+ * Transcribes and analyses a stored recording. A transcript is kept even if
+ * analysis fails, so the owner can still read it. Returns the saved row, or
+ * null if it no longer exists.
  */
 export const analyseFeedback = async (
   feedbackId: string,
@@ -162,24 +159,43 @@ export const analyseFeedback = async (
   let transcript: string | null = null
   try {
     transcript =
-      (await transcribeAudioWithElevenLabs(audio.buffer, audio.type)).trim() ||
-      null
+      (await transcribeAudioWithElevenLabs(audio.buffer, audio.type)) || null
   } catch (error) {
     console.error('[feedback] transcription failed', { feedbackId, error })
   }
 
-  const sentiment = transcript ? await analyzeSentiment(transcript) : null
-  let customerName = row.customerName
-  if (transcript && !customerName) {
-    customerName = await extractNameFromTranscript(transcript).catch(() => null)
-  }
+  const analysis = transcript
+    ? await analyseTranscript(transcript).catch((error: unknown) => {
+        console.error('[feedback] analysis failed', { feedbackId, error })
+        return null
+      })
+    : null
+
+  // Keep the customer's own words when they spoke English, even if the model
+  // returned a cleaned-up "translation". The model decides, not speech-to-text,
+  // which hears English-based creoles such as Pidgin as English.
+  const translation = analysis?.language
+    .trim()
+    .toLowerCase()
+    .startsWith('english')
+    ? null
+    : (analysis?.englishTranslation ?? null)
+  const themes = [
+    ...new Set(analysis?.themes.map((theme) => theme.trim().toLowerCase())),
+  ]
+    .filter(Boolean)
+    .slice(0, 4)
 
   const [saved] = await db
     .update(feedback)
     .set({
       transcript,
-      sentiment,
-      customerName,
+      sentiment: analysis?.sentiment ?? null,
+      customerName: row.customerName ?? analysis?.customerName ?? null,
+      language: analysis?.language ?? null,
+      translation,
+      summary: analysis?.summary ?? null,
+      themes,
       status: transcript ? 'ready' : 'failed',
     })
     .where(eq(feedback.id, feedbackId))
@@ -204,7 +220,9 @@ export const processFeedback = async (
     customerName: saved.customerName,
     duration: saved.duration,
     sentiment: saved.sentiment,
-    transcript: saved.transcript,
+    transcript: saved.translation ?? saved.transcript,
+    summary: saved.summary,
+    language: saved.translation ? saved.language : null,
   }).catch((error) =>
     console.error('[feedback] notification email failed', {
       feedbackId,

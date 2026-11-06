@@ -32,6 +32,10 @@ export const feedback = pgTable('feedback', {
   audioKey: text('audio_key'), // R2 key for the audio file (permanent, can regenerate URLs)
   transcript: text('transcript'),
   sentiment: text('sentiment'), // 'positive', 'neutral', 'negative'
+  language: text('language'), // as spoken, in English: 'French', 'Nigerian Pidgin'
+  translation: text('translation'), // English translation; null when spoken in English
+  summary: text('summary'),
+  themes: text('themes').array().default([]).notNull(),
   duration: integer('duration'), // Duration in seconds
   // 'processing' until transcription and analysis finish, then 'ready' or 'failed'
   status: text('status').default('ready').notNull(),

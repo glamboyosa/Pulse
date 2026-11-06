@@ -123,10 +123,39 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
               />
             )}
 
+            {feedbackData.summary && (
+              <p className="text-2xl font-black leading-snug">
+                {feedbackData.summary}
+              </p>
+            )}
+
+            {feedbackData.translation && (
+              <div className="bg-accent border-4 border-foreground p-6">
+                <h2 className="text-xl font-black mb-4">IN ENGLISH</h2>
+                <p className="font-semibold leading-relaxed whitespace-pre-wrap">
+                  {feedbackData.translation}
+                </p>
+              </div>
+            )}
+
             <FeedbackTranscript
               feedbackId={feedbackId}
               initialTranscript={transcript}
+              language={feedbackData.translation ? feedbackData.language : null}
             />
+
+            {feedbackData.themes.length > 0 && (
+              <ul className="flex flex-wrap gap-2">
+                {feedbackData.themes.map((theme) => (
+                  <li
+                    key={theme}
+                    className="border-2 border-foreground px-3 py-1 text-sm font-bold uppercase"
+                  >
+                    {theme}
+                  </li>
+                ))}
+              </ul>
+            )}
 
             {sentiment && (
               <div className="bg-secondary border-4 border-foreground p-4">

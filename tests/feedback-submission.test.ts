@@ -24,15 +24,13 @@ vi.mock('@/lib/storage/r2', () => ({ ...storage, AUDIO_KEY_PREFIX: 'test/' }))
 
 const ai = vi.hoisted(() => ({
   transcribe: vi.fn(),
-  sentiment: vi.fn(),
-  name: vi.fn(),
+  analyse: vi.fn(),
 }))
 vi.mock('@/lib/ai/elevenlabs', () => ({
   transcribeAudioWithElevenLabs: ai.transcribe,
 }))
 vi.mock('@/lib/ai/text-analysis', () => ({
-  analyzeSentiment: ai.sentiment,
-  extractNameFromTranscript: ai.name,
+  analyseTranscript: ai.analyse,
 }))
 
 const emails = vi.hoisted(() => ({ received: vi.fn(), low: vi.fn() }))
@@ -50,8 +48,14 @@ beforeEach(async () => {
   storage.uploadAudio.mockResolvedValue(undefined)
   storage.deleteAudio.mockResolvedValue(undefined)
   ai.transcribe.mockResolvedValue('Hi, I am Sam. The coffee was great.')
-  ai.sentiment.mockResolvedValue('positive')
-  ai.name.mockResolvedValue('Sam')
+  ai.analyse.mockResolvedValue({
+    sentiment: 'positive',
+    customerName: 'Sam',
+    language: 'English',
+    englishTranslation: null,
+    summary: 'Sam loved the coffee.',
+    themes: ['food quality'],
+  })
   emails.received.mockResolvedValue(undefined)
   emails.low.mockResolvedValue(undefined)
 })
@@ -179,7 +183,7 @@ describe('processing', () => {
   }
   const audio = { buffer: Buffer.from('x'), type: 'audio/mp4' }
 
-  it('saves transcript, sentiment and name, then emails the owner', async () => {
+  it('saves the transcript and its analysis, then emails the owner', async () => {
     const { owner, feedbackId, business } = await submitted()
     await processFeedback(feedbackId, business, audio)
 
@@ -191,22 +195,108 @@ describe('processing', () => {
       transcript: 'Hi, I am Sam. The coffee was great.',
       sentiment: 'positive',
       customerName: 'Sam',
+      summary: 'Sam loved the coffee.',
+      themes: ['food quality'],
+      translation: null,
       status: 'ready',
     })
     expect(emails.received).toHaveBeenCalledWith(
-      expect.objectContaining({ to: owner.email, sentiment: 'positive' }),
+      expect.objectContaining({
+        to: owner.email,
+        sentiment: 'positive',
+        summary: 'Sam loved the coffee.',
+        language: null,
+      }),
     )
   })
 
-  it('keeps the transcript when sentiment analysis has no answer', async () => {
+  it('emails the English translation of feedback in another language', async () => {
+    const { feedbackId, business } = await submitted()
+    ai.transcribe.mockResolvedValueOnce('Le service était trop lent.')
+    ai.analyse.mockResolvedValueOnce({
+      sentiment: 'negative',
+      customerName: null,
+      language: 'French',
+      englishTranslation: 'The service was too slow.',
+      summary: 'Service was too slow.',
+      themes: ['wait time'],
+    })
+    await processFeedback(feedbackId, business, audio)
+
+    const [row] = await db
+      .select()
+      .from(feedback)
+      .where(eq(feedback.id, feedbackId))
+    expect(row).toMatchObject({
+      transcript: 'Le service était trop lent.',
+      language: 'French',
+      translation: 'The service was too slow.',
+    })
+    expect(emails.received).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sentiment: 'negative',
+        transcript: 'The service was too slow.',
+        language: 'French',
+      }),
+    )
+  })
+
+  it('keeps the transcript when analysis fails', async () => {
     const { feedbackId } = await submitted()
-    ai.sentiment.mockResolvedValueOnce(null)
-    ai.name.mockRejectedValueOnce(new Error('LLM down'))
+    ai.analyse.mockRejectedValueOnce(new Error('LLM down'))
     const saved = await analyseFeedback(feedbackId, audio)
     expect(saved).toMatchObject({
       transcript: 'Hi, I am Sam. The coffee was great.',
       sentiment: null,
+      summary: null,
+      translation: null,
+      language: null,
+      themes: [],
       status: 'ready',
+    })
+  })
+
+  it('keeps a translation of Pidgin, which speech-to-text hears as English', async () => {
+    const { feedbackId } = await submitted()
+    ai.transcribe.mockResolvedValueOnce(
+      'Abeg, una food sweet but the place hot.',
+    )
+    ai.analyse.mockResolvedValueOnce({
+      sentiment: 'negative',
+      customerName: null,
+      language: 'Nigerian Pidgin',
+      englishTranslation: 'Please, your food is tasty but the place is hot.',
+      summary: 'Food is good but the room is too hot.',
+      themes: ['atmosphere'],
+    })
+    const saved = await analyseFeedback(feedbackId, audio)
+    expect(saved).toMatchObject({
+      language: 'Nigerian Pidgin',
+      translation: 'Please, your food is tasty but the place is hot.',
+    })
+  })
+
+  it("keeps an English speaker's own words, and tidies the themes", async () => {
+    const { feedbackId } = await submitted()
+    ai.analyse.mockResolvedValueOnce({
+      sentiment: 'positive',
+      customerName: 'Sam',
+      language: 'English (US)',
+      englishTranslation: 'I am Sam; the coffee was great.',
+      summary: 'Sam loved the coffee.',
+      themes: [
+        'Service',
+        'service ',
+        'price',
+        'food quality',
+        'atmosphere',
+        'wait time',
+      ],
+    })
+    const saved = await analyseFeedback(feedbackId, audio)
+    expect(saved).toMatchObject({
+      translation: null,
+      themes: ['service', 'price', 'food quality', 'atmosphere'],
     })
   })
 

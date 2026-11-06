@@ -4,8 +4,6 @@ import { Output, generateText } from 'ai'
 import { z } from 'zod'
 import { env } from '@/env'
 
-type Sentiment = 'positive' | 'neutral' | 'negative'
-
 // OpenAI first; OpenRouter serves the same model when OpenAI is down or out of credit.
 const models = [
   env.OPENAI_API_KEY &&
@@ -39,36 +37,46 @@ const generateObject = async <T>(
   throw lastError
 }
 
+const analysisSchema = z.object({
+  sentiment: z.enum(['positive', 'neutral', 'negative']),
+  customerName: z
+    .string()
+    .nullable()
+    .describe('The name the customer says they have, or null'),
+  language: z
+    .string()
+    .describe('The language spoken, in English, e.g. "Nigerian Pidgin"'),
+  englishTranslation: z
+    .string()
+    .nullable()
+    .describe('A faithful English translation, or null if already English'),
+  summary: z
+    .string()
+    .describe('One short sentence an owner can act on, in English'),
+  // Capped in code, not here: a fifth theme shouldn't throw away the analysis.
+  themes: z
+    .array(z.string())
+    .describe(
+      'One to four short lowercase topics, e.g. "wait time", "food quality", "staff friendliness"',
+    ),
+})
+
+export type FeedbackAnalysis = z.infer<typeof analysisSchema>
+
 /**
- * Classifies the feedback's tone. Returns null when every provider fails, so a
- * transcript is still saved without a sentiment.
+ * Reads a transcript in any language and returns what the owner needs:
+ * tone, the customer's name, an English translation, a summary and themes.
+ * One call, so a recording costs one model request.
  */
-export async function analyzeSentiment(
+export const analyseTranscript = (
   transcript: string,
-): Promise<Sentiment | null> {
-  try {
-    const { sentiment } = await generateObject(
-      z.object({ sentiment: z.enum(['positive', 'neutral', 'negative']) }),
-      `Analyze the sentiment of the following customer feedback transcript. Classify it as positive, neutral, or negative based on the overall tone and content.
+): Promise<FeedbackAnalysis> =>
+  generateObject(
+    analysisSchema,
+    `You analyse voice feedback a customer left for a business, transcribed by speech-to-text.
 
-Transcript: ${transcript}`,
-    )
-    return sentiment
-  } catch (error) {
-    console.error('[AI] Sentiment analysis failed', error)
-    return null
-  }
-}
+Sentiment is the overall verdict: mixed feedback with a real complaint is negative. Keep themes consistent between recordings: reuse plain topics like "wait time", "food quality", "service", "price", "cleanliness", "atmosphere", "staff friendliness".
 
-/** Returns the customer's name if they say it in the transcript, otherwise null. */
-export async function extractNameFromTranscript(
-  transcript: string,
-): Promise<string | null> {
-  const { name } = await generateObject(
-    z.object({ name: z.string().nullable() }),
-    `Extract the customer's name from the following feedback transcript. If the customer introduces themselves or mentions their name, extract it. If no name is mentioned, return null.
-
-Transcript: ${transcript}`,
+Transcript:
+${transcript}`,
   )
-  return name
-}
