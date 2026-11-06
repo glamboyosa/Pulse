@@ -4,16 +4,22 @@ Voice feedback for businesses. Customers scan a QR code and record up to two min
 
 Live at [pulseapp.click](https://www.pulseapp.click).
 
+[![Pulse: a voice note in Nigerian Pidgin, translated and summarised, with an unhappy-customer alert](public/og-preview.jpg)](https://youtu.be/n0NAYKywunA)
+
+The image links to a 36-second walkthrough.
+
 ## What it does
 
 **For the customer**, a page at `/f/<business code>`:
 - record in the browser (no app or account), listen back, re-record, send;
 - the recording stops on its own at 2 minutes;
-- the page says so when the business is out of credit, instead of failing after the recording.
+- the page says so when the business is out of credit, instead of failing after the recording;
+- if the microphone is refused or the browser can't record, the customer can type instead; typed feedback is labelled as typed for the owner.
 
 **For the owner**, a dashboard at `/dashboard`:
 - every recording with playback, a summary, themes, a sentiment tag and, for non-English recordings, the English translation next to the original;
 - filters by sentiment and by spot;
+- **Branding** (`/settings`): the question on the feedback page, a logo, an accent colour, a thank-you message and a Google review link;
 - **Spots**: extra QR codes for a branch, a table or an event (`/f/<code>?spot=<slug>`), each tagging its feedback;
 - **Insights** (`/dashboard?tab=insights`): sentiment over the last 30 days against the 30 before, and themes ranked by how often they come up negative;
 - **Weekly digest**: up to three things to fix, each with a customer quote and a count, emailed on Mondays; the owner can also rewrite this week's so far from the Insights tab (3 times a day).
