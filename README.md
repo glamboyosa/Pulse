@@ -68,7 +68,7 @@ All are read and validated in `src/env.ts`. `.env.example` lists them with place
 | `POLAR_ENVIRONMENT` | `production` (default) or `sandbox` |
 | `POLAR_API_KEY`, `POLAR_WEBHOOK_SECRET` | Payments in production |
 | `POLAR_SANDBOX_API_TOKEN`, `POLAR_SANDBOX_WEBHOOK_SECRET` | Payments in the Polar sandbox |
-| `CRON_SECRET` | The weekly digest cron. Without it the cron route answers 401 |
+| `CRON_SECRET` | The weekly digest and retention crons. Without it both cron routes answer 401 |
 | `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_APP_TITLE` | Fallbacks for client-side links and the page title |
 
 ## Tests
@@ -95,8 +95,9 @@ EMAIL_DELIVERY=log bun run dev
 bun run test:e2e
 ```
 
-- `journey.spec.ts`: sign up, add a spot, a customer records through the spot's link, the real transcript and analysis arrive, playback, the spot filter, running out of credit, the buy page.
+- `journey.spec.ts`: sign up, brand the feedback page, add a spot, a customer records through the spot's link and asks for a reply, the real transcript and analysis arrive, playback, the owner replies, the spot filter, a customer with a blocked microphone types instead, running out of credit, the buy page, deleting feedback, exporting data and deleting the account.
 - `insights.spec.ts`: the Insights charts, then the real model writes a digest.
+- `print.spec.ts`: table tents and sticker sheets as A4 PDFs, including the longest question and a long business name.
 
 The specs read login codes from the app's database (`E2E_DATABASE_URL`, default `postgres://postgres@localhost:5440/pulse_dev`). Chrome's fake microphone hangs on macOS without a system microphone grant, so the specs give the page a Web Audio stream of `tests/e2e/fixtures/feedback.wav` instead; the app still records it with `MediaRecorder` and uploads real audio.
 
