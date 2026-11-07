@@ -31,12 +31,12 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
     <header className="border-b-2 border-foreground bg-background">
       <div className="mx-auto max-w-6xl px-4 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <PulseLogo className="size-8" />
             <span className="font-display text-2xl font-extrabold tracking-tight">
               Pulse
             </span>
-          </div>
+          </Link>
           <div className="flex items-center gap-4">
             <Link href="/buy-pulses">
               <Button

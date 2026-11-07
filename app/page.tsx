@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 import {
   BellRing,
   Languages,
@@ -14,8 +15,8 @@ import {
 import { getCurrentUser } from './actions/auth'
 import {
   appUrl,
-  description as siteDescription,
   preview,
+  description as siteDescription,
   title as siteTitle,
 } from './layout'
 import type { Metadata } from 'next'
@@ -144,6 +145,12 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 export default async function HomePage() {
   const user = await getCurrentUser()
+  // Signed-in owners who type the address or open a bookmark (a request the
+  // browser starts itself) land on their dashboard. A click from inside Pulse
+  // or another site still shows this page, so the homepage stays reachable.
+  if (user && (await headers()).get('sec-fetch-site') === 'none') {
+    redirect('/dashboard')
+  }
   const cta = user
     ? { href: '/dashboard', label: 'Go to dashboard' }
     : { href: '/login', label: 'Start free: 5 pulses' }
