@@ -13,7 +13,9 @@ import {
 } from '@/server/billing'
 
 const STARTER_SANDBOX = '9d2ffe60-4204-4ed0-abc2-9707e66d713f'
-const SCALE_PRODUCTION = 'f4f82b5c-2c39-4b8d-a8bf-53de00594e21'
+const SCALE_PRODUCTION = '1a60a8a1-a88e-4aa9-8cd1-43bf88cd15f5'
+const STARTER_PRODUCTION = 'f4f82b5c-2c39-4b8d-a8bf-53de00594e21'
+const CREDITS_PRODUCTION = '87b9fe15-5339-4b5c-a3d3-6fe6cca3cdfe'
 
 const order = (overrides: Partial<PaidOrder> = {}): PaidOrder => ({
   id: crypto.randomUUID(),
@@ -30,7 +32,7 @@ beforeEach(resetDatabase)
 
 describe('custom pricing', () => {
   it('charges the rate of the largest pack the amount reaches', () => {
-    expect(customPriceCents(5)).toBe(350) // starter rate, $0.70
+    expect(customPriceCents(11)).toBe(770) // starter rate, $0.70
     expect(customPriceCents(30)).toBe(1920) // popular rate, $0.64
     expect(customPriceCents(60)).toBe(3600) // growth rate, $0.60
     expect(customPriceCents(200)).toBe(11000) // scale rate, $0.55
@@ -83,7 +85,7 @@ describe('createCheckout', () => {
     )
 
     const args = create.mock.calls[0][0]
-    const product = 'fad8b1dd-d9f5-42a1-b84d-c4a07059e475'
+    const product = CREDITS_PRODUCTION
     expect(args.products).toEqual([product])
     expect(args.prices[product]).toEqual([
       { amountType: 'fixed', priceAmount: 3600, priceCurrency: 'usd' },
@@ -91,7 +93,18 @@ describe('createCheckout', () => {
     expect(args.metadata.pulses).toBe('60')
   })
 
-  it.each([0, 4, 501, 2.5, -10])(
+  it('sells the $7 starter pack as the production Starter Pack product', async () => {
+    const { create, client } = fakeClient()
+    await createCheckout(
+      user,
+      { kind: 'pack', packId: 'starter' },
+      client,
+      'production',
+    )
+    expect(create.mock.calls[0][0].products).toEqual([STARTER_PRODUCTION])
+  })
+
+  it.each([0, 10, 501, 2.5, -10])(
     'rejects a custom amount of %s pulses',
     async (pulses) => {
       const { create, client } = fakeClient()

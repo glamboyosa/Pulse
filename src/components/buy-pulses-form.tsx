@@ -147,7 +147,9 @@ export function BuyPulsesForm() {
             <p className="text-sm font-semibold text-muted-foreground mb-3">
               Need a different amount? Priced at the rate of the matching pack.
             </p>
-            <div className="space-y-2">
+            <div
+              className={`space-y-2 transition-opacity ${selectedPackage === 'custom' ? '' : 'opacity-50'}`}
+            >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-bold">
                   {customAmount[0]} pulses

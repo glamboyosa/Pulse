@@ -33,11 +33,18 @@ const PACK_PRODUCTS: Record<PolarEnvironment, Record<PackId, string>> = {
     scale: 'cfa4b754-6a75-4c39-a703-93cf92597d02',
   },
   production: {
-    starter: 'fad8b1dd-d9f5-42a1-b84d-c4a07059e475',
+    starter: 'f4f82b5c-2c39-4b8d-a8bf-53de00594e21',
     popular: '80ed7c99-0512-48af-88d5-83dc29cfec50',
-    growth: '1a60a8a1-a88e-4aa9-8cd1-43bf88cd15f5',
-    scale: 'f4f82b5c-2c39-4b8d-a8bf-53de00594e21',
+    growth: 'fad8b1dd-d9f5-42a1-b84d-c4a07059e475',
+    scale: '1a60a8a1-a88e-4aa9-8cd1-43bf88cd15f5',
   },
+}
+
+// A neutral "Pulse credits" product for custom amounts, so the checkout and
+// receipt don't show a pack's name. Sandbox has none and uses its starter pack.
+const CUSTOM_PRODUCT: Record<PolarEnvironment, string> = {
+  sandbox: PACK_PRODUCTS.sandbox.starter,
+  production: '87b9fe15-5339-4b5c-a3d3-6fe6cca3cdfe',
 }
 
 export type CheckoutRequest =
@@ -91,7 +98,7 @@ export const createCheckout = async (
         `Choose between ${CUSTOM_PULSES_MIN} and ${CUSTOM_PULSES_MAX} pulses`,
       )
     }
-    productId = products.starter
+    productId = CUSTOM_PRODUCT[environment]
     pulses = request.pulses
     // An ad-hoc price for this checkout only, so no catalogue product is created.
     prices = {

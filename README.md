@@ -35,7 +35,7 @@ The image links to a 36-second walkthrough.
 - a low-balance warning when credit drops to 9, 4 and 0;
 - the Monday digest.
 
-**Credit**: one recording spends one pulse. New accounts get 5. Owners buy packs of 10, 25, 50 or 100, or a custom amount from 5 to 500 priced at the matching pack rate, through Polar.
+**Credit**: one recording spends one pulse. New accounts get 5. Owners buy packs of 10, 25, 50 or 100, or a custom amount from 11 to 500 priced at the matching pack rate, through Polar.
 
 ## Run it locally
 

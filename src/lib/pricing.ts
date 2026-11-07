@@ -10,7 +10,8 @@ export const PACKS = [
 
 export type PackId = (typeof PACKS)[number]['id']
 
-export const CUSTOM_PULSES_MIN = 5
+// Above the smallest pack, so a custom amount never undercuts it.
+export const CUSTOM_PULSES_MIN = 11
 export const CUSTOM_PULSES_MAX = 500
 
 /**
