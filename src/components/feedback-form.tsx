@@ -7,6 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { TurnstileWidget } from '@/components/turnstile-widget'
+
+const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+const STILL_CHECKING =
+  'One moment, we’re checking you’re not a bot. Try sending again in a few seconds.'
 
 const MAX_SECONDS = 120
 
@@ -118,6 +123,14 @@ export function FeedbackForm({
   const [typing, setTyping] = useState(false)
   const [text, setText] = useState('')
   const [sendingText, setSendingText] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  // Each token works once, so a fresh widget follows every send.
+  const [turnstileKey, setTurnstileKey] = useState(0)
+  const [turnstileFailed, setTurnstileFailed] = useState(false)
+  const freshTurnstile = () => {
+    setTurnstileToken('')
+    setTurnstileKey((key) => key + 1)
+  }
 
   // Stop unmounts the record button; focus moves here instead of the page.
   const listenBackRef = useRef<HTMLParagraphElement>(null)
@@ -248,6 +261,10 @@ export function FeedbackForm({
 
   const submitText = async () => {
     if (text.trim().length < 3 || sendingText) return
+    if (turnstileSiteKey && !turnstileToken) {
+      setError(STILL_CHECKING)
+      return
+    }
     setError(null)
     setSendingText(true)
     const response = await fetch('/api/feedback/submit-text', {
@@ -259,8 +276,10 @@ export function FeedbackForm({
         ...(name.trim() && { customerName: name.trim() }),
         ...(spot && { spot }),
         ...(contactEmail.trim() && { contactEmail: contactEmail.trim() }),
+        ...(turnstileToken && { turnstileToken }),
       }),
     }).catch(() => null)
+    freshTurnstile()
     if (response?.ok) {
       setStage({ name: 'sent' })
       return
@@ -289,6 +308,10 @@ export function FeedbackForm({
       return
     }
     if (stage.name !== 'recorded') return
+    if (turnstileSiteKey && !turnstileToken) {
+      setError(STILL_CHECKING)
+      return
+    }
     setError(null)
     setStage({ ...stage, name: 'sending' })
 
@@ -300,12 +323,13 @@ export function FeedbackForm({
     if (name.trim()) form.append('customerName', name.trim())
     if (spot) form.append('spot', spot)
     if (contactEmail.trim()) form.append('contactEmail', contactEmail.trim())
+    if (turnstileToken) form.append('turnstileToken', turnstileToken)
 
     try {
       const response = await fetch('/api/feedback/submit', {
         method: 'POST',
         body: form,
-      })
+      }).finally(freshTurnstile)
       if (response.ok) {
         URL.revokeObjectURL(stage.url)
         setStage({ name: 'sent' })
@@ -610,6 +634,41 @@ export function FeedbackForm({
             >
               {typing ? 'Record a voice note instead' : 'Prefer to type?'}
             </button>
+          )}
+
+          {turnstileSiteKey && (
+            <TurnstileWidget
+              key={turnstileKey}
+              siteKey={turnstileSiteKey}
+              onToken={(token) => {
+                setTurnstileToken(token)
+                if (!token) return
+                setTurnstileFailed(false)
+                setError((current) =>
+                  current === STILL_CHECKING ? null : current,
+                )
+              }}
+              onError={() => setTurnstileFailed(true)}
+            />
+          )}
+
+          {turnstileFailed && (
+            <div className="space-y-2">
+              <p role="alert" className="font-bold text-destructive">
+                We couldn&apos;t run the check that stops bots. If you use an ad
+                or tracker blocker, allow this page, then try again.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setTurnstileFailed(false)
+                  freshTurnstile()
+                }}
+                className="font-bold underline underline-offset-4"
+              >
+                Try the check again
+              </button>
+            </div>
           )}
 
           {error && (

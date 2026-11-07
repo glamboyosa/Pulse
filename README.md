@@ -76,7 +76,7 @@ All are read and validated in `src/env.ts`. `.env.example` lists them with place
 | `POLAR_SANDBOX_API_TOKEN`, `POLAR_SANDBOX_WEBHOOK_SECRET` | Payments in the Polar sandbox |
 | `CRON_SECRET` | The weekly digest and retention crons. Without it both cron routes answer 401 |
 | `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_APP_TITLE` | Fallbacks for client-side links and the page title |
-| `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile bot check before a login code is sent. Without them the check is off |
+| `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile bot check on login and on feedback. Without them the check is off |
 
 ## Tests
 
@@ -145,6 +145,8 @@ Polar sends `order.paid` and `order.refunded` to `/api/webhook/polar`.
 Submissions are rate limited per connection and per business (`src/server/rate-limit.ts`).
 
 **Payments** (`src/server/billing.ts`): checkout is created on the server with the price from `src/lib/pricing.ts`; the browser never sends a price. The webhook credits each Polar order exactly once (unique order id, one SQL statement) and removes refunded pulses pro rata to the pre-tax amount.
+
+**Abuse protection**: logging in and sending feedback both pass a Cloudflare Turnstile check first (`src/server/turnstile.ts`), so a failed check costs no email, no pulse and no AI call. Per-IP and per-business rate limits sit behind it (`src/server/rate-limit.ts`). Each failed check and each limit reached logs one JSON line (`bot_check_failed`, `rate_limited`) for Vercel's logs. `next.config.js` sends HSTS, `nosniff`, a strict referrer policy, no framing, and a permissions policy that allows only the microphone.
 
 **Sign-in** (`app/actions/auth.ts`): 6-digit codes from `crypto.randomInt`, valid 10 minutes, at most 5 guesses each (counted atomically), codes rate limited per email and per IP.
 

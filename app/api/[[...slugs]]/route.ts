@@ -109,7 +109,7 @@ const app = new Elysia({ prefix: '/api' })
     {
       body: t.Object({
         email: t.String({ format: 'email' }),
-        turnstileToken: t.Optional(t.String()),
+        turnstileToken: t.Optional(t.String({ maxLength: 2048 })),
       }),
     },
   )
@@ -131,8 +131,12 @@ const app = new Elysia({ prefix: '/api' })
   // Public: a customer's recording, one request per submission.
   .post(
     '/feedback/submit',
-    async ({ body, request }) => {
+    async ({ body, request, set }) => {
       const ip = clientIp(request)
+      if (!(await passesTurnstile(body.turnstileToken, ip))) {
+        set.status = 400
+        return { error: "We couldn't check you're human. Please try again." }
+      }
       // Customers in one venue often share an IP, so the per-IP cap is loose;
       // the per-business cap stops a script from draining a business's pulses.
       await enforceRateLimit(`submit:ip:${ip}:${body.code}`, 10, 10 * 60 * 1000)
@@ -168,13 +172,18 @@ const app = new Elysia({ prefix: '/api' })
         customerName: t.Optional(t.String({ maxLength: 200 })),
         spot: t.Optional(t.String({ maxLength: 64 })),
         contactEmail: t.Optional(t.String({ maxLength: 300 })),
+        turnstileToken: t.Optional(t.String({ maxLength: 2048 })),
       }),
     },
   )
   .post(
     '/feedback/submit-text',
-    async ({ body, request }) => {
+    async ({ body, request, set }) => {
       const ip = clientIp(request)
+      if (!(await passesTurnstile(body.turnstileToken, ip))) {
+        set.status = 400
+        return { error: "We couldn't check you're human. Please try again." }
+      }
       // The same limits as recordings: one pulse per submission either way.
       await enforceRateLimit(`submit:ip:${ip}:${body.code}`, 10, 10 * 60 * 1000)
       await enforceRateLimit(`submit:business:${body.code}`, 120, HOUR_MS)
@@ -203,6 +212,7 @@ const app = new Elysia({ prefix: '/api' })
         customerName: t.Optional(t.String({ maxLength: 200 })),
         spot: t.Optional(t.String({ maxLength: 64 })),
         contactEmail: t.Optional(t.String({ maxLength: 300 })),
+        turnstileToken: t.Optional(t.String({ maxLength: 2048 })),
       }),
     },
   )

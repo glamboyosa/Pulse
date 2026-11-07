@@ -28,7 +28,19 @@ export const enforceRateLimit = async (
     returning count, ceil(extract(epoch from reset_at - now()))::int as retry_after
   `)
   const { count, retry_after } = result.rows[0]
-  if (count > limit) throw new RateLimitError(Math.max(1, retry_after))
+  if (count > limit) {
+    // One line per window, not per blocked request, so a flood can't flood the
+    // logs too. Only the limit's kind is logged, never the email or user ID in the key.
+    if (count === limit + 1) {
+      console.warn(
+        JSON.stringify({
+          event: 'rate_limited',
+          limit: key.split(':')[0],
+        }),
+      )
+    }
+    throw new RateLimitError(Math.max(1, retry_after))
+  }
 }
 
 export const clientIp = (request: Request): string =>

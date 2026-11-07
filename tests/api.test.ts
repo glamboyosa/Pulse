@@ -85,9 +85,15 @@ const postJson = (
     }),
   )
 
-const submit = (code: string, ip = '10.0.0.1', type = 'audio/mp4') => {
+const submit = (
+  code: string,
+  ip = '10.0.0.1',
+  type = 'audio/mp4',
+  turnstileToken?: string,
+) => {
   const form = new FormData()
   form.append('code', code)
+  if (turnstileToken) form.append('turnstileToken', turnstileToken)
   form.append(
     'audio',
     new Blob([new Uint8Array(2048)], { type }),
@@ -188,6 +194,19 @@ describe('customer submissions', () => {
     })
   })
 
+  it('refuses a recording that fails the bot check, without spending a pulse', async () => {
+    const owner = await createBusiness({ pulsesRemaining: 3 })
+    const response = await submit(
+      owner.uniqueCode!,
+      '10.0.0.1',
+      'audio/mp4',
+      'bot',
+    )
+    expect(response.status).toBe(400)
+    expect(await pulsesOf(owner.id)).toBe(3)
+    expect(background.tasks).toHaveLength(0)
+  })
+
   it('returns 402 when the business has no pulses', async () => {
     const owner = await createBusiness({ pulsesRemaining: 0 })
     expect((await submit(owner.uniqueCode!)).status).toBe(402)
@@ -248,6 +267,17 @@ describe('typed feedback API', () => {
     expect(response.status).toBe(200)
     expect(await pulsesOf(owner.id)).toBe(1)
     expect(background.tasks).toHaveLength(1)
+  })
+
+  it('refuses typed feedback that fails the bot check, without spending a pulse', async () => {
+    const owner = await createBusiness({ pulsesRemaining: 2 })
+    const response = await postJson('/feedback/submit-text', {
+      code: owner.uniqueCode,
+      text: 'Great jollof, slow service.',
+      turnstileToken: 'bot',
+    })
+    expect(response.status).toBe(400)
+    expect(await pulsesOf(owner.id)).toBe(2)
   })
 
   it('tags typed feedback with the spot from the QR link', async () => {

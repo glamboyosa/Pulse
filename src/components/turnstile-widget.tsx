@@ -9,6 +9,7 @@ declare global {
         container: HTMLElement,
         options: {
           sitekey: string
+          appearance: 'interaction-only'
           callback: (token: string) => void
           'expired-callback': () => void
           'error-callback': () => void
@@ -68,6 +69,8 @@ export const TurnstileWidget = ({
         if (cancelled || !container.current || !window.turnstile) return
         widgetId = window.turnstile.render(container.current, {
           sitekey: siteKey,
+          // Only shows itself when Cloudflare wants a click.
+          appearance: 'interaction-only',
           callback: (token) => onTokenRef.current(token),
           'expired-callback': () => onTokenRef.current(''),
           'error-callback': () => {
@@ -86,5 +89,5 @@ export const TurnstileWidget = ({
     }
   }, [siteKey])
 
-  return <div ref={container} className="min-h-[65px]" />
+  return <div ref={container} />
 }

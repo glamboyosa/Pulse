@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { passesTurnstile } from '@/server/turnstile'
 
@@ -6,6 +6,10 @@ const cloudflare = (result: unknown, status = 200) =>
   vi.fn().mockResolvedValue(Response.json(result, { status }))
 
 describe('passesTurnstile', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
   it('is off without a secret, so local dev and E2E runs need no keys', async () => {
     const fetcher = cloudflare({ success: false })
     expect(

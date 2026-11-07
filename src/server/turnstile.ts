@@ -14,7 +14,11 @@ export const passesTurnstile = async (
   fetcher: typeof fetch = fetch,
 ): Promise<boolean> => {
   if (!secret) return true
-  if (!token) return false
+  const failed = (reason: string) => {
+    console.warn(JSON.stringify({ event: 'bot_check_failed', reason, ip }))
+    return false
+  }
+  if (!token) return failed('no_token')
   try {
     const response = await fetcher(VERIFY_URL, {
       method: 'POST',
@@ -25,11 +29,11 @@ export const passesTurnstile = async (
       }),
       signal: AbortSignal.timeout(5000),
     })
-    if (!response.ok) return false
+    if (!response.ok) return failed(`cloudflare_${response.status}`)
     const result = (await response.json()) as { success?: unknown }
-    return result.success === true
+    return result.success === true || failed('rejected')
   } catch (error) {
     console.error('[turnstile] verification request failed', error)
-    return false
+    return failed('unreachable')
   }
 }

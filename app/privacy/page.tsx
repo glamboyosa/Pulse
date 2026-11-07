@@ -14,6 +14,10 @@ const SUBPROCESSORS = [
     'Translates, summarises and tags feedback, and writes weekly digests',
   ],
   ['Resend', 'Sends login codes, alerts, digests and replies'],
+  [
+    'Cloudflare Turnstile',
+    'Checks that logins and feedback come from a person, not a bot',
+  ],
   ['Polar', 'Takes payments for pulses, as merchant of record'],
 ] as const
 
@@ -107,6 +111,10 @@ export default function PrivacyPage() {
           </li>
           <li>Reply addresses: until a day after the reply, or 90 days.</li>
           <li>Login codes: they stop working after 10 minutes.</li>
+          <li>
+            Security logs (a failed bot check or a hit rate limit, with the IP
+            address): kept by our host for a short time to spot abuse.
+          </li>
           <li>
             Deleted data can remain in our providers&apos; backups for up to 30
             days.
