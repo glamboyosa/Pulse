@@ -12,6 +12,9 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from '@/components/ui/input-otp'
+import { TurnstileWidget } from '@/components/turnstile-widget'
+
+const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 type LoginStep = 'email' | 'otp'
 
@@ -21,6 +24,10 @@ export function LoginForm() {
   const [otpCode, setOtpCode] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  // Each token works once, so a fresh widget follows every attempt.
+  const [turnstileKey, setTurnstileKey] = useState(0)
+  const [turnstileFailed, setTurnstileFailed] = useState(false)
   const [loginState, loginFormAction, isPending] = useActionState(
     loginAction,
     undefined,
@@ -42,7 +49,7 @@ export function LoginForm() {
       const response = await fetch('/api/auth/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, turnstileToken }),
       })
       const data: { success?: boolean; error?: string } = await response
         .json()
@@ -57,6 +64,8 @@ export function LoginForm() {
       setError('An error occurred. Please try again.')
     } finally {
       setIsLoading(false)
+      setTurnstileToken('')
+      setTurnstileKey((key) => key + 1)
     }
   }
 
@@ -170,6 +179,37 @@ export function LoginForm() {
             />
           </div>
 
+          {turnstileSiteKey && (
+            <TurnstileWidget
+              key={turnstileKey}
+              siteKey={turnstileSiteKey}
+              onToken={(token) => {
+                setTurnstileToken(token)
+                if (token) setTurnstileFailed(false)
+              }}
+              onError={() => setTurnstileFailed(true)}
+            />
+          )}
+
+          {turnstileFailed && (
+            <div className="bg-destructive/10 border-2 border-destructive p-4 space-y-2">
+              <p className="font-bold text-sm">
+                We couldn&apos;t run the check that stops bots. If you use an ad
+                or tracker blocker, allow this page, then try again.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setTurnstileFailed(false)
+                  setTurnstileKey((key) => key + 1)
+                }}
+              >
+                Try again
+              </Button>
+            </div>
+          )}
+
           {error && (
             <div className="bg-destructive/10 border-2 border-destructive text-destructive-foreground p-4">
               <p className="font-bold text-sm">{error}</p>
@@ -178,10 +218,14 @@ export function LoginForm() {
 
           <Button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || (!!turnstileSiteKey && !turnstileToken)}
             className="w-full text-lg font-bold border-2 border-foreground shadow-brutal hover:shadow-brutal-lg hover:translate-x-[-2px] hover:translate-y-[-2px] transition-[transform,box-shadow,background-color]"
           >
-            {isLoading ? 'SENDING CODE…' : 'SEND LOGIN CODE'}
+            {isLoading
+              ? 'SENDING CODE…'
+              : turnstileSiteKey && !turnstileToken && !turnstileFailed
+                ? 'CHECKING YOU’RE HUMAN…'
+                : 'SEND LOGIN CODE'}
           </Button>
         </div>
       </div>

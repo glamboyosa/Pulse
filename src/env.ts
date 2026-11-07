@@ -25,11 +25,14 @@ export const env = createEnv({
     CLOUDFLARE_SECRET_ACCESS_KEY: z.string().min(1).optional(),
     CLOUDFLARE_R2_BUCKET_NAME: z.string().min(1).optional(),
     SESSION_SECRET: z.string().min(32).optional(),
+    // Cloudflare Turnstile on the login form. Without it the check is off.
+    TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
   },
 
   client: {
     NEXT_PUBLIC_APP_TITLE: z.string().min(1).optional(),
     NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
   },
 
   runtimeEnv: {
@@ -54,8 +57,10 @@ export const env = createEnv({
     CLOUDFLARE_SECRET_ACCESS_KEY: process.env.CLOUDFLARE_SECRET_ACCESS_KEY,
     CLOUDFLARE_R2_BUCKET_NAME: process.env.CLOUDFLARE_R2_BUCKET_NAME,
     SESSION_SECRET: process.env.SESSION_SECRET,
+    TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
     NEXT_PUBLIC_APP_TITLE: process.env.NEXT_PUBLIC_APP_TITLE,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
   },
 
   emptyStringAsUndefined: true,

@@ -46,6 +46,7 @@ import {
   refreshDigest,
 } from '@/server/digest'
 import { RateLimitError, clientIp, enforceRateLimit } from '@/server/rate-limit'
+import { passesTurnstile } from '@/server/turnstile'
 
 const HOUR_MS = 60 * 60 * 1000
 const json = (status: number, body: unknown) =>
@@ -74,7 +75,15 @@ const app = new Elysia({ prefix: '/api' })
   })
   .post(
     '/auth/send-otp',
-    async ({ body, request }) => {
+    async ({ body, request, set }) => {
+      // Before the rate limits, so bots can't use up a real person's quota.
+      if (!(await passesTurnstile(body.turnstileToken, clientIp(request)))) {
+        set.status = 400
+        return {
+          success: false,
+          error: "We couldn't check you're human. Please try again.",
+        }
+      }
       const email = body.email.toLowerCase()
       await enforceRateLimit(`otp:email:${email}`, 5, HOUR_MS)
       await enforceRateLimit(`otp:ip:${clientIp(request)}`, 10, HOUR_MS)
@@ -97,7 +106,12 @@ const app = new Elysia({ prefix: '/api' })
       }
       return { success: true, message: 'OTP sent to your email' }
     },
-    { body: t.Object({ email: t.String({ format: 'email' }) }) },
+    {
+      body: t.Object({
+        email: t.String({ format: 'email' }),
+        turnstileToken: t.Optional(t.String()),
+      }),
+    },
   )
   // Public: whether a business's feedback page should take a recording.
   .get('/businesses/:code/status', async ({ params }) => {

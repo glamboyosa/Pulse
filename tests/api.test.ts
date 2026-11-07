@@ -52,6 +52,11 @@ vi.mock('@/lib/email/low-pulse', () => ({
   sendLowPulseEmail: vi.fn().mockResolvedValue(undefined),
 }))
 
+// Cloudflare's answer, faked: the token 'bot' fails, anything else passes.
+vi.mock('@/server/turnstile', () => ({
+  passesTurnstile: vi.fn((token?: string) => Promise.resolve(token !== 'bot')),
+}))
+
 const polar = vi.hoisted(() => ({ create: vi.fn() }))
 vi.mock('@polar-sh/sdk', () => ({
   Polar: vi
@@ -435,6 +440,16 @@ describe('login codes', () => {
     const ttl = row.expiresAt.getTime() - row.createdAt.getTime()
     expect(ttl).toBeGreaterThan(9.9 * 60_000)
     expect(ttl).toBeLessThan(10.1 * 60_000)
+  })
+
+  it('sends no code when the Turnstile check fails', async () => {
+    const response = await postJson('/auth/send-otp', {
+      email: 'bot@example.test',
+      turnstileToken: 'bot',
+    })
+    expect(response.status).toBe(400)
+    expect(sentOtps).toHaveLength(0)
+    expect(await db.select().from(otpCodes)).toHaveLength(0)
   })
 
   it('limits how many codes one email can request', async () => {

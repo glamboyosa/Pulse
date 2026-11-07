@@ -76,6 +76,7 @@ All are read and validated in `src/env.ts`. `.env.example` lists them with place
 | `POLAR_SANDBOX_API_TOKEN`, `POLAR_SANDBOX_WEBHOOK_SECRET` | Payments in the Polar sandbox |
 | `CRON_SECRET` | The weekly digest and retention crons. Without it both cron routes answer 401 |
 | `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_APP_TITLE` | Fallbacks for client-side links and the page title |
+| `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile bot check before a login code is sent. Without them the check is off |
 
 ## Tests
 
