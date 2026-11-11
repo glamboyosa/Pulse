@@ -20,7 +20,8 @@ export default async function EmbedPage({
 
   return (
     <main className="min-h-dvh bg-secondary p-4">
-      <h1 className="mb-4 text-2xl font-black text-balance">
+      {/* Right padding clears the close button the widget draws over the frame. */}
+      <h1 className="mb-4 pr-12 text-2xl font-black text-balance">
         {branding.question ?? 'How are we doing?'}
       </h1>
       <FeedbackForm

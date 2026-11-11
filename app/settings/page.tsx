@@ -6,9 +6,12 @@ import { eq } from 'drizzle-orm'
 import { getCurrentUser } from '../actions/auth'
 import { AccountData } from '@/components/account-data'
 import { BrandingForm } from '@/components/branding-form'
+import { WidgetSettings } from '@/components/widget-settings'
 import { db } from '@/db/index'
 import { users } from '@/db/schema'
 import { brandingFor } from '@/server/branding'
+import { widgetSettings } from '@/server/widget'
+import { env } from '@/env'
 
 export default async function SettingsPage() {
   const user = await getCurrentUser()
@@ -55,6 +58,12 @@ export default async function SettingsPage() {
               : null
           }
         />
+        <div className="mt-10">
+          <WidgetSettings
+            initial={await widgetSettings(user.id)}
+            appUrl={env.SERVER_URL ?? 'https://www.pulseapp.click'}
+          />
+        </div>
         <div className="mt-10">
           <AccountData confirmWord={user.uniqueCode ?? 'DELETE'} />
         </div>

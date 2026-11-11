@@ -155,9 +155,19 @@ export function FeedbackForm({
         setWidgetContext('')
       }
     }
+    // Escape inside the widget never reaches the host page, so pass it on.
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        window.parent.postMessage({ type: 'pulse:close' }, '*')
+      }
+    }
     window.addEventListener('message', receive)
+    window.addEventListener('keydown', escape)
     window.parent.postMessage({ type: 'pulse:ready' }, '*')
-    return () => window.removeEventListener('message', receive)
+    return () => {
+      window.removeEventListener('message', receive)
+      window.removeEventListener('keydown', escape)
+    }
   }, [widget])
 
   useEffect(() => {
