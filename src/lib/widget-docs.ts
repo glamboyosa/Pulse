@@ -62,7 +62,7 @@ export const widgetDocs = (appUrl: string): Array<DocSection> => [
         items: [
           '`data-label`: the button text, up to 40 characters. Default "Feedback".',
           '`data-shape`: `pill` (default), `square`, `circle` (a microphone icon, with the label read out by screen readers) or `bubble`.',
-          "`data-color`: `auto` (default) is black or white, following the light or dark mode set on the visitor's device. Any CSS colour also works, and the text turns black or white to stay readable.",
+          '`data-color`: `auto` (default) is black or white, whichever stands out against the page background, read from `<html>`, `<body>` or a full-page wrapper. It switches when your site changes theme on `<html>` or `<body>`. Any CSS colour also works, and the text turns black or white to stay readable.',
           '`data-position`: `right` (default) or `left`.',
           '`data-heading`: the title above the recorder, up to 120 characters. Default: the question from your feedback page settings.',
         ],

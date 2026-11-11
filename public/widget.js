@@ -6,7 +6,7 @@
  * Optional attributes:
  *   data-label     button text (default "Feedback")
  *   data-shape     "pill" (default), "square", "circle" (icon only) or "bubble"
- *   data-color     any CSS colour, or "auto" to follow light/dark mode (default)
+ *   data-color     any CSS colour, or "auto" to contrast with the page (default)
  *   data-position  "right" (default) or "left"
  *   data-heading   the panel's title (default: your question in Pulse settings)
  *
@@ -65,9 +65,69 @@
     return luminance > 0.6 ? '#111111' : '#ffffff'
   }
 
+  var auto = !colorOption || colorOption === 'auto'
+  var canvas = null
+
+  // Sites often have their own theme switch, so look at the colour behind the
+  // button rather than the device setting. Each background from there up to
+  // <html> is blended on a 1×1 canvas, which also turns oklch() and P3 into
+  // plain RGB. Underneath is the browser's own canvas: white, unless the site
+  // opts into dark with color-scheme and the device is in dark mode.
+  var pageIsDark = function () {
+    var rect = button.isConnected ? button.getBoundingClientRect() : null
+    var x = rect
+      ? rect.left + rect.width / 2
+      : side === 'right'
+        ? window.innerWidth - 40
+        : 40
+    var y = rect ? rect.top + rect.height / 2 : window.innerHeight - 40
+    var under = document.elementsFromPoint
+      ? document.elementsFromPoint(x, y)
+      : []
+    var start = document.body
+    for (var i = 0; i < under.length; i++) {
+      if (!button.contains(under[i]) && !(panel && panel.contains(under[i]))) {
+        start = under[i]
+        break
+      }
+    }
+    // Only page-wide backgrounds count: a dark hero, card or banner that
+    // happens to sit in the corner is not the page's theme.
+    var pageHeight = document.documentElement.scrollHeight * 0.9
+    var layers = []
+    for (var el = start; el; el = el.parentElement) {
+      var pageWide =
+        el === document.body ||
+        el === document.documentElement ||
+        (el.offsetWidth >= window.innerWidth * 0.9 &&
+          el.offsetHeight >= pageHeight)
+      if (pageWide) layers.push(getComputedStyle(el).backgroundColor)
+    }
+    canvas = canvas || document.createElement('canvas')
+    canvas.width = canvas.height = 1
+    var pen = canvas.getContext('2d', { willReadFrequently: true })
+    var meta = document.querySelector('meta[name="color-scheme"]')
+    var scheme =
+      getComputedStyle(document.documentElement).colorScheme +
+      ' ' +
+      (meta ? meta.content : '')
+    var darkCanvas =
+      /dark/.test(scheme) && (!/light/.test(scheme) || (dark && dark.matches))
+    pen.fillStyle = darkCanvas ? '#121212' : '#ffffff'
+    pen.fillRect(0, 0, 1, 1)
+    for (var j = layers.length - 1; j >= 0; j--) {
+      // A colour the canvas can't parse is ignored and paints nothing.
+      pen.fillStyle = 'transparent'
+      pen.fillStyle = layers[j]
+      pen.fillRect(0, 0, 1, 1)
+    }
+    var pixel = pen.getImageData(0, 0, 1, 1).data
+    return (0.299 * pixel[0] + 0.587 * pixel[1] + 0.114 * pixel[2]) / 255 < 0.5
+  }
+
   var colors = function () {
-    if (!colorOption || colorOption === 'auto') {
-      return dark && dark.matches
+    if (auto) {
+      return pageIsDark()
         ? { fill: '#ffffff', text: '#111111', edge: '#ffffff' }
         : { fill: '#111111', text: '#ffffff', edge: '#111111' }
     }
@@ -109,9 +169,10 @@
     button.textContent = label
   }
 
+  var painted = ''
   var paint = function () {
     var c = colors()
-    button.style.cssText =
+    var css =
       reset +
       'position:fixed;bottom:20px;top:auto;' +
       side +
@@ -127,8 +188,44 @@
       'box-shadow:3px 3px 0 ' +
       (c.edge === '#ffffff' ? 'rgba(255,255,255,.35)' : '#111') +
       ';cursor:pointer'
+    if (css === painted) return
+    button.style.cssText = css
+    painted = css
   }
-  if (dark && dark.addEventListener) dark.addEventListener('change', paint)
+
+  var queued = false
+  var repaint = function () {
+    if (queued) return
+    queued = true
+    requestAnimationFrame(function () {
+      queued = false
+      paint()
+    })
+  }
+
+  // With auto colours, repaint when the site switches theme on <html> or
+  // <body>, when a background transition ends, and once late stylesheets load.
+  var themeWatcher = new MutationObserver(repaint)
+  var themeAttributes = {
+    attributes: true,
+    attributeFilter: ['class', 'style', 'data-theme', 'data-mode'],
+  }
+  var watchTheme = function () {
+    if (!auto) return
+    themeWatcher.observe(document.documentElement, themeAttributes)
+    themeWatcher.observe(document.body, themeAttributes)
+  }
+  if (auto) {
+    if (dark && dark.addEventListener) dark.addEventListener('change', repaint)
+    window.addEventListener('load', repaint)
+    document.addEventListener(
+      'transitionend',
+      function (event) {
+        if (/^background/.test(event.propertyName)) repaint()
+      },
+      true,
+    )
+  }
 
   var text = function (value) {
     if (value === undefined || value === null) return undefined
@@ -284,7 +381,10 @@
 
   var mount = function () {
     paint()
+    watchTheme()
     document.body.appendChild(button)
+    // The first paint guessed the corner; now read what is behind the button.
+    repaint()
     // Some routers (Astro view transitions, Turbo) replace <body>: put the
     // button back on the new one. A panel left on the old body is gone.
     new MutationObserver(function () {
@@ -292,6 +392,8 @@
       if (panel && !panel.isConnected) panel = frame = null
       button.setAttribute('aria-expanded', String(!!panel))
       document.body.appendChild(button)
+      watchTheme()
+      repaint()
     }).observe(document.documentElement, { childList: true })
     // Run calls queued before this script loaded, then accept new ones directly.
     var queue = Array.isArray(window.PulseQueue) ? window.PulseQueue : []

@@ -139,3 +139,147 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
     host.server.close()
   }
 })
+
+const BLACK = 'rgb(17, 17, 17)'
+const WHITE = 'rgb(255, 255, 255)'
+
+// A host site whose stylesheet arrives late, after the widget has run.
+const serveThemedSite = (css: string, body = '<h1>Host app</h1>') =>
+  new Promise<{ server: Server; origin: string }>((resolve, reject) => {
+    const server = createServer((request, response) => {
+      if (request.url === '/site.css') {
+        setTimeout(() => {
+          response.writeHead(200, { 'content-type': 'text/css' })
+          response.end(css)
+        }, 1500)
+        return
+      }
+      response.writeHead(200, { 'content-type': 'text/html' })
+      response.end(`<!doctype html><title>Themed</title>
+        <link rel="stylesheet" href="/site.css">
+        ${body}
+        <script src="${test.info().project.use.baseURL}/widget.js" data-key="pk_theme_test" async></script>`)
+    })
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address() as AddressInfo
+      resolve({ server, origin: `http://localhost:${port}` })
+    })
+  })
+
+test('the default button contrasts with the page when the site has its own theme switch', async ({
+  page,
+}) => {
+  const host = await serveThemedSite(`
+    :root { background: oklch(1 0 0) }
+    :root[data-theme='dark'] { background: oklch(0.2 0 0) }`)
+  try {
+    // The device says dark, but the site starts in its own light theme.
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await page.goto(host.origin)
+    const button = page.getByRole('button', { name: 'Feedback' })
+    await expect(button).toHaveCSS('background-color', BLACK)
+
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = 'dark'
+    })
+    await expect(button).toHaveCSS('background-color', WHITE)
+
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = 'light'
+    })
+    await expect(button).toHaveCSS('background-color', BLACK)
+  } finally {
+    host.server.close()
+  }
+})
+
+test('the default button reads faint tints, wrapper backgrounds and unpainted pages', async ({
+  page,
+}) => {
+  const sites = [
+    // A faint grey tint over the white canvas is still a light page.
+    {
+      css: 'body { background: rgba(0, 0, 0, 0.04) }',
+      device: 'dark',
+      expected: BLACK,
+    },
+    // The page paints a full-height wrapper, not <body>.
+    {
+      css: '#root { min-height: 100vh; background: #0a0a0a }',
+      body: '<div id="root"><h1>Host app</h1></div>',
+      device: 'light',
+      expected: WHITE,
+    },
+    // A dark hero in the corner at load is not the theme of a light page.
+    {
+      css: 'body { margin: 0; background: #fff } .hero { height: 100vh; background: #000 } .rest { height: 300vh }',
+      body: '<div class="hero"></div><div class="rest"></div>',
+      device: 'light',
+      expected: BLACK,
+    },
+    // Nothing painted: the browser's canvas is white unless the site opts
+    // into dark mode with color-scheme.
+    { css: '', device: 'dark', expected: BLACK },
+    {
+      css: ':root { color-scheme: light dark }',
+      device: 'dark',
+      expected: WHITE,
+    },
+    {
+      css: ':root { color-scheme: light dark }',
+      device: 'light',
+      expected: BLACK,
+    },
+  ] as const
+  for (const site of sites) {
+    const host = await serveThemedSite(
+      site.css,
+      'body' in site ? site.body : undefined,
+    )
+    try {
+      await page.emulateMedia({ colorScheme: site.device })
+      await page.goto(host.origin)
+      await expect(page.getByRole('button', { name: 'Feedback' })).toHaveCSS(
+        'background-color',
+        site.expected,
+      )
+    } finally {
+      host.server.close()
+    }
+  }
+})
+
+test('the icon-only button ignores its own colour when reading the page', async ({
+  page,
+}) => {
+  const host = await serveSite(
+    () => `<!doctype html><title>Circle</title><style>body { background: #fff }</style>
+      <script src="${test.info().project.use.baseURL}/widget.js" data-key="pk_theme_test" data-shape="circle" async></script>`,
+  )
+  try {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.goto(host.origin)
+    const button = page.getByRole('button', { name: 'Feedback' })
+    const settle = () =>
+      page.evaluate(
+        () =>
+          new Promise((done) =>
+            requestAnimationFrame(() => requestAnimationFrame(done)),
+          ),
+      )
+    // Each repaint must keep it black, not flip it.
+    for (const name of ['first', 'second']) {
+      await settle()
+      await expect(button).toHaveCSS('background-color', BLACK)
+      await page.evaluate(
+        (className) => document.body.classList.add(className),
+        name,
+      )
+    }
+    await settle()
+    await expect(button).toHaveCSS('background-color', BLACK)
+  } finally {
+    host.server.close()
+  }
+})
