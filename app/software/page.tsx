@@ -200,6 +200,15 @@ export default async function SoftwarePage() {
             <pre className="mt-10 overflow-x-auto rounded-lg border-2 border-foreground bg-card p-5 text-sm shadow-brutal">
               <code>{SNIPPET}</code>
             </pre>
+            <p className="mt-4 font-semibold">
+              <Link
+                href="/docs/widget"
+                className="font-bold underline underline-offset-4"
+              >
+                Read the install guide
+              </Link>{' '}
+              for Next.js, React, Astro, Vue, WordPress and more.
+            </p>
           </div>
         </section>
 
@@ -269,6 +278,9 @@ export default async function SoftwarePage() {
           <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2">
             <Link href="/" className="hover:underline">
               For restaurants and shops
+            </Link>
+            <Link href="/docs/widget" className="hover:underline">
+              Widget guide
             </Link>
             <Link href="/privacy" className="hover:underline">
               Privacy

@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Copy, Mic } from 'lucide-react'
+import { Mic } from 'lucide-react'
 
 import type {
   Framework,
   WidgetOptions,
   WidgetShape,
 } from '@/lib/widget-snippet'
-import { Button } from '@/components/ui/button'
+import { CopyButton } from '@/components/copy-button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -103,25 +103,12 @@ export function WidgetInstall({
 }) {
   const [options, setOptions] = useState(DEFAULT_WIDGET_OPTIONS)
   const [framework, setFramework] = useState<Framework>('html')
-  const [copied, setCopied] = useState(false)
-  const [copyFailed, setCopyFailed] = useState(false)
   const set = <TKey extends keyof WidgetOptions>(
     name: TKey,
     value: WidgetOptions[TKey],
   ) => setOptions((current) => ({ ...current, [name]: value }))
 
   const code = frameworkExample(framework, appUrl, widgetKey, options)
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(code)
-      setCopyFailed(false)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      setCopyFailed(true)
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -264,30 +251,11 @@ export function WidgetInstall({
             </button>
           ))}
         </div>
-        <pre
-          aria-label="Install code"
-          className="max-h-96 overflow-auto border-2 border-foreground bg-secondary p-3 text-sm"
-        >
+        <pre className="max-h-96 overflow-auto border-2 border-foreground bg-secondary p-3 text-sm">
           <code>{code}</code>
         </pre>
         <div className="flex flex-wrap items-center gap-4">
-          <Button
-            variant="outline"
-            onClick={copy}
-            className="active:scale-[0.96] transition-transform"
-          >
-            <span className="relative size-4">
-              <Copy
-                aria-hidden="true"
-                className={`absolute inset-0 size-4 transition-[opacity,transform] duration-150 ${copied ? 'scale-50 opacity-0' : 'scale-100 opacity-100'}`}
-              />
-              <Check
-                aria-hidden="true"
-                className={`absolute inset-0 size-4 transition-[opacity,transform] duration-150 ${copied ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`}
-              />
-            </span>
-            <span aria-live="polite">{copied ? 'Copied' : 'Copy code'}</span>
-          </Button>
+          <CopyButton text={code} />
           <a
             href="/docs/widget"
             className="font-bold underline underline-offset-4"
@@ -295,11 +263,6 @@ export function WidgetInstall({
             Full guide
           </a>
         </div>
-        {copyFailed && (
-          <p role="alert" className="font-bold text-destructive">
-            Couldn&apos;t copy here. Select the code and copy it instead.
-          </p>
-        )}
       </div>
     </div>
   )

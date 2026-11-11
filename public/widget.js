@@ -99,6 +99,7 @@
 
   var button = document.createElement('button')
   button.type = 'button'
+  button.setAttribute('data-turbo-temporary', '')
   button.setAttribute('aria-haspopup', 'dialog')
   button.setAttribute('aria-expanded', 'false')
   if (shape === 'circle') {
@@ -186,6 +187,7 @@
   var build = function () {
     panel = document.createElement('div')
     panel.setAttribute('role', 'dialog')
+    panel.setAttribute('data-turbo-temporary', '')
     panel.setAttribute('aria-label', heading || label)
     var narrow = window.innerWidth < 480
     panel.style.cssText =
