@@ -36,9 +36,10 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
   const code = `e2e-widget-${Date.now()}`
   let snippet = ''
   const host = await serveSite(
-    () => `<!doctype html><title>Billing</title><h1>Host app</h1>${snippet}
+    () => `<!doctype html><title>Billing</title><h1>Host app</h1>
+      <script>window.PulseQueue = [['identify', { id: 'user-42' }]]</script>
+      ${snippet}
       <script>addEventListener('load', () => {
-        Pulse.identify({ id: 'user-42' })
         Pulse.setContext({ appVersion: '3.1.0', plan: 'pro' })
       })</script>`,
   )
@@ -61,6 +62,11 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
       await sites.fill(host.origin)
       await page.getByRole('button', { name: 'Save websites' }).click()
       await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible()
+      await page.getByRole('button', { name: 'Ask a question' }).click()
+      await page.getByLabel('Panel title').fill('What went wrong?')
+      await expect(page.locator('pre code')).toContainText(
+        'data-label="Ask a question"',
+      )
     })
     snippet = await page.locator('pre code').innerText()
 
@@ -69,9 +75,21 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
       const { baseURL: _baseURL, ...device } = testInfo.project.use
       const visitor = await browser.newContext(device)
       const site = await customerWithVoice(visitor)
-      await site.goto(`${host.origin}/billing?token=secret`)
-      await site.getByRole('button', { name: 'Feedback', exact: true }).click()
-      const widget = site.frameLocator('iframe[title="Leave feedback"]')
+      await site.goto(`${host.origin}/start`)
+      // A single-page app changes route and swaps <body>, like Turbo does.
+      await site.getByRole('button', { name: 'Ask a question' }).waitFor()
+      await site.evaluate(() => {
+        document.body.replaceWith(document.createElement('body'))
+      })
+      await site.getByRole('button', { name: 'Ask a question' }).click()
+      const widget = site.frameLocator('iframe[title="What went wrong?"]')
+      await expect(
+        widget.getByRole('heading', { name: 'What went wrong?' }),
+      ).toBeVisible()
+      // The route changes while the panel is open: the note gets the new page.
+      await site.evaluate(() => {
+        history.pushState({}, '', '/billing?token=secret')
+      })
       await widget.getByRole('button', { name: 'START RECORDING' }).click()
       await site.waitForTimeout(6000)
       await widget.getByRole('button', { name: 'STOP' }).click()
@@ -83,7 +101,7 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
       // Escape inside the widget closes it on the host page.
       await widget.getByText('THANK YOU!').press('Escape')
       await expect(
-        site.getByRole('button', { name: 'Feedback', exact: true }),
+        site.getByRole('button', { name: 'Ask a question' }),
       ).toHaveAttribute('aria-expanded', 'false')
       await visitor.close()
     })

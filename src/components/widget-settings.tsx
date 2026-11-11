@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, Copy } from 'lucide-react'
 
 import type { WidgetSettings as Settings } from '@/server/widget'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { WidgetInstall } from '@/components/widget-install'
 
 const readError = async (response: Response | null) =>
   response
@@ -25,7 +25,6 @@ export function WidgetSettings({
   const [key, setKey] = useState(initial.key)
   const [sites, setSites] = useState(initial.origins.join('\n'))
   const [saved, setSaved] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const card = useRef<HTMLDivElement>(null)
@@ -36,10 +35,6 @@ export function WidgetSettings({
       card.current?.scrollIntoView({ block: 'start' })
     }
   }, [])
-
-  const snippet = key
-    ? `<script src="${appUrl}/widget.js" data-key="${key}" async></script>`
-    : ''
 
   const request = async (method: string, path: string, body?: unknown) => {
     setBusy(true)
@@ -88,16 +83,6 @@ export function WidgetSettings({
     }
   }
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(snippet)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      setError("Couldn't copy here. Select the snippet and copy it instead.")
-    }
-  }
-
   return (
     <Card
       ref={card}
@@ -117,26 +102,9 @@ export function WidgetSettings({
         </Button>
       ) : (
         <>
-          <div className="space-y-2">
-            <Label className="font-bold">
-              1. Paste this before &lt;/body&gt; on your site
-            </Label>
-            <pre className="overflow-x-auto border-2 border-foreground bg-secondary p-3 text-sm">
-              <code>{snippet}</code>
-            </pre>
-            <Button variant="outline" onClick={copy}>
-              {copied ? (
-                <Check className="size-4" />
-              ) : (
-                <Copy className="size-4" />
-              )}
-              {copied ? 'Copied' : 'Copy snippet'}
-            </Button>
-          </div>
-
           <form onSubmit={saveSites} className="space-y-2">
             <Label htmlFor="widget-sites" className="font-bold">
-              2. Websites allowed to show it, one per line
+              1. Websites allowed to show it, one per line
             </Label>
             <textarea
               id="widget-sites"
@@ -163,6 +131,8 @@ export function WidgetSettings({
               {saved ? 'Saved' : 'Save websites'}
             </Button>
           </form>
+
+          <WidgetInstall widgetKey={key} appUrl={appUrl} />
 
           <div className="flex flex-wrap gap-3 border-t-2 border-foreground pt-4">
             <Button variant="outline" onClick={replaceKey} disabled={busy}>
