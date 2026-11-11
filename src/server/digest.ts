@@ -114,7 +114,7 @@ ${lines.join('\n')}`,
 }
 
 /** A claim older than this belongs to a run that died, e.g. at its time limit. */
-const STALE_CLAIM = sql`interval '15 minutes'`
+const STALE_CLAIM_MS = 15 * 60 * 1000
 /** Owners written in parallel, so a run fits Vercel's time limit. */
 const CONCURRENCY = 5
 
@@ -136,7 +136,7 @@ const sendDigestTo = async (
         // refreshed during the week covered part of it, so it is rewritten.
         content: sql`case when ${weeklyDigests.sendingAt} is null then null else ${weeklyDigests.content} end`,
       },
-      setWhere: sql`${weeklyDigests.emailedAt} is null and (${weeklyDigests.sendingAt} is null or ${weeklyDigests.sendingAt} < now() - ${STALE_CLAIM})`,
+      setWhere: sql`${weeklyDigests.emailedAt} is null and (${weeklyDigests.sendingAt} is null or ${weeklyDigests.sendingAt} < ${new Date(now.getTime() - STALE_CLAIM_MS).toISOString()}::timestamp)`,
     })
     .returning({ id: weeklyDigests.id, content: weeklyDigests.content })
   const claim = claimed.at(0)

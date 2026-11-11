@@ -598,6 +598,94 @@ describe('spots API', () => {
   })
 })
 
+describe('website widget settings', () => {
+  const call = async (
+    handler: typeof POST,
+    method: string,
+    path: string,
+    cookie?: string,
+    body?: unknown,
+  ) =>
+    handler(
+      new Request(`${base}${path}`, {
+        method,
+        headers: {
+          'content-type': 'application/json',
+          ...(cookie ? { cookie } : {}),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      }),
+    )
+
+  it('need a session', async () => {
+    expect((await get('/settings/widget')).status).toBe(401)
+    expect((await call(POST, 'POST', '/settings/widget/key')).status).toBe(401)
+    expect(
+      (
+        await call(PUT, 'PUT', '/settings/widget/origins', undefined, {
+          origins: ['example.com'],
+        })
+      ).status,
+    ).toBe(401)
+  })
+
+  it('creates a key, replaces it, saves origins and turns off', async () => {
+    const owner = await createBusiness()
+    const cookie = await sessionCookie(owner)
+    expect(await (await get('/settings/widget', cookie)).json()).toEqual({
+      key: null,
+      origins: [],
+    })
+
+    const { key } = (await (
+      await call(POST, 'POST', '/settings/widget/key', cookie)
+    ).json()) as { key: string }
+    expect(key).toMatch(/^pk_[A-Za-z0-9_-]{24}$/)
+    const { key: replaced } = (await (
+      await call(POST, 'POST', '/settings/widget/key', cookie)
+    ).json()) as { key: string }
+    expect(replaced).not.toBe(key)
+
+    const saved = await call(PUT, 'PUT', '/settings/widget/origins', cookie, {
+      origins: ['conclave.click', 'https://conclave.click/app', ''],
+    })
+    expect(await saved.json()).toEqual({ origins: ['https://conclave.click'] })
+
+    await call(DELETE, 'DELETE', '/settings/widget/key', cookie)
+    expect(await (await get('/settings/widget', cookie)).json()).toEqual({
+      key: null,
+      origins: ['https://conclave.click'],
+    })
+  })
+
+  it('refuses more than 10 websites', async () => {
+    const owner = await createBusiness()
+    const response = await call(
+      PUT,
+      'PUT',
+      '/settings/widget/origins',
+      await sessionCookie(owner),
+      { origins: Array.from({ length: 11 }, (_, i) => `site${i}.example.com`) },
+    )
+    expect(response.status).toBe(400)
+  })
+
+  it('explains an address it refuses', async () => {
+    const owner = await createBusiness()
+    const response = await call(
+      PUT,
+      'PUT',
+      '/settings/widget/origins',
+      await sessionCookie(owner),
+      { origins: ['http://example.com'] },
+    )
+    expect(response.status).toBe(400)
+    expect(((await response.json()) as { error: string }).error).toMatch(
+      /https/,
+    )
+  })
+})
+
 describe('feedback page settings', () => {
   it('need a session', async () => {
     const put = await PUT(

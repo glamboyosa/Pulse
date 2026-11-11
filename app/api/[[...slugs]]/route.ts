@@ -47,6 +47,13 @@ import {
 } from '@/server/digest'
 import { RateLimitError, clientIp, enforceRateLimit } from '@/server/rate-limit'
 import { passesTurnstile } from '@/server/turnstile'
+import {
+  WidgetError,
+  createWidgetKey,
+  removeWidgetKey,
+  setWidgetOrigins,
+  widgetSettings,
+} from '@/server/widget'
 
 const HOUR_MS = 60 * 60 * 1000
 const json = (status: number, body: unknown) =>
@@ -69,6 +76,10 @@ const app = new Elysia({ prefix: '/api' })
       return { error: error.message }
     }
     if (error instanceof BrandingError) {
+      set.status = error.status
+      return { error: error.message }
+    }
+    if (error instanceof WidgetError) {
       set.status = error.status
       return { error: error.message }
     }
@@ -341,6 +352,36 @@ const app = new Elysia({ prefix: '/api' })
       },
     })
   })
+  // The website widget: one public key, usable only from the listed origins.
+  .get('/settings/widget', async ({ request }) => {
+    const user = await getUserFromSession(request)
+    if (!user) return json(401, { error: 'Unauthorized' })
+    return widgetSettings(user.id)
+  })
+  .post('/settings/widget/key', async ({ request }) => {
+    const user = await getUserFromSession(request)
+    if (!user) return json(401, { error: 'Unauthorized' })
+    return { key: await createWidgetKey(user.id) }
+  })
+  .delete('/settings/widget/key', async ({ request }) => {
+    const user = await getUserFromSession(request)
+    if (!user) return json(401, { error: 'Unauthorized' })
+    await removeWidgetKey(user.id)
+    return { success: true }
+  })
+  .put(
+    '/settings/widget/origins',
+    async ({ body, request }) => {
+      const user = await getUserFromSession(request)
+      if (!user) return json(401, { error: 'Unauthorized' })
+      return { origins: await setWidgetOrigins(user.id, body.origins) }
+    },
+    {
+      body: t.Object({
+        origins: t.Array(t.String({ maxLength: 300 }), { maxItems: 50 }),
+      }),
+    },
+  )
   .put(
     '/settings/branding',
     async ({ body, request }) => {

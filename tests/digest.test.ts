@@ -179,13 +179,13 @@ describe('sendWeeklyDigests', () => {
     await db.insert(weeklyDigests).values({
       userId: owner.id,
       weekStart: '2026-11-02',
-      sendingAt: new Date(Date.now() - 5 * 60_000),
+      sendingAt: new Date(monday.getTime() - 5 * 60_000),
     })
     expect((await sendWeeklyDigests(monday)).skipped).toBe(1)
 
     await db
       .update(weeklyDigests)
-      .set({ sendingAt: new Date(Date.now() - 20 * 60_000) })
+      .set({ sendingAt: new Date(monday.getTime() - 20 * 60_000) })
       .where(eq(weeklyDigests.userId, owner.id))
     expect((await sendWeeklyDigests(monday)).sent).toBe(1)
   })
@@ -208,7 +208,7 @@ describe('sendWeeklyDigests', () => {
       userId: owner.id,
       weekStart: '2026-11-02',
       content: written,
-      sendingAt: new Date(Date.now() - 20 * 60_000),
+      sendingAt: new Date(monday.getTime() - 20 * 60_000),
     })
 
     await sendWeeklyDigests(monday)

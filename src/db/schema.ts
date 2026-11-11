@@ -28,6 +28,10 @@ export const users = pgTable('users', {
   logoKey: text('logo_key'),
   googleReviewUrl: text('google_review_url'),
   thankYouMessage: text('thank_you_message'),
+  // The website widget, off until the owner creates a key. The key is public;
+  // only pages on the listed origins may use it. See src/server/widget.ts.
+  widgetKey: text('widget_key').unique(),
+  widgetOrigins: text('widget_origins').array().default([]).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
