@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { WidgetError, parseOrigin } from '@/server/widget'
+import { WidgetError, parseOrigin, parseWidgetContext } from '@/server/widget'
 
 describe('parseOrigin', () => {
   it('turns what an owner types into an https origin', () => {
@@ -37,5 +37,73 @@ describe('parseOrigin', () => {
     'https://com.',
   ])('refuses %j', (input) => {
     expect(() => parseOrigin(input)).toThrow(WidgetError)
+  })
+})
+
+describe('parseWidgetContext', () => {
+  it('keeps known fields, trimmed and capped, and only the page path', () => {
+    const context = parseWidgetContext(
+      JSON.stringify({
+        page: 'https://conclave.click/memo/42?token=secret#notes',
+        title: '  Memo   42 ',
+        referrer: 'https://google.com/search?q=private',
+        browser: 'Firefox 140 on macOS',
+        appVersion: '1.4.0',
+        userEmail: 'person@example.test',
+        custom: { plan: 'pro', 'bad key!': 'x', empty: '  ' },
+        injected: '<script>',
+      }),
+    )
+    expect(context).toEqual({
+      page: '/memo/42',
+      title: 'Memo 42',
+      referrer: 'https://google.com',
+      browser: 'Firefox 140 on macOS',
+      appVersion: '1.4.0',
+      userEmail: 'person@example.test',
+      custom: { plan: 'pro' },
+    })
+  })
+
+  it('drops unsafe custom keys, arrays and non-string values', () => {
+    expect(
+      parseWidgetContext(
+        '{"custom":{"__proto__":"x","constructor":"y","plan":"pro"},"title":42}',
+      ),
+    ).toEqual({ custom: { plan: 'pro' } })
+    expect(
+      parseWidgetContext(JSON.stringify({ custom: ['a', 'b'] })),
+    ).toBeNull()
+  })
+
+  it('keeps a page only when it is a web address or path', () => {
+    expect(parseWidgetContext(JSON.stringify({ page: '/settings' }))).toEqual({
+      page: '/settings',
+    })
+    expect(
+      parseWidgetContext(JSON.stringify({ page: 'javascript:alert(1)' })),
+    ).toBeNull()
+  })
+
+  it('caps how many custom fields are kept', () => {
+    const custom = Object.fromEntries(
+      Array.from({ length: 15 }, (_, i) => [`field${i}`, 'value']),
+    )
+    expect(
+      Object.keys(parseWidgetContext(JSON.stringify({ custom }))?.custom ?? {}),
+    ).toHaveLength(10)
+  })
+
+  it.each([
+    undefined,
+    '',
+    'not json',
+    '[]',
+    '"a string"',
+    '{}',
+    JSON.stringify({ referrer: 'javascript:alert(1)' }),
+    'x'.repeat(5000),
+  ])('ignores %j', (raw) => {
+    expect(parseWidgetContext(raw)).toBeNull()
   })
 })

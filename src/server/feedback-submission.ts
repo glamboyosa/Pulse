@@ -1,5 +1,6 @@
 import { eq, sql } from 'drizzle-orm'
 
+import type { WidgetContext } from '@/server/widget'
 import { db } from '@/db/index'
 import { feedback } from '@/db/schema'
 import { transcribeAudioWithElevenLabs } from '@/lib/ai/elevenlabs'
@@ -94,7 +95,12 @@ export type SubmissionInput = {
   spot?: string | null
   /** An address the customer left for a reply, already validated. */
   contactEmail?: string | null
+  /** Set for notes left through the website widget. */
+  widget?: { context: WidgetContext | null }
 }
+
+const widgetFields = (widget?: { context: WidgetContext | null }) =>
+  widget ? { channel: 'widget', context: widget.context } : {}
 
 export const MIN_TYPED_LENGTH = 3
 export const MAX_TYPED_LENGTH = 2000
@@ -109,6 +115,7 @@ export const submitTypedFeedback = async (input: {
   customerName: string | null
   spot?: string | null
   contactEmail?: string | null
+  widget?: { context: WidgetContext | null }
 }): Promise<{ feedbackId: string; business: Business }> => {
   const text = input.text.trim()
   if (text.length < MIN_TYPED_LENGTH) {
@@ -136,6 +143,7 @@ export const submitTypedFeedback = async (input: {
       customerName: input.customerName,
       contactEmail: input.contactEmail ?? null,
       source: 'text',
+      ...widgetFields(input.widget),
       transcript: text,
       status: 'processing',
     })
@@ -181,6 +189,7 @@ export const submitFeedback = async (
       spotId: spot?.id ?? null,
       customerName: input.customerName,
       contactEmail: input.contactEmail ?? null,
+      ...widgetFields(input.widget),
       audioKey,
       duration: Math.min(
         MAX_RECORDING_SECONDS,

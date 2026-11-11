@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 import { db } from '@/db/index'
 import { users } from '@/db/schema'
@@ -105,3 +105,111 @@ export const setWidgetOrigins = async (
     .where(eq(users.id, userId))
   return origins
 }
+
+/**
+ * What the host website says about where a note was left. It comes from
+ * someone else's page, so every field is optional, capped and shown as text.
+ */
+export type WidgetContext = {
+  page?: string
+  title?: string
+  referrer?: string
+  browser?: string
+  screen?: string
+  language?: string
+  appVersion?: string
+  userId?: string
+  userEmail?: string
+  custom?: Record<string, string>
+}
+
+export const MAX_CONTEXT_LENGTH = 4096
+const MAX_CUSTOM_FIELDS = 10
+const CUSTOM_KEY = /^[\w.-]{1,40}$/
+// Safe as stored, but a later merge into an object could change its prototype.
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+
+const text = (value: unknown, max: number) =>
+  typeof value === 'string' && value.trim()
+    ? value.trim().replace(/\s+/g, ' ').slice(0, max)
+    : undefined
+
+/** Only the path: query strings and fragments often hold tokens. */
+const pathOf = (value: unknown) => {
+  const raw = text(value, 2000)
+  if (!raw) return undefined
+  try {
+    const url = new URL(raw, 'https://placeholder.invalid')
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined
+    return url.pathname.slice(0, 300)
+  } catch {
+    return undefined
+  }
+}
+
+const originOf = (value: unknown) => {
+  const raw = text(value, 2000)
+  if (!raw) return undefined
+  try {
+    const url = new URL(raw)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+      ? url.origin
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Parses the JSON the widget sends, keeping only known, capped fields. */
+export const parseWidgetContext = (raw: string | undefined) => {
+  if (!raw || raw.length > MAX_CONTEXT_LENGTH) return null
+  let input: unknown
+  try {
+    input = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null
+  const source = input as Record<string, unknown>
+
+  const custom = Object.fromEntries(
+    Object.entries(
+      source.custom &&
+        typeof source.custom === 'object' &&
+        !Array.isArray(source.custom)
+        ? source.custom
+        : {},
+    )
+      .filter(([key]) => CUSTOM_KEY.test(key) && !UNSAFE_KEYS.has(key))
+      .flatMap(([key, value]) => {
+        const cleaned = text(value, 200)
+        return cleaned ? [[key, cleaned]] : []
+      })
+      .slice(0, MAX_CUSTOM_FIELDS),
+  )
+
+  const context: WidgetContext = {
+    page: pathOf(source.page),
+    title: text(source.title, 200),
+    referrer: originOf(source.referrer),
+    browser: text(source.browser, 300),
+    screen: text(source.screen, 20),
+    language: text(source.language, 20),
+    appVersion: text(source.appVersion, 50),
+    userId: text(source.userId, 100),
+    userEmail: text(source.userEmail, 200),
+    ...(Object.keys(custom).length > 0 && { custom }),
+  }
+  // A JSON round trip drops the fields that came out undefined.
+  const kept = JSON.parse(JSON.stringify(context)) as WidgetContext
+  return Object.keys(kept).length > 0 ? kept : null
+}
+
+/** Whether `key` is the live widget key of the business with `code`. */
+export const isWidgetKeyFor = async (code: string, key: string) =>
+  (
+    await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.uniqueCode, code), eq(users.widgetKey, key)))
+  ).length > 0

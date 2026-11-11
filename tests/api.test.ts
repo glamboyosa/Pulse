@@ -686,6 +686,126 @@ describe('website widget settings', () => {
   })
 })
 
+describe('feedback through the website widget', () => {
+  const withWidget = async () => {
+    const owner = await createBusiness({ pulsesRemaining: 3 })
+    const cookie = await sessionCookie(owner)
+    const { key } = (await (
+      await POST(
+        new Request(`${base}/settings/widget/key`, {
+          method: 'POST',
+          headers: { cookie },
+        }),
+      )
+    ).json()) as { key: string }
+    return { owner, key }
+  }
+  const context = JSON.stringify({ page: '/billing?id=1', appVersion: '2.0' })
+
+  it('stores typed feedback as a widget note with its page context', async () => {
+    const { owner, key } = await withWidget()
+    const response = await postJson('/feedback/submit-text', {
+      code: owner.uniqueCode,
+      text: 'The export button does nothing.',
+      widgetKey: key,
+      context,
+    })
+    expect(response.status).toBe(200)
+    const [row] = await db
+      .select()
+      .from(feedback)
+      .where(eq(feedback.userId, owner.id))
+    expect(row).toMatchObject({
+      channel: 'widget',
+      context: { page: '/billing', appVersion: '2.0' },
+    })
+  })
+
+  it('stores a recording as a widget note', async () => {
+    const { owner, key } = await withWidget()
+    const form = new FormData()
+    form.append('code', owner.uniqueCode!)
+    form.append(
+      'audio',
+      new Blob([new Uint8Array(2048)], { type: 'audio/mp4' }),
+      'f.m4a',
+    )
+    form.append('duration', '9')
+    form.append('widgetKey', key)
+    form.append('context', context)
+    const response = await POST(
+      new Request(`${base}/feedback/submit`, { method: 'POST', body: form }),
+    )
+    expect(response.status).toBe(200)
+    const [row] = await db
+      .select()
+      .from(feedback)
+      .where(eq(feedback.userId, owner.id))
+    expect(row.channel).toBe('widget')
+    expect(row.context).toEqual({ page: '/billing', appVersion: '2.0' })
+  })
+
+  it("refuses a key that isn't the business's live key, spending nothing", async () => {
+    const { owner } = await withWidget()
+    const other = await withWidget()
+    const response = await postJson('/feedback/submit-text', {
+      code: owner.uniqueCode,
+      text: "Using someone else's key.",
+      widgetKey: other.key,
+    })
+    expect(response.status).toBe(403)
+    expect(await pulsesOf(owner.id)).toBe(3)
+  })
+
+  it('refuses a key after it is turned off', async () => {
+    const { owner, key } = await withWidget()
+    await DELETE(
+      new Request(`${base}/settings/widget/key`, {
+        method: 'DELETE',
+        headers: { cookie: await sessionCookie(owner) },
+      }),
+    )
+    const response = await postJson('/feedback/submit-text', {
+      code: owner.uniqueCode,
+      text: 'Still here?',
+      widgetKey: key,
+    })
+    expect(response.status).toBe(403)
+    expect(await pulsesOf(owner.id)).toBe(3)
+  })
+
+  it('keeps the note but drops context that is too large', async () => {
+    const { owner, key } = await withWidget()
+    const response = await postJson('/feedback/submit-text', {
+      code: owner.uniqueCode,
+      text: 'Long context from the host site.',
+      widgetKey: key,
+      context: JSON.stringify({ custom: { blob: 'x'.repeat(6000) } }),
+    })
+    expect(response.status).toBe(200)
+    const [row] = await db
+      .select()
+      .from(feedback)
+      .where(eq(feedback.userId, owner.id))
+    expect(row).toMatchObject({ channel: 'widget', context: null })
+  })
+
+  it('ignores page context sent without a widget key', async () => {
+    const owner = await createBusiness()
+    const response = await postJson('/feedback/submit-text', {
+      code: owner.uniqueCode,
+      text: 'Lovely jollof.',
+      context,
+    })
+    expect(response.status).toBe(200)
+    const [row] = await db
+      .select()
+      .from(feedback)
+      .where(eq(feedback.userId, owner.id))
+    expect(row).toMatchObject({ channel: 'qr', context: null })
+  })
+})
+
 describe('feedback page settings', () => {
   it('need a session', async () => {
     const put = await PUT(

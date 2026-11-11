@@ -50,12 +50,30 @@ import { passesTurnstile } from '@/server/turnstile'
 import {
   WidgetError,
   createWidgetKey,
+  isWidgetKeyFor,
+  parseWidgetContext,
   removeWidgetKey,
   setWidgetOrigins,
   widgetSettings,
 } from '@/server/widget'
 
 const HOUR_MS = 60 * 60 * 1000
+const WIDGET_OFF = 'This feedback button is turned off.'
+
+/**
+ * Feedback through the website widget carries its key, and page context that
+ * only the widget may send. false: the key isn't this business's live key.
+ */
+const widgetFor = async (body: {
+  code: string
+  widgetKey?: string
+  context?: string
+}) => {
+  if (!body.widgetKey) return undefined
+  if (!(await isWidgetKeyFor(body.code, body.widgetKey))) return false
+  return { context: parseWidgetContext(body.context) }
+}
+
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {
     status,
@@ -152,9 +170,12 @@ const app = new Elysia({ prefix: '/api' })
       // the per-business cap stops a script from draining a business's pulses.
       await enforceRateLimit(`submit:ip:${ip}:${body.code}`, 10, 10 * 60 * 1000)
       await enforceRateLimit(`submit:business:${body.code}`, 120, HOUR_MS)
+      const widget = await widgetFor(body)
+      if (widget === false) return json(403, { error: WIDGET_OFF })
 
       try {
         const { feedbackId, business } = await submitFeedback({
+          widget,
           code: body.code,
           audio: body.audio,
           durationSeconds: body.duration,
@@ -184,6 +205,10 @@ const app = new Elysia({ prefix: '/api' })
         spot: t.Optional(t.String({ maxLength: 64 })),
         contactEmail: t.Optional(t.String({ maxLength: 300 })),
         turnstileToken: t.Optional(t.String({ maxLength: 2048 })),
+        widgetKey: t.Optional(t.String({ maxLength: 64 })),
+        // Generous, so oversized context is dropped by the parser rather
+        // than losing the customer's note to a validation error.
+        context: t.Optional(t.String({ maxLength: 16384 })),
       }),
     },
   )
@@ -198,9 +223,12 @@ const app = new Elysia({ prefix: '/api' })
       // The same limits as recordings: one pulse per submission either way.
       await enforceRateLimit(`submit:ip:${ip}:${body.code}`, 10, 10 * 60 * 1000)
       await enforceRateLimit(`submit:business:${body.code}`, 120, HOUR_MS)
+      const widget = await widgetFor(body)
+      if (widget === false) return json(403, { error: WIDGET_OFF })
 
       try {
         const { feedbackId, business } = await submitTypedFeedback({
+          widget,
           code: body.code,
           text: body.text,
           customerName: body.customerName?.trim().slice(0, 80) || null,
@@ -224,6 +252,10 @@ const app = new Elysia({ prefix: '/api' })
         spot: t.Optional(t.String({ maxLength: 64 })),
         contactEmail: t.Optional(t.String({ maxLength: 300 })),
         turnstileToken: t.Optional(t.String({ maxLength: 2048 })),
+        widgetKey: t.Optional(t.String({ maxLength: 64 })),
+        // Generous, so oversized context is dropped by the parser rather
+        // than losing the customer's note to a validation error.
+        context: t.Optional(t.String({ maxLength: 16384 })),
       }),
     },
   )

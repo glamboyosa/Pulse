@@ -11,6 +11,7 @@ import {
 } from 'drizzle-orm/pg-core'
 
 import type { DigestContent } from '@/server/digest'
+import type { WidgetContext } from '@/server/widget'
 
 // Users table - extends authentication with business info
 export const users = pgTable('users', {
@@ -63,6 +64,11 @@ export const feedback = pgTable('feedback', {
   spotId: uuid('spot_id').references(() => spots.id),
   // 'voice' for recordings; 'text' when the customer couldn't record and typed.
   source: text('source').default('voice').notNull(),
+  // Where it was left: 'qr' (the feedback page) or 'widget' (a website).
+  channel: text('channel').default('qr').notNull(),
+  // For the widget: the page, browser and user it came from. Untrusted: it
+  // was sent by the host website. See WidgetContext in src/server/widget.ts.
+  context: jsonb('context').$type<WidgetContext>(),
   // Close the loop: an address the customer chose to leave for one reply.
   // Never shown to the owner; Pulse sends the reply.
   contactEmail: text('contact_email'),
