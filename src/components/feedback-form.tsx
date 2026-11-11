@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { TurnstileWidget } from '@/components/turnstile-widget'
+import { MAX_CONTEXT_LENGTH } from '@/lib/widget-limits'
 
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 const STILL_CHECKING =
@@ -102,6 +103,7 @@ export function FeedbackForm({
   accent,
   thankYouMessage,
   googleReviewUrl,
+  widget,
 }: {
   businessId: string
   /** The spot slug from the QR link, sent with the recording. */
@@ -110,6 +112,8 @@ export function FeedbackForm({
   accent: string
   thankYouMessage: string | null
   googleReviewUrl: string | null
+  /** Set inside the website widget: its key. */
+  widget?: { key: string }
 }) {
   const accentStyle = { backgroundColor: accent, color: '#ffffff' }
   const [stage, setStage] = useState<Stage>({ name: 'loading' })
@@ -131,6 +135,36 @@ export function FeedbackForm({
     setTurnstileToken('')
     setTurnstileKey((key) => key + 1)
   }
+  // Page context from the host website (JSON), sent with the feedback.
+  const [widgetContext, setWidgetContext] = useState('')
+
+  // The host page sends its context once the widget says it's ready. Only
+  // the parent window counts: frame-ancestors already limits it to the
+  // owner's listed sites.
+  useEffect(() => {
+    if (!widget) return
+    const receive = (event: MessageEvent) => {
+      if (event.source !== window.parent) return
+      const data = event.data as { type?: unknown; context?: unknown } | null
+      if (data?.type !== 'pulse:context') return
+      try {
+        const json = JSON.stringify(data.context ?? {})
+        // Over the server's limit it would be dropped anyway.
+        setWidgetContext(json.length <= MAX_CONTEXT_LENGTH ? json : '')
+      } catch {
+        setWidgetContext('')
+      }
+    }
+    window.addEventListener('message', receive)
+    window.parent.postMessage({ type: 'pulse:ready' }, '*')
+    return () => window.removeEventListener('message', receive)
+  }, [widget])
+
+  useEffect(() => {
+    if (widget && stage.name === 'sent') {
+      window.parent.postMessage({ type: 'pulse:sent' }, '*')
+    }
+  }, [widget, stage.name])
 
   // Stop unmounts the record button; focus moves here instead of the page.
   const listenBackRef = useRef<HTMLParagraphElement>(null)
@@ -277,6 +311,8 @@ export function FeedbackForm({
         ...(spot && { spot }),
         ...(contactEmail.trim() && { contactEmail: contactEmail.trim() }),
         ...(turnstileToken && { turnstileToken }),
+        ...(widget && { widgetKey: widget.key }),
+        ...(widget && widgetContext && { context: widgetContext }),
       }),
     }).catch(() => null)
     freshTurnstile()
@@ -324,6 +360,8 @@ export function FeedbackForm({
     if (spot) form.append('spot', spot)
     if (contactEmail.trim()) form.append('contactEmail', contactEmail.trim())
     if (turnstileToken) form.append('turnstileToken', turnstileToken)
+    if (widget) form.append('widgetKey', widget.key)
+    if (widget && widgetContext) form.append('context', widgetContext)
 
     try {
       const response = await fetch('/api/feedback/submit', {

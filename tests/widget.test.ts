@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { WidgetError, parseOrigin, parseWidgetContext } from '@/server/widget'
+import {
+  WidgetError,
+  embedHeaders,
+  parseOrigin,
+  parseWidgetContext,
+} from '@/server/widget'
 
 describe('parseOrigin', () => {
   it('turns what an owner types into an https origin', () => {
@@ -19,7 +24,6 @@ describe('parseOrigin', () => {
 
   it('allows plain http only for a local dev server', () => {
     expect(parseOrigin('http://localhost:3000')).toBe('http://localhost:3000')
-    expect(parseOrigin('http://[::1]:3000')).toBe('http://[::1]:3000')
     expect(parseOrigin('http://app.localhost:4321')).toBe(
       'http://app.localhost:4321',
     )
@@ -35,6 +39,8 @@ describe('parseOrigin', () => {
     'https://intranet',
     '*.example.com',
     'https://com.',
+    // CSP can't express IPv6 hosts, so framing from one could never work.
+    'http://[::1]:3000',
   ])('refuses %j', (input) => {
     expect(() => parseOrigin(input)).toThrow(WidgetError)
   })
@@ -105,5 +111,24 @@ describe('parseWidgetContext', () => {
     'x'.repeat(5000),
   ])('ignores %j', (raw) => {
     expect(parseWidgetContext(raw)).toBeNull()
+  })
+})
+
+describe('embedHeaders', () => {
+  it('lets only the listed sites frame the widget', () => {
+    const headers = embedHeaders([
+      'https://conclave.click',
+      'https://a.example',
+    ])
+    expect(headers['Content-Security-Policy']).toBe(
+      'frame-ancestors https://conclave.click https://a.example',
+    )
+    expect(headers['Permissions-Policy']).toContain('microphone=(self)')
+  })
+
+  it('lets nobody frame it when no sites are listed', () => {
+    expect(embedHeaders([])['Content-Security-Policy']).toBe(
+      "frame-ancestors 'none'",
+    )
   })
 })

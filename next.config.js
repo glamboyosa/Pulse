@@ -18,7 +18,11 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
-  headers: async () => [{ source: '/(.*)', headers: securityHeaders }],
+  // The widget's embed page sets its own headers in proxy.ts, because which
+  // sites may frame it depends on the account.
+  headers: async () => [
+    { source: '/((?!embed/).*)', headers: securityHeaders },
+  ],
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',

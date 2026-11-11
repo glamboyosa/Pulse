@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 
 import { db } from '@/db/index'
 import { users } from '@/db/schema'
+import { MAX_CONTEXT_LENGTH } from '@/lib/widget-limits'
 
 export const MAX_WIDGET_ORIGINS = 10
 
@@ -19,7 +20,6 @@ export type WidgetSettings = { key: string | null; origins: Array<string> }
 
 const isLocalhost = (hostname: string) =>
   hostname === 'localhost' ||
-  hostname === '[::1]' ||
   hostname.startsWith('127.') ||
   hostname.endsWith('.localhost')
 
@@ -123,7 +123,6 @@ export type WidgetContext = {
   custom?: Record<string, string>
 }
 
-export const MAX_CONTEXT_LENGTH = 4096
 const MAX_CUSTOM_FIELDS = 10
 const CUSTOM_KEY = /^[\w.-]{1,40}$/
 // Safe as stored, but a later merge into an object could change its prototype.
@@ -213,3 +212,27 @@ export const isWidgetKeyFor = async (code: string, key: string) =>
       .from(users)
       .where(and(eq(users.uniqueCode, code), eq(users.widgetKey, key)))
   ).length > 0
+
+/** The business behind a live widget key, and the sites that may embed it. */
+export const widgetByKey = async (key: string) =>
+  (
+    await db
+      .select({ code: users.uniqueCode, origins: users.widgetOrigins })
+      .from(users)
+      .where(eq(users.widgetKey, key))
+  ).at(0) ?? null
+
+/**
+ * Headers for the embed page. Only the listed sites may frame it, and inside
+ * them it may use the microphone. No listed sites: nobody may frame it.
+ */
+export const embedHeaders = (
+  origins: Array<string>,
+): Record<string, string> => ({
+  'Content-Security-Policy': `frame-ancestors ${origins.length > 0 ? origins.join(' ') : "'none'"}`,
+  'Permissions-Policy':
+    'microphone=(self), camera=(), geolocation=(), payment=()',
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+})
