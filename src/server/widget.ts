@@ -95,7 +95,9 @@ export const setWidgetOrigins = async (
   userId: string,
   inputs: Array<string>,
 ): Promise<Array<string>> => {
-  const origins = [...new Set(inputs.filter((i) => i.trim()).map(parseOrigin))]
+  // One site per entry; a comma-separated list is split the same way.
+  const entries = inputs.flatMap((input) => input.split(/[\s,]+/))
+  const origins = [...new Set(entries.filter((i) => i).map(parseOrigin))]
   if (origins.length > MAX_WIDGET_ORIGINS) {
     throw new WidgetError(`Add at most ${MAX_WIDGET_ORIGINS} websites`)
   }

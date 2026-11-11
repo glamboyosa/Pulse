@@ -43,13 +43,22 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
       })</script>`,
   )
   try {
-    await signUpBusiness(page, `${code}@example.test`, code)
+    await signUpBusiness(
+      page,
+      `${code}@example.test`,
+      code,
+      'On my website or app',
+    )
 
     await test.step('the owner turns the widget on and lists the site', async () => {
       await page.goto('/settings')
       await page.getByRole('button', { name: 'Turn on the widget' }).click()
       await expect(page.locator('pre code')).toContainText('data-key="pk_')
-      await page.getByLabel(/Websites allowed to show it/).fill(host.origin)
+      const sites = page.getByLabel(/Websites allowed to show it/)
+      // A comma becomes a new line: one site per line.
+      await sites.fill('a.example,')
+      await expect(sites).toHaveValue('a.example\n')
+      await sites.fill(host.origin)
       await page.getByRole('button', { name: 'Save websites' }).click()
       await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible()
     })

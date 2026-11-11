@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 
 import type { WidgetSettings as Settings } from '@/server/widget'
@@ -28,6 +28,14 @@ export function WidgetSettings({
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const card = useRef<HTMLDivElement>(null)
+
+  // Onboarding sends website owners here to set the widget up first.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('setup') === 'widget') {
+      card.current?.scrollIntoView({ block: 'start' })
+    }
+  }, [])
 
   const snippet = key
     ? `<script src="${appUrl}/widget.js" data-key="${key}" async></script>`
@@ -91,7 +99,10 @@ export function WidgetSettings({
   }
 
   return (
-    <Card className="p-6 border-2 border-foreground shadow-brutal bg-card space-y-4">
+    <Card
+      ref={card}
+      className="scroll-mt-6 p-6 border-2 border-foreground shadow-brutal bg-card space-y-4"
+    >
       <div>
         <h2 className="text-2xl font-black">Website widget</h2>
         <p className="font-semibold text-muted-foreground">
@@ -131,8 +142,18 @@ export function WidgetSettings({
               id="widget-sites"
               value={sites}
               onChange={(event) => {
-                setSites(event.target.value)
+                // One site per line: a typed or pasted comma becomes a new line.
+                const field = event.target
+                const before = field.value.slice(0, field.selectionStart)
+                const toNewLines = (text: string) =>
+                  text.replace(/[ \t]*,[ \t]*/g, '\n')
+                const cursor = toNewLines(before).length
+                setSites(toNewLines(field.value))
                 setSaved(false)
+                // Keep the cursor where the person was typing.
+                requestAnimationFrame(() =>
+                  field.setSelectionRange(cursor, cursor),
+                )
               }}
               rows={3}
               placeholder={'example.com\napp.example.com'}

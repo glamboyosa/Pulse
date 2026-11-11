@@ -3,9 +3,9 @@
 import { redirect } from 'next/navigation'
 import { eq } from 'drizzle-orm'
 
+import { getSession } from '../../lib/session'
 import { db } from '@/db/index'
 import { users } from '@/db/schema'
-import { getSession } from '../../lib/session'
 
 export async function completeOnboardingAction(
   prevState: { error?: string } | undefined,
@@ -14,6 +14,7 @@ export async function completeOnboardingAction(
   const businessName = formData.get('businessName') as string
   const businessType = formData.get('businessType') as string
   const uniqueCode = formData.get('uniqueCode') as string
+  const channel = formData.get('channel')
 
   if (!businessName || !businessType || !uniqueCode) {
     return { error: 'All fields are required' }
@@ -49,6 +50,10 @@ export async function completeOnboardingAction(
     })
     .where(eq(users.id, session.userId))
 
-  // Redirect to dashboard
-  redirect('/dashboard')
+  // Website owners go straight to setting up the widget.
+  redirect(
+    channel === 'website' || channel === 'both'
+      ? '/settings?setup=widget'
+      : '/dashboard',
+  )
 }

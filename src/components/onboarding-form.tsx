@@ -7,6 +7,22 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+const CHANNELS = [
+  {
+    id: 'venue',
+    title: 'In person',
+    body: 'A QR code on tables, counters or receipts',
+  },
+  {
+    id: 'website',
+    title: 'On my website or app',
+    body: 'A feedback button on your pages',
+  },
+  { id: 'both', title: 'Both', body: 'QR codes and a website button' },
+] as const
+
+type Channel = (typeof CHANNELS)[number]['id']
+
 const BUSINESS_TYPES = [
   'Restaurant',
   'Bar',
@@ -16,13 +32,23 @@ const BUSINESS_TYPES = [
   'Hotel',
   'Healthcare',
   'Consulting',
+  'Software or app',
+  'Online store',
   'Other',
 ]
 
+const LAST_STEP = 4
+
 export function OnboardingForm() {
   const [step, setStep] = useState(1)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    businessName: string
+    channel: Channel | ''
+    businessType: string
+    uniqueCode: string
+  }>({
     businessName: '',
+    channel: '',
     businessType: '',
     uniqueCode: '',
   })
@@ -40,12 +66,17 @@ export function OnboardingForm() {
       }
       setStep(2)
     } else if (step === 2) {
-      if (!formData.businessType) {
+      if (!formData.channel) {
         return
       }
       setStep(3)
+    } else if (step === 3) {
+      if (!formData.businessType) {
+        return
+      }
+      setStep(4)
     }
-    // Step 3 will use the form action directly
+    // The last step uses the form action directly
   }
 
   const error = completeState?.error
@@ -54,7 +85,7 @@ export function OnboardingForm() {
     <div className="border-2 border-foreground bg-card p-8">
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
-          {[1, 2, 3].map((num) => (
+          {[1, 2, 3, 4].map((num) => (
             <div
               key={num}
               className={`h-2 flex-1 ${
@@ -63,26 +94,28 @@ export function OnboardingForm() {
             />
           ))}
         </div>
-        <h1 className="text-3xl font-bold mb-2">
+        <h1 id="onboarding-title" className="text-3xl font-bold mb-2">
           {step === 1 && 'Welcome to Pulse'}
-          {step === 2 && 'Tell us about your business'}
-          {step === 3 && 'Create your unique link'}
+          {step === 2 && 'Where will people leave feedback?'}
+          {step === 3 && 'Tell us about your business'}
+          {step === 4 && 'Create your unique link'}
         </h1>
         <p className="text-muted-foreground">
           {step === 1 &&
             "Let's get your business set up to collect voice feedback"}
-          {step === 2 && 'This helps us customize your experience'}
-          {step === 3 && 'This will be your custom feedback collection URL'}
+          {step === 3 && 'This helps us customize your experience'}
+          {step === 4 && 'This will be your custom feedback collection URL'}
         </p>
       </div>
 
       <form
-        action={step === 3 ? completeAction : undefined}
-        onSubmit={step < 3 ? handleStepSubmit : undefined}
+        action={step === LAST_STEP ? completeAction : undefined}
+        onSubmit={step < LAST_STEP ? handleStepSubmit : undefined}
         className="space-y-6"
       >
-        {step === 3 && (
+        {step === LAST_STEP && (
           <>
+            <input type="hidden" name="channel" value={formData.channel} />
             <input
               type="hidden"
               name="businessName"
@@ -116,6 +149,35 @@ export function OnboardingForm() {
         )}
 
         {step === 2 && (
+          <div
+            role="group"
+            aria-labelledby="onboarding-title"
+            className="grid gap-3"
+          >
+            {CHANNELS.map((channel) => (
+              <button
+                key={channel.id}
+                type="button"
+                aria-pressed={formData.channel === channel.id}
+                onClick={() =>
+                  setFormData({ ...formData, channel: channel.id })
+                }
+                className={`p-4 border-3 border-foreground text-left transition-colors ${
+                  formData.channel === channel.id
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-background hover:bg-muted'
+                }`}
+              >
+                <span className="block font-bold">{channel.title}</span>
+                <span className="block text-sm font-medium opacity-80">
+                  {channel.body}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {step === 3 && (
           <div className="space-y-3">
             <Label>Business Type</Label>
             <div className="grid grid-cols-2 gap-3">
@@ -139,7 +201,7 @@ export function OnboardingForm() {
           </div>
         )}
 
-        {step === 3 && (
+        {step === LAST_STEP && (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="uniqueCode">Unique Code</Label>
@@ -202,7 +264,7 @@ export function OnboardingForm() {
             type="submit"
             disabled={
               isPending ||
-              (step === 3 &&
+              (step === LAST_STEP &&
                 (!formData.uniqueCode.trim() ||
                   !/^[a-z0-9-]+$/.test(formData.uniqueCode)))
             }
@@ -210,7 +272,7 @@ export function OnboardingForm() {
           >
             {isPending
               ? 'Processing…'
-              : step === 3
+              : step === LAST_STEP
                 ? 'Complete Setup'
                 : 'Continue'}
           </Button>

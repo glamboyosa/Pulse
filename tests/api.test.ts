@@ -651,10 +651,17 @@ describe('website widget settings', () => {
     })
     expect(await saved.json()).toEqual({ origins: ['https://conclave.click'] })
 
+    const commas = await call(PUT, 'PUT', '/settings/widget/origins', cookie, {
+      origins: ['glamboyosa.xyz, www.glamboyosa.xyz'],
+    })
+    expect(await commas.json()).toEqual({
+      origins: ['https://glamboyosa.xyz', 'https://www.glamboyosa.xyz'],
+    })
+
     await call(DELETE, 'DELETE', '/settings/widget/key', cookie)
     expect(await (await get('/settings/widget', cookie)).json()).toEqual({
       key: null,
-      origins: ['https://conclave.click'],
+      origins: ['https://glamboyosa.xyz', 'https://www.glamboyosa.xyz'],
     })
   })
 

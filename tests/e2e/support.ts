@@ -68,10 +68,13 @@ export const signUpBusiness = async (
   page: Page,
   email: string,
   code: string,
+  where: 'In person' | 'On my website or app' = 'In person',
 ) => {
   await signIn(page, email)
   await page.waitForURL('**/onboarding')
   await page.locator('#businessName').fill(`E2E Cafe ${code}`)
+  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('button', { name: new RegExp(where) }).click()
   await page.getByRole('button', { name: 'Continue' }).click()
   await page
     .getByRole('button', { name: /restaurant/i })
@@ -80,5 +83,8 @@ export const signUpBusiness = async (
   await page.getByRole('button', { name: 'Continue' }).click()
   await page.locator('#uniqueCode').fill(code)
   await page.getByRole('button', { name: 'Complete Setup' }).click()
-  await page.waitForURL('**/dashboard')
+  // Website owners finish on the widget settings instead of the dashboard.
+  await page.waitForURL(
+    where === 'In person' ? /\/dashboard$/ : /\/settings\?setup=widget$/,
+  )
 }
