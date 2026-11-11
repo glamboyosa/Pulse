@@ -184,6 +184,12 @@ export default async function HomePage() {
             >
               Pricing
             </a>
+            <Link
+              href="/software"
+              className="hidden font-semibold hover:underline md:inline"
+            >
+              For software
+            </Link>
             {!user && (
               <Link
                 href="/login"
@@ -224,6 +230,12 @@ export default async function HomePage() {
               </div>
               <p className="mt-6 text-sm font-semibold text-muted-foreground">
                 No app for customers · No subscription · Pulses never expire
+              </p>
+              <p className="mt-3 text-sm font-semibold">
+                Building software?{' '}
+                <Link href="/software" className="underline underline-offset-4">
+                  Add a voice feedback button to your app
+                </Link>
               </p>
             </div>
             <HeroMock />

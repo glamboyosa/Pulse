@@ -20,6 +20,15 @@ const serveSite = (page: () => string) =>
     })
   })
 
+const noteId = async (code: string) =>
+  (
+    await db.query<{ id: string }>(
+      `select f.id from feedback f join users u on u.id = f.user_id
+       where u.unique_code = $1`,
+      [code],
+    )
+  ).rows[0].id
+
 test('a website shows the widget and a visitor leaves voice feedback with the page attached', async ({
   page,
   browser,
@@ -68,6 +77,17 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
         site.getByRole('button', { name: 'Feedback', exact: true }),
       ).toHaveAttribute('aria-expanded', 'false')
       await visitor.close()
+    })
+
+    await test.step('the owner sees where the note was left', async () => {
+      await page.goto('/dashboard')
+      const tag = page.getByText('Website · /billing')
+      await expect(tag).toBeVisible()
+      await page.goto('/feedback/' + (await noteId(code)))
+      await expect(
+        page.getByRole('heading', { name: 'Left on your website' }),
+      ).toBeVisible()
+      await expect(page.getByText('3.1.0')).toBeVisible()
     })
 
     await test.step('it arrives as widget feedback with the page, not the token', async () => {

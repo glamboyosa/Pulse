@@ -23,12 +23,12 @@ const SUBPROCESSORS = [
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy" updated="6 November 2026">
+    <LegalPage title="Privacy" updated="11 November 2026">
       <section>
         <p>
-          Pulse lets businesses collect voice feedback through a QR code. This
-          page explains what we keep, why, for how long, and how to get it
-          deleted. Questions go to{' '}
+          Pulse lets businesses collect voice feedback through a QR code or a
+          button on their website. This page explains what we keep, why, for how
+          long, and how to get it deleted. Questions go to{' '}
           <a
             href="mailto:support@pulseapp.click"
             className="font-bold underline"
@@ -82,6 +82,26 @@ export default function PrivacyPage() {
         </ul>
       </section>
 
+      <section id="widget">
+        <h2>If you leave feedback through a website&apos;s button</h2>
+        <ul>
+          <li>
+            Everything above applies. The website that shows the button is the
+            business that receives your feedback.
+          </li>
+          <li>
+            The button also sends the page you were on (without anything after
+            &ldquo;?&rdquo; in its address), the page title, which site sent you
+            there, your browser, screen size and language.
+          </li>
+          <li>
+            The website may add details of its own, such as your user ID, email
+            or the version of its app. That&apos;s up to the website, and its
+            own privacy policy covers it.
+          </li>
+        </ul>
+      </section>
+
       <section>
         <h2>If you run a business on Pulse</h2>
         <ul>
@@ -106,8 +126,8 @@ export default function PrivacyPage() {
         <ul>
           <li>Recordings: 12 months, then deleted automatically.</li>
           <li>
-            Transcripts, summaries and settings: until you delete them or your
-            account.
+            Transcripts, summaries, page details from a website&apos;s button
+            and settings: until you delete them or your account.
           </li>
           <li>Reply addresses: until a day after the reply, or 90 days.</li>
           <li>Login codes: they stop working after 10 minutes.</li>

@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { after } from 'next/server'
 
 import { getCurrentUser } from '../../actions/auth'
+import { WidgetContextDetails } from '@/components/widget-context-details'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { AudioPlayer } from '@/components/audio-player'
@@ -126,6 +127,10 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
               <p className="text-2xl font-black leading-snug">
                 {feedbackData.summary}
               </p>
+            )}
+
+            {feedbackData.channel === 'widget' && (
+              <WidgetContextDetails context={feedbackData.context} />
             )}
 
             {feedbackData.translation && (

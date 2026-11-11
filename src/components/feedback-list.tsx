@@ -18,6 +18,8 @@ export interface Feedback {
   duration: number // seconds
   /** Typed rather than recorded: no audio, no duration. */
   typed: boolean
+  /** Left through the website widget: the page it was on (path only). */
+  widgetPage: string | null
   /** 'wanted' when the customer left an address for a reply. */
   reply: 'wanted' | 'sent' | null
   transcript: string
@@ -422,6 +424,7 @@ export function FeedbackList({
                   item.language ||
                   item.spot ||
                   item.typed ||
+                  item.widgetPage !== null ||
                   item.reply) && (
                   <ul className="mt-3 flex flex-wrap gap-2">
                     {item.reply === 'wanted' && (
@@ -437,6 +440,11 @@ export function FeedbackList({
                     {item.typed && (
                       <li className="border-2 border-foreground px-2 py-0.5 text-xs font-bold uppercase">
                         Typed
+                      </li>
+                    )}
+                    {item.widgetPage !== null && (
+                      <li className="max-w-full break-all border-2 border-foreground bg-foreground text-background px-2 py-0.5 text-xs font-bold normal-case">
+                        Website{item.widgetPage ? ` · ${item.widgetPage}` : ''}
                       </li>
                     )}
                     {item.spot && (

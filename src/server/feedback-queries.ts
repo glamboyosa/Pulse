@@ -33,6 +33,7 @@ export const listFeedback = async (
           : null,
       duration: f.duration ?? 0,
       typed: f.source === 'text',
+      widgetPage: f.channel === 'widget' ? (f.context?.page ?? '') : null,
       // Whether a reply is possible or sent; the address itself stays private.
       reply: f.repliedAt ? 'sent' : f.contactEmail ? 'wanted' : null,
       transcript: f.transcript ?? '',
