@@ -237,10 +237,10 @@ describe('customer submissions', () => {
     const closed = await createBusiness({ pulsesRemaining: 0 })
     expect(
       await (await get(`/businesses/${open.uniqueCode}/status`)).json(),
-    ).toEqual({ name: open.businessName, accepting: true })
+    ).toEqual({ name: open.businessName, accepting: true, offer: null })
     expect(
       await (await get(`/businesses/${closed.uniqueCode}/status`)).json(),
-    ).toEqual({ name: closed.businessName, accepting: false })
+    ).toEqual({ name: closed.businessName, accepting: false, offer: null })
     expect((await get('/businesses/nope/status')).status).toBe(404)
   })
 

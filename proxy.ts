@@ -28,8 +28,10 @@ export async function proxy(request: NextRequest) {
     const session = request.cookies.get('session')
 
     if (!session) {
-      // Redirect to login if no session
-      return NextResponse.redirect(new URL('/login', request.url))
+      // Redirect to login if no session, coming back here afterwards.
+      const login = new URL('/login', request.url)
+      login.searchParams.set('next', `${pathname}${request.nextUrl.search}`)
+      return NextResponse.redirect(login)
     }
   }
 

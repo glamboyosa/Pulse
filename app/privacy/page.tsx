@@ -76,6 +76,12 @@ export default function PrivacyPage() {
             days.
           </li>
           <li>
+            If the business gives vouchers for feedback, we keep your voucher
+            code and when it was used. So each person gets one, your browser
+            keeps a cookie for 30 days, and we keep a scrambled form of your
+            internet address that can&apos;t be turned back into it.
+          </li>
+          <li>
             To have your feedback deleted, ask the business, or email us with
             the business name and roughly when you left it.
           </li>
@@ -189,8 +195,10 @@ export default function PrivacyPage() {
       <section>
         <h2>Cookies</h2>
         <p>
-          Pulse sets one cookie, to keep you signed in. There are no analytics
-          or advertising cookies.
+          Pulse sets one cookie, to keep you signed in. If you get a voucher,
+          your browser also keeps one for 30 days, so the same business
+          doesn&apos;t give you a second. There are no analytics or advertising
+          cookies.
         </p>
       </section>
 

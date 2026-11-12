@@ -8,6 +8,7 @@ import { db } from '@/db/index'
 import { otpCodes, users } from '@/db/schema'
 import { OTP_MAX_ATTEMPTS } from '@/lib/otp'
 import { getUserById } from '@/lib/auth-helpers'
+import { dashboardReturnPath } from '@/lib/return-path'
 import { deleteAccount } from '@/server/account-data'
 
 // New businesses get this many pulses to try Pulse.
@@ -105,7 +106,7 @@ export async function loginAction(
     redirect('/onboarding')
   }
 
-  redirect('/dashboard')
+  redirect(dashboardReturnPath(formData.get('next')))
 }
 
 /**

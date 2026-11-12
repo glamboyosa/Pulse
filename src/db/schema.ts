@@ -33,6 +33,11 @@ export const users = pgTable('users', {
   // only pages on the listed origins may use it. See src/server/widget.ts.
   widgetKey: text('widget_key').unique(),
   widgetOrigins: text('widget_origins').array().default([]).notNull(),
+  // A reward for leaving feedback, whatever it says. See src/server/vouchers.ts.
+  voucherEnabled: boolean('voucher_enabled').default(false).notNull(),
+  voucherOffer: text('voucher_offer'),
+  voucherExpiryDays: integer('voucher_expiry_days').default(30).notNull(),
+  voucherMonthlyCap: integer('voucher_monthly_cap').default(50).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -92,6 +97,29 @@ export const feedback = pgTable('feedback', {
   analysisStartedAt: timestamp('analysis_started_at').defaultNow().notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+// One voucher per feedback. The offer is copied, so later edits to the
+// owner's offer don't change vouchers already issued.
+export const vouchers = pgTable(
+  'vouchers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .references(() => users.id)
+      .notNull(),
+    feedbackId: uuid('feedback_id')
+      .references(() => feedback.id, { onDelete: 'set null' })
+      .unique(),
+    code: text('code').notNull(),
+    offer: text('offer').notNull(),
+    // HMAC of the customer's IP, to limit vouchers per connection.
+    ipHash: text('ip_hash'),
+    expiresAt: timestamp('expires_at').notNull(),
+    redeemedAt: timestamp('redeemed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [unique().on(table.userId, table.code)],
+)
 
 // Pulse purchases for tracking credit purchases
 export const pulsePurchases = pgTable('pulse_purchases', {

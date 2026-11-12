@@ -4,8 +4,14 @@ import Link from 'next/link'
 import { getCurrentUser } from '../actions/auth'
 import { LoginForm } from '@/components/login-form'
 import { PulseLogo } from '@/components/pulse-logo'
+import { dashboardReturnPath } from '@/lib/return-path'
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string | Array<string> }>
+}) {
+  const next = dashboardReturnPath((await searchParams).next)
   // If user is already logged in, redirect to dashboard or onboarding
   const user = await getCurrentUser()
 
@@ -13,7 +19,7 @@ export default async function LoginPage() {
     // If user has completed onboarding, go to dashboard
     // Otherwise, go to onboarding
     if (user.uniqueCode) {
-      redirect('/dashboard')
+      redirect(next)
     } else {
       redirect('/onboarding')
     }
@@ -30,7 +36,7 @@ export default async function LoginPage() {
           <h1 className="text-4xl font-black mb-2">Welcome back</h1>
           <p className="text-lg font-semibold">Log in to your account</p>
         </div>
-        <LoginForm />
+        <LoginForm next={next} />
       </div>
     </main>
   )

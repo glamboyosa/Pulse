@@ -42,8 +42,10 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     await expect(page.getByRole('img', { name: /logo/ })).toBeVisible({
       timeout: 20_000,
     })
-    await page.getByRole('button', { name: 'SAVE' }).click()
-    await expect(page.getByRole('button', { name: 'SAVED' })).toBeVisible()
+    await page.getByRole('button', { name: 'SAVE', exact: true }).click()
+    await expect(
+      page.getByRole('button', { name: 'SAVED', exact: true }),
+    ).toBeVisible()
     await page.goto('/dashboard')
   })
 
@@ -248,6 +250,6 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     ])
     expect(rows).toHaveLength(0)
     await page.goto('/dashboard')
-    await page.waitForURL('**/login')
+    await page.waitForURL(/\/login(\?|$)/)
   })
 })

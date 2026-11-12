@@ -6,10 +6,12 @@ import { eq } from 'drizzle-orm'
 import { getCurrentUser } from '../actions/auth'
 import { AccountData } from '@/components/account-data'
 import { BrandingForm } from '@/components/branding-form'
+import { VoucherSettings } from '@/components/voucher-settings'
 import { WidgetSettings } from '@/components/widget-settings'
 import { db } from '@/db/index'
 import { users } from '@/db/schema'
 import { brandingFor } from '@/server/branding'
+import { VOUCHER_LIMITS, voucherSettings } from '@/server/vouchers'
 import { widgetSettings } from '@/server/widget'
 import { env } from '@/env'
 
@@ -58,6 +60,12 @@ export default async function SettingsPage() {
               : null
           }
         />
+        <div className="mt-10">
+          <VoucherSettings
+            initial={await voucherSettings(user.id)}
+            offerLimit={VOUCHER_LIMITS.offer}
+          />
+        </div>
         <div className="mt-10">
           <WidgetSettings
             initial={await widgetSettings(user.id)}

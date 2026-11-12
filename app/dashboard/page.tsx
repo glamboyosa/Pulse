@@ -20,6 +20,8 @@ import { listFeedback } from '@/server/feedback-queries'
 import { getInsights } from '@/server/insights'
 import { listSpots } from '@/server/spots'
 import { SpotsSection } from '@/components/spots-section'
+import { VouchersCard } from '@/components/vouchers-card'
+import { monthlyVoucherStats, voucherSettings } from '@/server/vouchers'
 
 const tabClass = (active: boolean) =>
   `rounded-md border-2 border-foreground px-5 py-2 font-bold transition-[transform,box-shadow] duration-150 ${
@@ -64,7 +66,13 @@ export default async function DashboardPage({
         [],
       ])
     : [null, null, false, await listFeedback(user.id)]
-  const spots = showInsights ? [] : await listSpots(user.id)
+  const [spots, voucherStats, vouchersOn] = showInsights
+    ? [[], null, false]
+    : await Promise.all([
+        listSpots(user.id),
+        monthlyVoucherStats(user.id),
+        voucherSettings(user.id).then((settings) => settings.enabled),
+      ])
 
   return (
     <div className="min-h-screen bg-secondary">
@@ -116,6 +124,9 @@ export default async function DashboardPage({
                 />
               </div>
               <div className="space-y-8">
+                {voucherStats && (vouchersOn || voucherStats.issued > 0) && (
+                  <VouchersCard {...voucherStats} />
+                )}
                 <QRCodeSection uniqueCode={user.uniqueCode || ''} />
                 <SpotsSection
                   code={user.uniqueCode || ''}

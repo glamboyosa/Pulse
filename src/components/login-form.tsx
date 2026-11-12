@@ -18,7 +18,8 @@ const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 type LoginStep = 'email' | 'otp'
 
-export function LoginForm() {
+/** `next`: where to go after signing in. */
+export function LoginForm({ next }: { next: string }) {
   const [step, setStep] = useState<LoginStep>('email')
   const [email, setEmail] = useState('')
   const [otpCode, setOtpCode] = useState('')
@@ -81,6 +82,7 @@ export function LoginForm() {
       <form action={loginFormAction} className="space-y-6">
         <input type="hidden" name="email" value={email} />
         <input type="hidden" name="otpCode" value={otpCode} />
+        <input type="hidden" name="next" value={next} />
         <div className="bg-card border-2 border-foreground shadow-brutal-lg p-8">
           <div className="space-y-4">
             <div className="text-center mb-4">

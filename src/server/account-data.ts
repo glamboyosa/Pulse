@@ -8,6 +8,7 @@ import {
   rateLimits,
   spots,
   users,
+  vouchers,
   weeklyDigests,
 } from '@/db/schema'
 import { deleteAudio as deleteObject } from '@/lib/storage/r2'
@@ -114,6 +115,17 @@ export const exportAccount = async (ownerId: string) => {
       .where(eq(weeklyDigests.userId, ownerId))
       .orderBy(asc(weeklyDigests.weekStart)),
   ])
+  const allVouchers = await db
+    .select({
+      code: vouchers.code,
+      offer: vouchers.offer,
+      issuedAt: vouchers.createdAt,
+      expiresAt: vouchers.expiresAt,
+      redeemedAt: vouchers.redeemedAt,
+    })
+    .from(vouchers)
+    .where(eq(vouchers.userId, ownerId))
+    .orderBy(asc(vouchers.createdAt))
 
   return {
     exportedAt: new Date().toISOString(),
@@ -122,6 +134,7 @@ export const exportAccount = async (ownerId: string) => {
     feedback: allFeedback,
     purchases,
     weeklyDigests: digests,
+    vouchers: allVouchers,
   }
 }
 
@@ -145,6 +158,7 @@ export const deleteAccount = async (ownerId: string) => {
       .delete(feedback)
       .where(eq(feedback.userId, ownerId))
       .returning({ audioKey: feedback.audioKey })
+    await tx.delete(vouchers).where(eq(vouchers.userId, ownerId))
     await tx.delete(weeklyDigests).where(eq(weeklyDigests.userId, ownerId))
     await tx.delete(spots).where(eq(spots.userId, ownerId))
     await tx.delete(pulsePurchases).where(eq(pulsePurchases.userId, ownerId))

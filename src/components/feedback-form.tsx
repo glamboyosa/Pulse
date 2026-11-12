@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { CustomerVoucher } from '@/components/customer-voucher'
 import { TurnstileWidget } from '@/components/turnstile-widget'
 import { MAX_CONTEXT_LENGTH } from '@/lib/widget-limits'
 
@@ -34,7 +35,14 @@ type Stage =
   | { name: 'recording' }
   | { name: 'recorded'; audio: Blob; url: string; seconds: number }
   | { name: 'sending'; audio: Blob; url: string; seconds: number }
-  | { name: 'sent' }
+  | { name: 'sent'; feedbackId: string | null }
+
+const sentId = async (response: Response) =>
+  (
+    (await response.json().catch(() => ({}))) as {
+      feedbackId?: string
+    }
+  ).feedbackId ?? null
 
 const formatTime = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
@@ -117,6 +125,8 @@ export function FeedbackForm({
 }) {
   const accentStyle = { backgroundColor: accent, color: '#ffffff' }
   const [stage, setStage] = useState<Stage>({ name: 'loading' })
+  // The owner's voucher offer, if they give one. Not in the widget.
+  const [offer, setOffer] = useState<string | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const [name, setName] = useState('')
   const [contactEmail, setContactEmail] = useState('')
@@ -192,12 +202,13 @@ export function FeedbackForm({
     }
     fetch(`/api/businesses/${encodeURIComponent(businessId)}/status`)
       .then((response) => (response.ok ? response.json() : { accepting: true }))
-      .then((data: { accepting: boolean }) =>
-        setStage(data.accepting ? { name: 'idle' } : { name: 'not-accepting' }),
-      )
+      .then((data: { accepting: boolean; offer?: string | null }) => {
+        if (!widget) setOffer(data.offer ?? null)
+        setStage(data.accepting ? { name: 'idle' } : { name: 'not-accepting' })
+      })
       // If the check fails, let them record; the submit will say if it can't.
       .catch(() => setStage({ name: 'idle' }))
-  }, [businessId])
+  }, [businessId, widget])
 
   const releaseMicrophone = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -327,7 +338,7 @@ export function FeedbackForm({
     }).catch(() => null)
     freshTurnstile()
     if (response?.ok) {
-      setStage({ name: 'sent' })
+      setStage({ name: 'sent', feedbackId: await sentId(response) })
       return
     }
     if (response?.status === 402) {
@@ -380,7 +391,7 @@ export function FeedbackForm({
       }).finally(freshTurnstile)
       if (response.ok) {
         URL.revokeObjectURL(stage.url)
-        setStage({ name: 'sent' })
+        setStage({ name: 'sent', feedbackId: await sentId(response) })
         return
       }
       if (response.status === 402) {
@@ -419,6 +430,9 @@ export function FeedbackForm({
           <p className="mt-6 border-2 border-dashed border-foreground p-4 text-xl font-black">
             {thankYouMessage}
           </p>
+        )}
+        {offer && stage.feedbackId && (
+          <CustomerVoucher feedbackId={stage.feedbackId} />
         )}
         {googleReviewUrl && (
           <a
@@ -502,6 +516,14 @@ export function FeedbackForm({
     <form onSubmit={submit}>
       <Card className={cardClass}>
         <div className="space-y-6">
+          {offer && (
+            <p className="border-2 border-dashed border-foreground px-4 py-3 text-center">
+              <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                For your feedback, good or bad
+              </span>
+              <span className="text-lg font-black">{offer}</span>
+            </p>
+          )}
           {typing ? (
             <div className="space-y-4">
               <div className="space-y-2">

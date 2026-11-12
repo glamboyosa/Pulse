@@ -56,6 +56,15 @@ import {
   setWidgetOrigins,
   widgetSettings,
 } from '@/server/widget'
+import {
+  VoucherError,
+  claimVoucher,
+  findVoucher,
+  publicOffer,
+  redeemVoucher,
+  updateVoucherSettings,
+  voucherCookie,
+} from '@/server/vouchers'
 
 const HOUR_MS = 60 * 60 * 1000
 const WIDGET_OFF = 'This feedback button is turned off.'
@@ -73,6 +82,14 @@ const widgetFor = async (body: {
   if (!(await isWidgetKeyFor(body.code, body.widgetKey))) return false
   return { context: parseWidgetContext(body.context) }
 }
+
+const cookiesOf = (request: Request) =>
+  Object.fromEntries(
+    (request.headers.get('cookie') ?? '').split(';').flatMap((pair) => {
+      const at = pair.indexOf('=')
+      return at > 0 ? [[pair.slice(0, at).trim(), pair.slice(at + 1)]] : []
+    }),
+  ) as Record<string, string>
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -98,6 +115,10 @@ const app = new Elysia({ prefix: '/api' })
       return { error: error.message }
     }
     if (error instanceof WidgetError) {
+      set.status = error.status
+      return { error: error.message }
+    }
+    if (error instanceof VoucherError) {
       set.status = error.status
       return { error: error.message }
     }
@@ -147,15 +168,23 @@ const app = new Elysia({ prefix: '/api' })
     const business = (
       await db
         .select({
+          id: users.id,
           name: users.businessName,
           pulsesRemaining: users.pulsesRemaining,
+          voucherEnabled: users.voucherEnabled,
+          voucherOffer: users.voucherOffer,
+          voucherMonthlyCap: users.voucherMonthlyCap,
         })
         .from(users)
         .where(eq(users.uniqueCode, params.code))
         .limit(1)
     ).at(0)
     if (!business) return json(404, { error: 'Business not found' })
-    return { name: business.name, accepting: business.pulsesRemaining > 0 }
+    return {
+      name: business.name,
+      accepting: business.pulsesRemaining > 0,
+      offer: await publicOffer(business),
+    }
   })
   // Public: a customer's recording, one request per submission.
   .post(
@@ -258,6 +287,24 @@ const app = new Elysia({ prefix: '/api' })
         context: t.Optional(t.String({ maxLength: 16384 })),
       }),
     },
+  )
+  // Public: the customer's voucher for the note they just sent. The note's ID
+  // is only ever given to the browser that sent it.
+  .get(
+    '/feedback/:id/voucher',
+    async ({ params, request, set }) => {
+      const claim = await claimVoucher({
+        feedbackId: params.id,
+        cookies: cookiesOf(request),
+        ip: clientIp(request),
+      })
+      if (!claim) return json(404, { error: 'Feedback not found' })
+      set.headers['cache-control'] = 'no-store'
+      if (claim.status !== 'issued') return claim
+      set.headers['set-cookie'] = await voucherCookie(claim.businessId)
+      return { status: claim.status, voucher: claim.voucher }
+    },
+    { params: t.Object({ id: t.String({ format: 'uuid' }) }) },
   )
   .get('/feedback', async ({ request }) => {
     const user = await getUserFromSession(request)
@@ -413,6 +460,55 @@ const app = new Elysia({ prefix: '/api' })
         origins: t.Array(t.String({ maxLength: 300 }), { maxItems: 50 }),
       }),
     },
+  )
+  .put(
+    '/settings/vouchers',
+    async ({ body, request }) => {
+      const user = await getUserFromSession(request)
+      if (!user) return json(401, { error: 'Unauthorized' })
+      await updateVoucherSettings(user.id, body)
+      return { success: true }
+    },
+    {
+      body: t.Object({
+        enabled: t.Boolean(),
+        offer: t.String({ maxLength: 1000 }),
+        expiryDays: t.Integer(),
+        monthlyCap: t.Integer(),
+      }),
+    },
+  )
+  // Staff check and redeem a voucher, signed in as the owner.
+  .get(
+    '/vouchers/:code',
+    async ({ params, request }) => {
+      const user = await getUserFromSession(request)
+      if (!user) return json(401, { error: 'Unauthorized' })
+      const voucher = await findVoucher(user.id, params.code)
+      return voucher
+        ? { voucher }
+        : json(404, { error: 'No voucher with that code' })
+    },
+    { params: t.Object({ code: t.String({ maxLength: 32 }) }) },
+  )
+  .post(
+    '/vouchers/:code/redeem',
+    async ({ params, request }) => {
+      const user = await getUserFromSession(request)
+      if (!user) return json(401, { error: 'Unauthorized' })
+      const result = await redeemVoucher(user.id, params.code)
+      if (!result) return json(404, { error: 'No voucher with that code' })
+      return result.redeemed
+        ? { voucher: result.voucher }
+        : json(409, {
+            error:
+              result.voucher.state === 'redeemed'
+                ? 'Already redeemed'
+                : 'This voucher has expired',
+            voucher: result.voucher,
+          })
+    },
+    { params: t.Object({ code: t.String({ maxLength: 32 }) }) },
   )
   .put(
     '/settings/branding',

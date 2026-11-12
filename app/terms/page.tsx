@@ -66,9 +66,17 @@ export default function TermsPage() {
             send replies that are spam, harassment, or anything other than an
             answer to the feedback;
           </li>
+          <li>
+            offer rewards that depend on what customers say, or for Google or
+            other public reviews;
+          </li>
           <li>break the law, or try to break into Pulse or other accounts.</li>
         </ul>
         <p>We may suspend accounts that do.</p>
+        <p>
+          If you give vouchers for feedback, honouring them is up to you, not
+          Pulse.
+        </p>
       </section>
 
       <section>
