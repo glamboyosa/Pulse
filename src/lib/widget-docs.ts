@@ -115,6 +115,35 @@ PulseQueue.push(['setContext', { appVersion: '3.1.0', plan: 'pro' }])`,
     ],
   },
   {
+    id: 'mobile-apps',
+    title: 'Mobile apps',
+    blocks: [
+      {
+        kind: 'text',
+        text: `There's no native SDK yet. Instead, open \`${appUrl}/embed/YOUR_KEY\` in an in-app browser: \`SFSafariViewController\` on iOS, Custom Tabs on Android, or \`expo-web-browser\` in React Native. Recording and typing both work there. Your key is the \`data-key\` in the install code in Settings. Your app doesn't need to be in the list of sites.`,
+      },
+      {
+        kind: 'code',
+        language: 'tsx',
+        code: `import * as WebBrowser from 'expo-web-browser'
+import { Button } from 'react-native'
+
+export function FeedbackButton() {
+  return (
+    <Button
+      title="Send feedback"
+      onPress={() => WebBrowser.openBrowserAsync('${appUrl}/embed/${DOCS_KEY}')}
+    />
+  )
+}`,
+      },
+      {
+        kind: 'text',
+        text: 'Making a new key or turning the widget off breaks the link in app versions already released. Notes from apps come without page details, and `identify`, `setContext` and `data-heading` only work with the script on a website. A plain WebView needs its own microphone setup on each platform, so the in-app browser is simpler.',
+      },
+    ],
+  },
+  {
     id: 'troubleshooting',
     title: 'Troubleshooting',
     blocks: [
