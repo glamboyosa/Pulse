@@ -5,6 +5,7 @@ import { CopyButton } from '@/components/copy-button'
 import { DocsInstallTabs } from '@/components/docs-install-tabs'
 import { PulseLogo } from '@/components/pulse-logo'
 import { env } from '@/env'
+import { agentSetupPrompt } from '@/lib/widget-agents'
 import { widgetDocs, widgetDocsMarkdown } from '@/lib/widget-docs'
 
 const title = 'Website widget guide'
@@ -101,6 +102,10 @@ export default function WidgetDocsPage() {
           {title}
         </h1>
         <div className="mb-10 flex flex-wrap items-center gap-4">
+          <CopyButton
+            text={agentSetupPrompt(appUrl)}
+            label="Copy prompt for your coding agent"
+          />
           <CopyButton
             text={widgetDocsMarkdown(appUrl)}
             label="Copy as Markdown"
