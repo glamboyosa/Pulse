@@ -18,7 +18,7 @@ export type DocSection = { id: string; title: string; blocks: Array<DocBlock> }
 
 export const DOCS_KEY = 'pk_your_key'
 
-const IDENTIFY_NEXT = `// app/pulse-user.tsx
+export const IDENTIFY_NEXT = `// app/pulse-user.tsx
 'use client'
 
 import { useEffect } from 'react'
@@ -35,6 +35,201 @@ export function PulseUser({ id, email }: { id: string; email?: string }) {
     window.PulseQueue.push(['identify', { id, email }])
   }, [id, email])
   return null
+}`
+
+export const EXPO_PERMISSIONS = `{
+  "expo": {
+    "ios": {
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Record voice feedback"
+      }
+    },
+    "android": {
+      "permissions": ["android.permission.RECORD_AUDIO", "android.permission.MODIFY_AUDIO_SETTINGS"]
+    }
+  }
+}`
+
+export const reactNativeComponent = (
+  appUrl: string,
+) => `// components/pulse-feedback.tsx
+import { useRef, useState } from 'react'
+import type { ComponentRef } from 'react'
+import {
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  StatusBar,
+  processColor,
+  Text,
+  View,
+  useColorScheme,
+} from 'react-native'
+import { WebView } from 'react-native-webview'
+
+const PULSE = '${appUrl}'
+
+type SheetProps = {
+  siteKey: string
+  open: boolean
+  onClose: () => void
+  /** Title above the recorder, up to 120 characters. */
+  heading?: string
+  user?: { id: string; email?: string }
+  context?: { appVersion?: string } & Record<string, string | undefined>
+  onSent?: () => void
+}
+
+/** The recorder in a sheet. Open it from any button of your own. */
+export function PulseFeedbackSheet({ siteKey, open, onClose, heading, user, context = {}, onSent }: SheetProps) {
+  const webView = useRef<ComponentRef<typeof WebView>>(null)
+  const { appVersion, ...custom } = context
+  // The × and the iOS dismiss can both report one close; tell the app once.
+  const close = () => {
+    if (open) onClose()
+  }
+
+  const sendContext = () => {
+    const message = {
+      type: 'pulse:context',
+      context: { userId: user?.id, userEmail: user?.email, appVersion, custom },
+    }
+    webView.current?.injectJavaScript(\`window.postMessage(\${JSON.stringify(message)}, '*'); true;\`)
+  }
+
+  return (
+    <Modal
+      visible={open}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={close}
+      onDismiss={close}
+      statusBarTranslucent
+    >
+      <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }}>
+        <WebView
+          ref={webView}
+          source={{
+            uri: \`\${PULSE}/embed/\${siteKey}\${heading ? \`?heading=\${encodeURIComponent(heading)}\` : ''}\`,
+            // Shows the close button inside the page, and lets it use the heading.
+            headers: { 'x-pulse-app': '1' },
+          }}
+          mediaCapturePermissionGrantType="grantIfSameHostElsePrompt"
+          allowsInlineMediaPlayback
+          onShouldStartLoadWithRequest={(request) => {
+            // Links out of the recorder, such as the privacy policy, open in the browser.
+            if (request.isTopFrame === false || request.url.startsWith(\`\${PULSE}/embed/\`)) return true
+            Linking.openURL(request.url).catch(() => {})
+            return false
+          }}
+          onMessage={(event) => {
+            let type: unknown
+            try {
+              type = JSON.parse(event.nativeEvent.data).type
+            } catch {
+              return // Not a message from Pulse.
+            }
+            if (type === 'pulse:ready') sendContext()
+            if (type === 'pulse:sent') onSent?.()
+            if (type === 'pulse:close') close()
+          }}
+        />
+      </View>
+    </Modal>
+  )
+}
+
+type Props = Omit<SheetProps, 'open' | 'onClose'> & {
+  /** Button text, up to 40 characters. Read out by screen readers for the circle. */
+  label?: string
+  shape?: 'pill' | 'square' | 'circle' | 'bubble'
+  /** 'auto' is black or white against the phone's light or dark mode. Or any colour. */
+  color?: string
+  position?: 'right' | 'left'
+}
+
+/** Black or white, whichever reads better on the given colour. */
+const textOn = (color: string) => {
+  const argb = Number(processColor(color)) >>> 0
+  const [r, g, b] = [16, 8, 0].map((shift) => (argb >> shift) & 255)
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? '#111111' : '#ffffff'
+}
+
+/** A floating button, styled like the website widget, that opens the sheet. */
+export function PulseFeedback({
+  label = 'Feedback',
+  shape = 'pill',
+  color = 'auto',
+  position = 'right',
+  ...sheet
+}: Props) {
+  const [open, setOpen] = useState(false)
+  const dark = useColorScheme() === 'dark'
+
+  const fill = color === 'auto' ? (dark ? '#ffffff' : '#111111') : color
+  const text = color === 'auto' ? (dark ? '#111111' : '#ffffff') : textOn(color)
+  const edge = color === 'auto' ? fill : '#111111'
+  const tail = position === 'right' ? 'borderBottomRightRadius' : 'borderBottomLeftRadius'
+  const shapeStyle = {
+    pill: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 999 },
+    square: { paddingVertical: 14, paddingHorizontal: 18, borderRadius: 6 },
+    circle: { width: 56, height: 56, borderRadius: 999 },
+    bubble: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 20, [tail]: 4 },
+  }[shape]
+
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={shape === 'circle' ? label.trim().slice(0, 40) || 'Feedback' : undefined}
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [
+          {
+            position: 'absolute',
+            bottom: 20,
+            [position]: 20,
+            minHeight: 44,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: fill,
+            borderWidth: 2,
+            borderColor: edge,
+            shadowColor: edge === '#ffffff' ? '#ffffff' : '#111111',
+            shadowOffset: { width: 3, height: 3 },
+            shadowOpacity: edge === '#ffffff' ? 0.35 : 1,
+            shadowRadius: 0,
+            elevation: 4,
+            transform: [{ scale: pressed ? 0.96 : 1 }],
+          },
+          shapeStyle,
+        ]}
+      >
+        {shape === 'circle' ? (
+          // A microphone: capsule, cup and stand.
+          <View style={{ alignItems: 'center' }}>
+            <View style={{ width: 8, height: 13, borderRadius: 4, borderWidth: 2, borderColor: text }} />
+            <View
+              style={{
+                width: 14,
+                height: 7,
+                marginTop: -4,
+                borderWidth: 2,
+                borderTopWidth: 0,
+                borderColor: text,
+                borderBottomLeftRadius: 7,
+                borderBottomRightRadius: 7,
+              }}
+            />
+            <View style={{ width: 2, height: 4, backgroundColor: text }} />
+          </View>
+        ) : (
+          <Text style={{ color: text, fontSize: 15, fontWeight: '700' }}>{label.trim().slice(0, 40) || 'Feedback'}</Text>
+        )}
+      </Pressable>
+      <PulseFeedbackSheet {...sheet} open={open} onClose={() => setOpen(false)} />
+    </>
+  )
 }`
 
 export const widgetDocs = (appUrl: string): Array<DocSection> => [
@@ -120,26 +315,66 @@ PulseQueue.push(['setContext', { appVersion: '3.1.0', plan: 'pro' }])`,
     blocks: [
       {
         kind: 'text',
-        text: `There's no native SDK yet. Instead, open \`${appUrl}/embed/YOUR_KEY\` in an in-app browser: \`SFSafariViewController\` on iOS, Custom Tabs on Android, or \`expo-web-browser\` in React Native. Recording and typing both work there. Your key is the \`data-key\` in the install code in Settings. Your app doesn't need to be in the list of sites.`,
+        text: 'In React Native, with or without Expo, copy this component into your app. It opens your widget in a WebView inside a modal. It needs `react-native-webview`: run `npx expo install react-native-webview`, or without Expo `npm install react-native-webview` and then `npx pod-install`.',
+      },
+      { kind: 'code', language: 'tsx', code: reactNativeComponent(appUrl) },
+      {
+        kind: 'text',
+        text: "Render it once in a screen, as the last child of a view that fills it. Like the website button, it floats in the bottom corner, and `label`, `shape`, `color`, `position` and `heading` work like the script's `data-` options. `auto` colour follows the phone's light or dark mode, so pass a colour if your app has its own theme. `user` and `context` work like `identify` and `setContext`. `onSent` runs when a note is sent. The thank-you screen stays open until the customer closes it.",
       },
       {
         kind: 'code',
         language: 'tsx',
-        code: `import * as WebBrowser from 'expo-web-browser'
-import { Button } from 'react-native'
-
-export function FeedbackButton() {
-  return (
-    <Button
-      title="Send feedback"
-      onPress={() => WebBrowser.openBrowserAsync('${appUrl}/embed/${DOCS_KEY}')}
-    />
-  )
-}`,
+        code: `<View style={{ flex: 1 }}>
+  {/* your screen */}
+  <PulseFeedback
+    siteKey="${DOCS_KEY}"
+    label="Ask a question"
+    shape="bubble"
+    color="#e11d48"
+    position="left"
+    heading="What can we help with?"
+    user={{ id: '42', email: 'ada@example.com' }}
+    context={{ appVersion: '3.1.0', plan: 'pro' }}
+  />
+</View>`,
       },
       {
         kind: 'text',
-        text: 'Making a new key or turning the widget off breaks the link in app versions already released. Notes from apps come without page details, and `identify`, `setContext` and `data-heading` only work with the script on a website. A plain WebView needs its own microphone setup on each platform, so the in-app browser is simpler.',
+        text: 'Have your own button? Use `PulseFeedbackSheet` and open it yourself. It takes the same `heading`, `user`, `context` and `onSent`:',
+      },
+      {
+        kind: 'code',
+        language: 'tsx',
+        code: `const [open, setOpen] = useState(false)
+
+<Button title="Send feedback" onPress={() => setOpen(true)} />
+<PulseFeedbackSheet
+  siteKey="${DOCS_KEY}"
+  open={open}
+  onClose={() => setOpen(false)}
+/>`,
+      },
+      {
+        kind: 'text',
+        text: 'Recording needs microphone permission. With Expo, add this to `app.json` and make a new build:',
+      },
+      {
+        kind: 'code',
+        language: 'json',
+        code: EXPO_PERMISSIONS,
+      },
+      {
+        kind: 'text',
+        text: 'Without Expo, add `NSMicrophoneUsageDescription` to `Info.plist`, and `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS` to `AndroidManifest.xml`.',
+      },
+      {
+        kind: 'text',
+        text: `Other apps can open \`${appUrl}/embed/YOUR_KEY\` in an in-app browser: \`SFSafariViewController\` on iOS or Custom Tabs on Android. That needs no permissions, but notes arrive without user details.`,
+      },
+      {
+        kind: 'text',
+        text: "Your key is the `data-key` in the install code in Settings. Your app doesn't need to be in the list of sites. Making a new key or turning the widget off breaks the widget in app versions already released.",
       },
     ],
   },

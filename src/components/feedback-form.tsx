@@ -44,6 +44,22 @@ const sentId = async (response: Response) =>
     }
   ).feedbackId ?? null
 
+declare global {
+  interface Window {
+    ReactNativeWebView?: { postMessage: (message: string) => void }
+  }
+}
+
+/**
+ * Tells whatever shows the widget what happened: the website widget's frame
+ * parent, or a React Native app's WebView (see the docs' Mobile apps section).
+ */
+const tellHost = (message: { type: string }) => {
+  // Framed, the bridge may belong to an app showing the owner's website.
+  if (window.parent !== window) window.parent.postMessage(message, '*')
+  else window.ReactNativeWebView?.postMessage(JSON.stringify(message))
+}
+
 const formatTime = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 
@@ -150,7 +166,8 @@ export function FeedbackForm({
 
   // The host page sends its context once the widget says it's ready. Only
   // the parent window counts: frame-ancestors already limits it to the
-  // owner's listed sites.
+  // owner's listed sites. In a React Native WebView there is no parent, and
+  // the app posts to this window itself.
   useEffect(() => {
     if (!widget) return
     const receive = (event: MessageEvent) => {
@@ -168,12 +185,12 @@ export function FeedbackForm({
     // Escape inside the widget never reaches the host page, so pass it on.
     const escape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        window.parent.postMessage({ type: 'pulse:close' }, '*')
+        tellHost({ type: 'pulse:close' })
       }
     }
     window.addEventListener('message', receive)
     window.addEventListener('keydown', escape)
-    window.parent.postMessage({ type: 'pulse:ready' }, '*')
+    tellHost({ type: 'pulse:ready' })
     return () => {
       window.removeEventListener('message', receive)
       window.removeEventListener('keydown', escape)
@@ -182,7 +199,7 @@ export function FeedbackForm({
 
   useEffect(() => {
     if (widget && stage.name === 'sent') {
-      window.parent.postMessage({ type: 'pulse:sent' }, '*')
+      tellHost({ type: 'pulse:sent' })
     }
   }, [widget, stage.name])
 

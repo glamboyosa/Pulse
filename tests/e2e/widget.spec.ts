@@ -74,6 +74,17 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
       // The project's device (desktop or Pixel 7), so mobile gets the narrow layout.
       const { baseURL: _baseURL, ...device } = testInfo.project.use
       const visitor = await browser.newContext(device)
+      // A website shown inside someone's React Native app: the framed
+      // widget talks to the website, never to that app's bridge.
+      await visitor.addInitScript(() => {
+        const bridged: Array<string> = []
+        Object.assign(window, {
+          bridged,
+          ReactNativeWebView: {
+            postMessage: (raw: string) => bridged.push(raw),
+          },
+        })
+      })
       const site = await customerWithVoice(visitor)
       await site.goto(`${host.origin}/start`)
       // A single-page app changes route and swaps <body>, like Turbo does.
@@ -98,6 +109,14 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
       await expect(widget.getByText('THANK YOU!')).toBeVisible({
         timeout: 20_000,
       })
+      const embed = site
+        .frames()
+        .find((frame) => frame.url().includes('/embed/'))
+      expect(
+        await embed?.evaluate(
+          () => (window as unknown as { bridged: Array<string> }).bridged,
+        ),
+      ).toEqual([])
       // Escape inside the widget closes it on the host page.
       await widget.getByText('THANK YOU!').press('Escape')
       await expect(
@@ -282,4 +301,99 @@ test('the icon-only button ignores its own colour when reading the page', async 
   } finally {
     host.server.close()
   }
+})
+
+test('a React Native app hears from the widget and passes its user', async ({
+  page,
+  browser,
+}, testInfo) => {
+  const code = `e2e-native-${Date.now()}`
+  await signUpBusiness(
+    page,
+    `${code}@example.test`,
+    code,
+    'On my website or app',
+  )
+  await page.goto('/settings')
+  await page.getByRole('button', { name: 'Turn on the widget' }).click()
+  const install = await page.locator('pre code').innerText()
+  const key = /data-key="(pk_[^"]+)"/.exec(install)?.[1]
+  expect(key).toBeTruthy()
+
+  const { baseURL, ...device } = testInfo.project.use
+  const embedUrl = `${baseURL}/embed/${key}?heading=What%20went%20wrong%3F`
+
+  await test.step('a shared link ignores the heading and has no app close button', async () => {
+    const browserTab = await browser.newPage()
+    await browserTab.goto(embedUrl)
+    await expect(
+      browserTab.getByRole('heading', { name: 'What went wrong?' }),
+    ).toHaveCount(0)
+    await expect(browserTab.getByRole('button', { name: 'Close' })).toHaveCount(
+      0,
+    )
+    await browserTab.close()
+  })
+
+  // The docs' component sends this header with the first request.
+  const app = await browser.newContext({
+    ...device,
+    extraHTTPHeaders: { 'x-pulse-app': '1' },
+  })
+  // What react-native-webview provides, and what the docs' component does
+  // with it: answer pulse:ready with the app's user.
+  await app.addInitScript(() => {
+    const heard: Array<string> = []
+    Object.assign(window, {
+      heard,
+      ReactNativeWebView: {
+        postMessage: (raw: string) => {
+          const { type } = JSON.parse(raw) as { type: string }
+          heard.push(type)
+          if (type === 'pulse:ready') {
+            window.postMessage(
+              {
+                type: 'pulse:context',
+                context: {
+                  userId: 'user-7',
+                  appVersion: '2.0.0',
+                  custom: { plan: 'pro' },
+                },
+              },
+              '*',
+            )
+          }
+        },
+      },
+    })
+  })
+  const screen = await customerWithVoice(app)
+  // Opened as the whole screen, not in a frame, and the app isn't a listed site.
+  await screen.goto(embedUrl)
+  await expect(
+    screen.getByRole('heading', { name: 'What went wrong?' }),
+  ).toBeVisible()
+  await screen.getByRole('button', { name: 'START RECORDING' }).click()
+  await screen.waitForTimeout(6000)
+  await screen.getByRole('button', { name: 'STOP' }).click()
+  await screen.getByRole('button', { name: 'SEND FEEDBACK' }).click()
+  await expect(screen.getByText('THANK YOU!')).toBeVisible({ timeout: 20_000 })
+  await screen.getByRole('button', { name: 'Close' }).click()
+  expect(
+    await screen.evaluate(
+      () => (window as unknown as { heard: Array<string> }).heard,
+    ),
+  ).toEqual(['pulse:ready', 'pulse:sent', 'pulse:close'])
+  await app.close()
+
+  const result = await db.query<{ channel: string; context: unknown }>(
+    `select f.channel, f.context from feedback f
+     join users u on u.id = f.user_id where u.unique_code = $1`,
+    [code],
+  )
+  expect(result.rows).toHaveLength(1)
+  expect(result.rows[0]).toEqual({
+    channel: 'widget',
+    context: { userId: 'user-7', appVersion: '2.0.0', custom: { plan: 'pro' } },
+  })
 })

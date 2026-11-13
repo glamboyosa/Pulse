@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 
+import { AppCloseButton } from '@/components/app-close-button'
 import { FeedbackForm } from '@/components/feedback-form'
 import { PulseLogo } from '@/components/pulse-logo'
 import { brandingFor } from '@/server/branding'
@@ -17,20 +18,26 @@ export default async function EmbedPage({
   searchParams: Promise<{ heading?: string | Array<string> }>
 }) {
   const { key } = await params
-  // The site may set its own panel title in the snippet (data-heading).
-  // Only inside a frame: as a shared link, a made-up title on the owner's
-  // branded page could be used for phishing.
+  // The site may set its own panel title in the snippet (data-heading), or
+  // the app in its component. Only there: as a shared link, a made-up title
+  // on the owner's branded page could be used for phishing. A browser can't
+  // add the app's header to a link.
   const { heading } = await searchParams
-  const framed = (await headers()).get('sec-fetch-dest') === 'iframe'
+  const requestHeaders = await headers()
+  const framed = requestHeaders.get('sec-fetch-dest') === 'iframe'
+  const inApp = requestHeaders.get('x-pulse-app') === '1'
   const customHeading =
-    framed && typeof heading === 'string' ? heading.trim().slice(0, 120) : ''
+    (framed || inApp) && typeof heading === 'string'
+      ? heading.trim().slice(0, 120)
+      : ''
   const widget = await widgetByKey(key)
   const branding = widget?.code ? await brandingFor(widget.code) : null
   if (!widget?.code || !branding) notFound()
 
   return (
-    <main className="min-h-dvh bg-secondary p-4">
-      {/* Right padding clears the close button the widget draws over the frame. */}
+    <main className="relative min-h-dvh bg-secondary p-4">
+      {inApp && <AppCloseButton />}
+      {/* Right padding clears the close button. */}
       <h1 className="mb-4 pr-12 text-2xl font-black text-balance">
         {customHeading || branding.question || 'How are we doing?'}
       </h1>
