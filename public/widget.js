@@ -49,6 +49,9 @@
   var extra = {}
   var panel = null
   var frame = null
+  var shown = false
+  var builtNarrow = false
+  var closing = false
 
   var dark = window.matchMedia
     ? window.matchMedia('(prefers-color-scheme: dark)')
@@ -281,16 +284,20 @@
   })
   window.addEventListener('popstate', sendContext)
 
+  // Built hidden when the visitor heads for the button, so the recorder has
+  // loaded by the time they click. Hidden, it can't be seen, focused or read.
   var build = function () {
     panel = document.createElement('div')
     panel.setAttribute('role', 'dialog')
     panel.setAttribute('data-turbo-temporary', '')
     panel.setAttribute('aria-label', heading || label)
     var narrow = window.innerWidth < 480
+    builtNarrow = narrow
     panel.style.cssText =
       reset +
       'position:fixed;z-index:2147483001;background:#fff;color:#111;' +
       'border:2px solid #111;box-shadow:4px 4px 0 #111;display:block;' +
+      'visibility:hidden;' +
       (narrow
         ? 'left:8px;right:8px;bottom:8px;top:auto;height:calc(100vh - 16px);' +
           'height:min(620px,calc(100dvh - 16px))'
@@ -307,7 +314,8 @@
       reset +
       'position:absolute;top:6px;right:8px;left:auto;bottom:auto;z-index:1;' +
       'width:44px;height:44px;padding:0;border:0;background:transparent;' +
-      'color:#111;font:700 24px/1 system-ui,sans-serif;cursor:pointer'
+      'color:#111;font:700 24px/1 system-ui,sans-serif;cursor:pointer;' +
+      'visibility:inherit'
     close.addEventListener('click', function () {
       api.close()
     })
@@ -321,12 +329,15 @@
     frame.title = heading || label
     frame.setAttribute('allow', 'microphone')
     frame.style.cssText =
-      reset + 'width:100%;height:100%;border:0;display:block'
+      reset + 'width:100%;height:100%;border:0;display:block;visibility:inherit'
 
     panel.appendChild(close)
     panel.appendChild(frame)
     document.body.appendChild(panel)
-    frame.focus()
+  }
+
+  var warm = function () {
+    if (!panel && !closing) build()
   }
 
   window.addEventListener('message', function (event) {
@@ -338,7 +349,7 @@
   })
 
   document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape' && panel && !event.defaultPrevented) {
+    if (event.key === 'Escape' && shown && !event.defaultPrevented) {
       api.close()
     }
   })
@@ -346,18 +357,30 @@
   var api = {
     __loaded: true,
     open: function () {
-      if (!panel) build()
+      // The window may have narrowed since the panel was warmed.
+      if (panel && !shown && builtNarrow !== window.innerWidth < 480) {
+        panel.remove()
+        panel = frame = null
+      }
+      warm()
+      shown = true
+      panel.style.visibility = 'visible'
       button.setAttribute('aria-expanded', 'true')
+      frame.focus()
     },
     // Closing removes the panel, so a recording in progress stops and the
     // microphone is released. The next open starts fresh.
     close: function () {
-      if (!panel) return
+      if (!shown) return
+      shown = false
       panel.remove()
       panel = null
       frame = null
       button.setAttribute('aria-expanded', 'false')
+      // Returning focus isn't a sign the visitor wants it again: don't reload.
+      closing = true
       button.focus()
+      closing = false
     },
     identify: function (who) {
       user = who || {}
@@ -370,9 +393,12 @@
   }
 
   button.addEventListener('click', function () {
-    if (panel) api.close()
+    if (shown) api.close()
     else api.open()
   })
+  button.addEventListener('pointerenter', warm)
+  button.addEventListener('focus', warm)
+  button.addEventListener('touchstart', warm, { passive: true })
 
   window.Pulse = api
   var run = function (call) {
@@ -389,8 +415,11 @@
     // button back on the new one. A panel left on the old body is gone.
     new MutationObserver(function () {
       if (button.isConnected || !document.body) return
-      if (panel && !panel.isConnected) panel = frame = null
-      button.setAttribute('aria-expanded', String(!!panel))
+      if (panel && !panel.isConnected) {
+        panel = frame = null
+        shown = false
+      }
+      button.setAttribute('aria-expanded', String(shown))
       document.body.appendChild(button)
       watchTheme()
       repaint()

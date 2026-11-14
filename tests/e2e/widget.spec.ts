@@ -92,11 +92,24 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
       await site.evaluate(() => {
         document.body.replaceWith(document.createElement('body'))
       })
-      await site.getByRole('button', { name: 'Ask a question' }).click()
       const widget = site.frameLocator('iframe[title="What went wrong?"]')
+      const embedLoads: Array<string> = []
+      site.on('request', (request) => {
+        if (request.url().includes('/embed/')) embedLoads.push(request.url())
+      })
+      // Heading for the button loads the recorder out of sight, ready for the click.
+      await site.getByRole('button', { name: 'Ask a question' }).hover()
+      await expect(
+        widget.getByRole('button', { name: 'START RECORDING' }),
+      ).toBeAttached()
+      await expect(site.getByRole('dialog')).toBeHidden()
+      await site.getByRole('button', { name: 'Ask a question' }).click()
+      await expect(site.getByRole('dialog')).toBeVisible()
       await expect(
         widget.getByRole('heading', { name: 'What went wrong?' }),
       ).toBeVisible()
+      // The click shows the recorder that already loaded.
+      expect(embedLoads).toHaveLength(1)
       // The route changes while the panel is open: the note gets the new page.
       await site.evaluate(() => {
         history.pushState({}, '', '/billing?token=secret')
@@ -122,6 +135,9 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
       await expect(
         site.getByRole('button', { name: 'Ask a question' }),
       ).toHaveAttribute('aria-expanded', 'false')
+      // Focus returning to the button doesn't load the recorder again.
+      await expect(site.locator('iframe')).toHaveCount(0)
+      expect(embedLoads).toHaveLength(1)
       await visitor.close()
     })
 
