@@ -30,8 +30,12 @@ export function BuyPulsesForm({
 }) {
   const localApprox = (cents: number) =>
     localPricing && (
-      <span className="ml-1.5 text-sm font-semibold text-muted-foreground">
-        ({formatLocalApprox(cents, localPricing)})
+      // The browser's number formatting can differ slightly from the server's.
+      <span
+        suppressHydrationWarning
+        className="ml-1.5 text-sm font-semibold text-muted-foreground"
+      >
+        {`(${formatLocalApprox(cents, localPricing)})`}
       </span>
     )
 
@@ -209,7 +213,10 @@ export function BuyPulsesForm({
               {formatUsd(getPriceCents())}
             </div>
             {localPricing && (
-              <div className="whitespace-nowrap text-sm font-semibold text-muted-foreground tabular-nums">
+              <div
+                suppressHydrationWarning
+                className="whitespace-nowrap text-sm font-semibold text-muted-foreground tabular-nums"
+              >
                 {formatLocalApprox(getPriceCents(), localPricing)}
               </div>
             )}
