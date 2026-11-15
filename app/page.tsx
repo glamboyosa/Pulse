@@ -111,10 +111,6 @@ const FAQS = [
     q: 'What happens to recordings?',
     a: 'Only your business sees them. Recordings are deleted automatically after 12 months; transcripts stay until you delete them. The privacy page lists every service involved.',
   },
-  {
-    q: 'Can I ask happy customers for Google reviews?',
-    a: 'Pulse shows your review link to everyone who leaves feedback, never only to happy customers. Asking only happy customers breaks Google’s rules.',
-  },
 ]
 
 /**
