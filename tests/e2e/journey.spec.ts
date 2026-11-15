@@ -50,11 +50,15 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
   })
 
   await test.step('owner adds a spot for the patio', async () => {
-    await page.getByLabel('New spot name').fill('Patio')
+    // Until the first one, an example shows what a spot is for.
+    const example = page.getByText(/branch gets its own QR code/)
+    await expect(example).toBeVisible()
+    await page.getByLabel('New branch or table name').fill('Patio')
     await page.getByRole('button', { name: 'ADD' }).click()
     await expect(
       page.getByRole('button', { name: 'Download QR code for Patio' }),
     ).toBeVisible()
+    await expect(example).toHaveCount(0)
   })
 
   await test.step('a customer records, listens back and sends', async () => {
@@ -130,7 +134,7 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     await page.reload()
     await expect(page.getByText('Tunde')).toBeVisible()
 
-    await page.getByLabel('Spot', { exact: true }).selectOption('Patio')
+    await page.getByLabel('Left at', { exact: true }).selectOption('Patio')
     await expect(page.getByText('Grace').first()).toBeVisible()
     await expect(page.getByText('Tunde')).toHaveCount(0)
   })

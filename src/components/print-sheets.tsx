@@ -186,7 +186,7 @@ export function PrintSheets({
                 </option>
               ))}
               {spots.length > 1 && (
-                <option value={EVERY_SPOT}>Every spot</option>
+                <option value={EVERY_SPOT}>Every branch &amp; table</option>
               )}
             </select>
           </label>

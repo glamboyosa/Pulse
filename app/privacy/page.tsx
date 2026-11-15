@@ -112,8 +112,8 @@ export default function PrivacyPage() {
         <h2>If you run a business on Pulse</h2>
         <ul>
           <li>
-            We keep your email, business details, settings, spots, the feedback
-            you receive and a record of pulses you buy.
+            We keep your email, business details, settings, branches and tables,
+            the feedback you receive and a record of pulses you buy.
           </li>
           <li>Polar handles payments. We never see your card details.</li>
           <li>

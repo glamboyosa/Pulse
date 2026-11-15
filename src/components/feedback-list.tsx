@@ -301,7 +301,7 @@ export function FeedbackList({
       {spotOptions.length > 0 && (
         <div className="mb-6 flex items-center gap-3">
           <label htmlFor="spot-filter" className="text-sm font-bold uppercase">
-            Spot
+            Left at
           </label>
           <select
             id="spot-filter"
@@ -309,7 +309,7 @@ export function FeedbackList({
             onChange={(event) => setSpotFilter(event.target.value)}
             className="border-2 border-foreground bg-card px-3 py-1.5 text-base font-bold"
           >
-            <option value="all">All spots</option>
+            <option value="all">All branches &amp; tables</option>
             {spotOptions.map(([id, label]) => (
               <option key={id} value={id}>
                 {label}

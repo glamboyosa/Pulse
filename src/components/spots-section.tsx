@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Download, Link2, MapPin, Plus, Printer, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import QRCodeSVG from 'react-qr-code'
@@ -113,6 +113,83 @@ function SpotRow({
   )
 }
 
+const EXAMPLE_PLACES = [
+  'Lekki',
+  'Dublin',
+  'Leeds',
+  'Austin',
+  'Accra',
+  'Nairobi',
+]
+
+/** Moves through the example places, unless the owner prefers less motion. */
+const useExamplePlace = () => {
+  const [index, setIndex] = useState(0)
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const next = setInterval(
+      () => setIndex((current) => (current + 1) % EXAMPLE_PLACES.length),
+      2200,
+    )
+    return () => clearInterval(next)
+  }, [])
+  return index
+}
+
+/**
+ * The place name, sliding up as it changes. The slot eases to each name's
+ * width, so the words around it glide rather than jump. It clips rather than
+ * hides overflow, which keeps the name on the line's baseline. Screen
+ * readers hear one name, not a changing one.
+ */
+function ExamplePlace({ index }: { index: number }) {
+  const word = useRef<HTMLSpanElement>(null)
+  const [width, setWidth] = useState<number>()
+  // The first name keeps its natural width, so a late font swap can't clip it.
+  const changed = useRef(false)
+  useLayoutEffect(() => {
+    if (!changed.current) {
+      changed.current = true
+      return
+    }
+    setWidth(word.current?.offsetWidth)
+  }, [index])
+  return (
+    <>
+      <span className="sr-only">{EXAMPLE_PLACES[0]}</span>
+      <span
+        aria-hidden="true"
+        style={{ width }}
+        className="inline-block overflow-clip whitespace-nowrap transition-[width] duration-300 ease-out"
+      >
+        <span
+          ref={word}
+          key={index}
+          className="inline-block animate-in fade-in slide-in-from-bottom-full duration-300 ease-out"
+        >
+          {EXAMPLE_PLACES[index]}
+        </span>
+      </span>
+    </>
+  )
+}
+
+/** Shown until the first one is added, then the list speaks for itself. */
+function SpotsExample() {
+  const place = useExamplePlace()
+  return (
+    <div className="mb-4 border-2 border-dashed border-foreground p-3 text-sm">
+      <p className="font-bold">
+        <ExamplePlace index={place} /> branch gets its own QR code
+      </p>
+      <p className="font-semibold text-muted-foreground">
+        Feedback left through it is tagged with that name, so you can see how
+        each branch, table or event is doing.
+      </p>
+    </div>
+  )
+}
+
 /** Extra QR codes for branches, tables or events, each tagging its feedback. */
 export function SpotsSection({
   code,
@@ -176,14 +253,13 @@ export function SpotsSection({
 
   return (
     <Card className="p-6 border-2 border-foreground shadow-brutal-lg bg-card">
-      <div className="flex items-center gap-3 mb-2">
+      <div className="flex items-center gap-3 mb-4">
         <MapPin className="size-6" strokeWidth={2.5} />
-        <h2 className="text-2xl font-extrabold tracking-tight">Spots</h2>
+        <h2 className="text-2xl font-extrabold tracking-tight">
+          Branches &amp; tables
+        </h2>
       </div>
-      <p className="text-sm font-semibold text-muted-foreground mb-4">
-        A QR code per branch, table or event. Feedback from each is tagged so
-        you can filter by it.
-      </p>
+      {spots.length === 0 && <SpotsExample />}
 
       <form
         className="flex gap-2 mb-4"
@@ -193,7 +269,7 @@ export function SpotsSection({
         }}
       >
         <label htmlFor="spot-name" className="sr-only">
-          New spot name
+          New branch or table name
         </label>
         <Input
           id="spot-name"

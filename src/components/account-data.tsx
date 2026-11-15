@@ -27,7 +27,7 @@ export function AccountData({ confirmWord }: { confirmWord: string }) {
       <div className="space-y-2">
         <p className="font-semibold">
           Download everything Pulse holds about your business: feedback,
-          transcripts, spots, purchases and digests.
+          transcripts, branches and tables, purchases and digests.
         </p>
         <a
           href="/api/account/export"
@@ -47,8 +47,8 @@ export function AccountData({ confirmWord }: { confirmWord: string }) {
       >
         <h3 className="text-lg font-black">Delete your account</h3>
         <p className="font-semibold">
-          This deletes every recording, transcript, spot and setting, right
-          away. It can&apos;t be undone, and unused pulses are lost.
+          This deletes every recording, transcript, branch, table and setting,
+          right away. It can&apos;t be undone, and unused pulses are lost.
         </p>
         <Label htmlFor="confirm-delete" className="font-bold">
           Type <span className="font-mono">{confirmWord}</span> to confirm

@@ -46,7 +46,8 @@ export const createSpot = async (
   rawName: string,
 ): Promise<Spot> => {
   const name = rawName.trim().replace(/\s+/g, ' ')
-  if (!name) throw new SpotError('Give the spot a name', 400)
+  if (!name)
+    throw new SpotError('Give it a name, such as Lekki branch or Table 4', 400)
   if (name.length > MAX_SPOT_NAME) {
     throw new SpotError(`Keep the name under ${MAX_SPOT_NAME} characters`, 400)
   }
@@ -54,10 +55,13 @@ export const createSpot = async (
   // Harmless: the limit only keeps the list manageable.
   const current = await listSpots(userId)
   if (current.some((spot) => spot.name.toLowerCase() === name.toLowerCase())) {
-    throw new SpotError(`You already have a spot called ${name}`, 409)
+    throw new SpotError(`You already have one called ${name}`, 409)
   }
   if (current.length >= MAX_SPOTS) {
-    throw new SpotError(`You can have up to ${MAX_SPOTS} spots`, 400)
+    throw new SpotError(
+      `You can have up to ${MAX_SPOTS} branches and tables`,
+      400,
+    )
   }
 
   const base = slugify(name)

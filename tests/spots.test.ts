@@ -68,7 +68,7 @@ describe('spots', () => {
     const owner = await createBusiness()
     await createSpot(owner.id, 'Patio')
     await expect(createSpot(owner.id, 'patio')).rejects.toThrow(
-      'already have a spot called patio',
+      'already have one called patio',
     )
   })
 

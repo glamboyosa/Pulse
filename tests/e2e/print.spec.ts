@@ -36,14 +36,14 @@ test('the owner prints table tents and stickers as an A4 PDF', async ({
       if (route.request().method() === 'POST') await held
       await route.continue()
     })
-    await page.getByLabel('New spot name').fill('Table 4')
+    await page.getByLabel('New branch or table name').fill('Table 4')
     await page.getByRole('button', { name: 'ADD' }).click()
-    await page.getByLabel('New spot name').fill('Bar')
+    await page.getByLabel('New branch or table name').fill('Bar')
     release()
     await expect(
       page.getByRole('link', { name: 'Print table tents for Table 4' }),
     ).toBeVisible()
-    await expect(page.getByLabel('New spot name')).toHaveValue('Bar')
+    await expect(page.getByLabel('New branch or table name')).toHaveValue('Bar')
     await page.unroute('**/api/spots')
     await page.getByRole('button', { name: 'ADD' }).click()
     await expect(
@@ -77,7 +77,7 @@ test('the owner prints table tents and stickers as an A4 PDF', async ({
         .getByRole('region', { name: 'Table tent main code' })
         .locator('[data-print-url]'),
     ).toHaveCount(2)
-    await page.getByLabel('QR code').selectOption('Every spot')
+    await page.getByLabel('QR code').selectOption('Every branch & table')
     await expect(
       page.getByRole('region', { name: /^Table tent / }),
     ).toHaveCount(2)

@@ -611,7 +611,7 @@ const app = new Elysia({ prefix: '/api' })
       if (!user) return json(401, { error: 'Unauthorized' })
       return (await archiveSpot(user.id, params.id))
         ? { success: true }
-        : json(404, { error: 'Spot not found' })
+        : json(404, { error: 'That branch or table was already removed' })
     },
     { params: t.Object({ id: t.String({ format: 'uuid' }) }) },
   )
