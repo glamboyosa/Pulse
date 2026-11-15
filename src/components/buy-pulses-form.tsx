@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Check, Zap } from 'lucide-react'
 
+import type { LocalPricing } from '@/lib/pricing'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Slider } from '@/components/ui/slider'
@@ -11,6 +12,8 @@ import {
   CUSTOM_PULSES_MIN,
   PACKS,
   customPriceCents,
+  formatLocalApprox,
+  formatUsd,
 } from '@/lib/pricing'
 
 const PULSE_PACKAGES = PACKS.map((pack) => ({
@@ -20,10 +23,18 @@ const PULSE_PACKAGES = PACKS.map((pack) => ({
   popular: pack.id === 'popular',
 }))
 
-const formatPrice = (cents: number) =>
-  `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`
+export function BuyPulsesForm({
+  localPricing,
+}: {
+  localPricing: LocalPricing | null
+}) {
+  const localApprox = (cents: number) =>
+    localPricing && (
+      <span className="ml-1.5 text-sm font-semibold text-muted-foreground">
+        ({formatLocalApprox(cents, localPricing)})
+      </span>
+    )
 
-export function BuyPulsesForm() {
   const [selectedPackage, setSelectedPackage] = useState<number | 'custom'>(25)
   const [customAmount, setCustomAmount] = useState([50])
   const [isRedirecting, setIsRedirecting] = useState(false)
@@ -115,7 +126,10 @@ export function BuyPulsesForm() {
             <div className="text-sm font-bold text-muted-foreground mb-4">
               PULSES
             </div>
-            <div className="text-2xl font-black tabular-nums">${pkg.price}</div>
+            <div className="text-2xl font-black tabular-nums">
+              ${pkg.price}
+              {localApprox(pkg.price * 100)}
+            </div>
             <div className="text-xs font-semibold text-muted-foreground mt-1">
               ${(pkg.price / pkg.amount).toFixed(2)} per pulse
             </div>
@@ -155,7 +169,8 @@ export function BuyPulsesForm() {
                   {customAmount[0]} pulses
                 </span>
                 <span className="text-lg font-black tabular-nums">
-                  {formatPrice(customPriceCents(customAmount[0]))}
+                  {formatUsd(customPriceCents(customAmount[0]))}
+                  {localApprox(customPriceCents(customAmount[0]))}
                 </span>
               </div>
               <Slider
@@ -191,8 +206,13 @@ export function BuyPulsesForm() {
               TOTAL
             </div>
             <div className="text-4xl font-black tabular-nums">
-              {formatPrice(getPriceCents())}
+              {formatUsd(getPriceCents())}
             </div>
+            {localPricing && (
+              <div className="whitespace-nowrap text-sm font-semibold text-muted-foreground tabular-nums">
+                {formatLocalApprox(getPriceCents(), localPricing)}
+              </div>
+            )}
           </div>
         </div>
         <Button
