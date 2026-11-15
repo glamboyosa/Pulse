@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, FileText, Mic, Pause, Play } from 'lucide-react'
+import { ArrowRight, FileText, Languages, Mic, Pause, Play } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 
@@ -363,7 +363,7 @@ export function FeedbackList({
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="text-lg font-bold">{item.displayName}</h3>
                       {item.sentiment && (
@@ -374,14 +374,15 @@ export function FeedbackList({
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 text-sm font-semibold text-muted-foreground">
-                      <span>{item.date}</span>
+                    {/* Each dot travels with the item after it, so a wrapped line never ends on one. */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-muted-foreground">
+                      <span className="whitespace-nowrap">{item.date}</span>
                       {item.formattedDuration && (
-                        <>
-                          <span>•</span>
-                          <span>{item.formattedDuration}</span>
-                        </>
+                        <span className="whitespace-nowrap">
+                          • {item.formattedDuration}
+                        </span>
                       )}
+                      {item.language && <span>• {item.language}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -406,14 +407,34 @@ export function FeedbackList({
                   </p>
                 )}
                 {item.transcript ? (
-                  // Short notes often say the same as the summary; skip the repeat.
-                  !sameText(
-                    item.translation ?? item.transcript,
-                    item.summary,
-                  ) && (
-                    <p className="line-clamp-2 rounded-md border-2 border-foreground bg-secondary p-3 font-medium leading-relaxed">
-                      {item.translation ?? item.transcript}
-                    </p>
+                  item.translation ? (
+                    // The customer's own words with the English right under
+                    // them: the "any language" promise, at a glance.
+                    <div className="rounded-md border-2 border-foreground bg-secondary p-3 leading-relaxed">
+                      <p className="line-clamp-2 font-medium">
+                        {item.transcript}
+                      </p>
+                      {/* The summary above may already say it in English. */}
+                      {!sameText(item.translation, item.summary) && (
+                        <p className="mt-1.5 flex gap-2 text-muted-foreground">
+                          <Languages
+                            aria-hidden="true"
+                            className="mt-1 size-4 shrink-0"
+                          />
+                          <span className="line-clamp-2">
+                            <span className="sr-only">In English: </span>
+                            {item.translation}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    // Short notes often say the same as the summary; skip the repeat.
+                    !sameText(item.transcript, item.summary) && (
+                      <p className="line-clamp-2 rounded-md border-2 border-foreground bg-secondary p-3 font-medium leading-relaxed">
+                        {item.transcript}
+                      </p>
+                    )
                   )
                 ) : (
                   <p className="rounded-md border-2 border-dashed border-foreground p-3 font-medium text-muted-foreground">
@@ -421,7 +442,6 @@ export function FeedbackList({
                   </p>
                 )}
                 {(item.themes.length > 0 ||
-                  item.language ||
                   item.spot ||
                   item.typed ||
                   item.widgetPage !== null ||
@@ -452,11 +472,6 @@ export function FeedbackList({
                         {item.spot.removed
                           ? `${item.spot.name} (removed)`
                           : item.spot.name}
-                      </li>
-                    )}
-                    {item.language && (
-                      <li className="border-2 border-foreground bg-accent px-2 py-0.5 text-xs font-bold uppercase">
-                        Translated from {item.language}
                       </li>
                     )}
                     {item.themes.map((theme) => (
