@@ -23,10 +23,14 @@ import type { Metadata } from 'next'
 import { HeroMock } from '@/components/landing/hero-mock'
 import { PulseLogo } from '@/components/pulse-logo'
 import { Button } from '@/components/ui/button'
-import { CUSTOM_PULSES_MAX, CUSTOM_PULSES_MIN, PACKS } from '@/lib/pricing'
-
-const formatPrice = (cents: number) =>
-  `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`
+import {
+  CUSTOM_PULSES_MAX,
+  CUSTOM_PULSES_MIN,
+  PACKS,
+  formatLocalApprox,
+  formatUsd,
+} from '@/lib/pricing'
+import { getLocalPricing } from '@/server/local-pricing'
 
 const STEPS = [
   {
@@ -154,6 +158,7 @@ export default async function HomePage() {
   const cta = user
     ? { href: '/dashboard', label: 'Go to dashboard' }
     : { href: '/login', label: 'Start free: 5 pulses' }
+  const localPricing = await getLocalPricing()
 
   return (
     <div className="min-h-dvh bg-background">
@@ -324,11 +329,16 @@ export default async function HomePage() {
                       {popular ? 'Most popular' : `${pack.pulses} pulses`}
                     </p>
                     <p className="font-display text-5xl font-extrabold tabular-nums">
-                      {formatPrice(pack.priceCents)}
+                      {formatUsd(pack.priceCents)}
+                      {localPricing && (
+                        <span className="ml-2 font-sans text-lg font-semibold text-muted-foreground">
+                          ({formatLocalApprox(pack.priceCents, localPricing)})
+                        </span>
+                      )}
                     </p>
                     <p className="mt-1 mb-6 font-semibold text-muted-foreground tabular-nums">
                       {pack.pulses} pulses ·{' '}
-                      {formatPrice(Math.round(pack.priceCents / pack.pulses))}{' '}
+                      {formatUsd(Math.round(pack.priceCents / pack.pulses))}{' '}
                       each
                     </p>
                     <Button

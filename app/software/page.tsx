@@ -11,7 +11,8 @@ import {
 import { getCurrentUser } from '../actions/auth'
 import { PulseLogo } from '@/components/pulse-logo'
 import { Button } from '@/components/ui/button'
-import { PACKS } from '@/lib/pricing'
+import { PACKS, formatLocalApprox, formatUsd } from '@/lib/pricing'
+import { getLocalPricing } from '@/server/local-pricing'
 
 const title = 'Voice feedback for your website or app'
 const description =
@@ -76,14 +77,12 @@ const SNIPPET = `<script src="https://www.pulseapp.click/widget.js"
 
 const smallestPack = PACKS[0]
 
-const formatPrice = (cents: number) =>
-  `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`
-
 export default async function SoftwarePage() {
   const user = await getCurrentUser()
   const cta = user
     ? { href: '/settings', label: 'Set up the widget' }
     : { href: '/login', label: 'Start free: 5 pulses' }
+  const localPricing = await getLocalPricing()
 
   return (
     <div className="min-h-dvh bg-background">
@@ -243,8 +242,10 @@ export default async function SoftwarePage() {
             <p className="max-w-[60ch] text-lg font-medium text-muted-foreground">
               One pulse is one piece of feedback, spoken or typed, from your
               website or a QR code. Start with 5 free, then packs from{' '}
-              {formatPrice(smallestPack.priceCents)} for {smallestPack.pulses}.
-              No subscription.{' '}
+              {formatUsd(smallestPack.priceCents)}
+              {localPricing &&
+                ` (${formatLocalApprox(smallestPack.priceCents, localPricing)})`}{' '}
+              for {smallestPack.pulses}. No subscription.{' '}
               <Link href="/#pricing" className="font-bold underline">
                 See all packs
               </Link>

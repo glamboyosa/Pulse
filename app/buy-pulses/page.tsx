@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 
 import { getCurrentUser } from '../actions/auth'
 import { BuyPulsesForm } from '@/components/buy-pulses-form'
+import { getLocalPricing } from '@/server/local-pricing'
 
 export default async function BuyPulsesPage() {
   const user = await getCurrentUser()
@@ -28,7 +29,7 @@ export default async function BuyPulsesPage() {
             Each pulse = one voice feedback submission. Top up anytime.
           </p>
         </div>
-        <BuyPulsesForm />
+        <BuyPulsesForm localPricing={await getLocalPricing()} />
       </div>
     </div>
   )
