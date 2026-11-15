@@ -38,6 +38,8 @@ export const users = pgTable('users', {
   voucherOffer: text('voucher_offer'),
   voucherExpiryDays: integer('voucher_expiry_days').default(30).notNull(),
   voucherMonthlyCap: integer('voucher_monthly_cap').default(50).notNull(),
+  // The tagged link the owner first arrived from. See src/lib/signup-source.ts.
+  signupSource: text('signup_source'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

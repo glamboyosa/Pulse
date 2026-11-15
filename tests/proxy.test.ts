@@ -43,3 +43,36 @@ describe('the embed page headers', () => {
     )
   })
 })
+
+describe('the signup source cookie', () => {
+  const visit = (path: string, cookie?: string) =>
+    proxy(
+      new NextRequest(`https://pulse.test${path}`, {
+        headers: cookie ? { cookie } : {},
+      }),
+    )
+
+  it('remembers the first tagged link someone arrives from', async () => {
+    const response = await visit(
+      '/software?utm_source=Meta&utm_campaign=NG-Founders',
+    )
+    const cookie = response.cookies.get('pulse_ref')
+    expect(cookie?.value).toBe('meta/ng-founders')
+    expect(cookie?.httpOnly).toBe(true)
+  })
+
+  it('keeps the first source when a later link is tagged too', async () => {
+    const response = await visit(
+      '/?utm_source=x&utm_campaign=later',
+      'pulse_ref=meta/us-founders',
+    )
+    expect(response.cookies.get('pulse_ref')).toBeUndefined()
+  })
+
+  it.each(['/', '/?utm_source=a%20b', '/?utm_campaign=only'])(
+    'sets nothing for %s',
+    async (path) => {
+      expect((await visit(path)).cookies.get('pulse_ref')).toBeUndefined()
+    },
+  )
+})

@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+import {
+  SIGNUP_SOURCE_COOKIE,
+  SIGNUP_SOURCE_MAX_AGE,
+  signupSourceFrom,
+} from '@/lib/signup-source'
 import { embedHeaders, widgetByKey } from '@/server/widget'
 
 export async function proxy(request: NextRequest) {
@@ -35,9 +40,27 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return NextResponse.next()
+  const response = NextResponse.next()
+  // Remember the first tagged link someone arrived from, for their signup.
+  const source = signupSourceFrom(request.nextUrl.searchParams)
+  if (source && !request.cookies.has(SIGNUP_SOURCE_COOKIE)) {
+    response.cookies.set(SIGNUP_SOURCE_COOKIE, source, {
+      maxAge: SIGNUP_SOURCE_MAX_AGE,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: request.nextUrl.protocol === 'https:',
+      path: '/',
+    })
+  }
+  return response
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/onboarding/:path*', '/embed/:path*'],
+  matcher: [
+    '/',
+    '/software',
+    '/dashboard/:path*',
+    '/onboarding/:path*',
+    '/embed/:path*',
+  ],
 }

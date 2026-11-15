@@ -59,6 +59,7 @@ export const exportAccount = async (ownerId: string) => {
       feedbackQuestion: users.feedbackQuestion,
       googleReviewUrl: users.googleReviewUrl,
       thankYouMessage: users.thankYouMessage,
+      signupSource: users.signupSource,
       createdAt: users.createdAt,
     })
     .from(users)

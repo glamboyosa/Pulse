@@ -1,14 +1,19 @@
 'use server'
 
+import { after } from 'next/server'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { and, desc, eq, gt, lt, sql } from 'drizzle-orm'
 
 import { createSession, deleteSession, getSession } from '../../lib/session'
 import { db } from '@/db/index'
+import { env } from '@/env'
+import { sendSignupAlert } from '@/lib/email/signup-alert'
 import { otpCodes, users } from '@/db/schema'
 import { OTP_MAX_ATTEMPTS } from '@/lib/otp'
 import { getUserById } from '@/lib/auth-helpers'
 import { dashboardReturnPath } from '@/lib/return-path'
+import { SIGNUP_SOURCE_COOKIE, parseSignupSource } from '@/lib/signup-source'
 import { deleteAccount } from '@/server/account-data'
 
 // New businesses get this many pulses to try Pulse.
@@ -88,10 +93,26 @@ export async function loginAction(
         email: email.toLowerCase(),
         isVerified: false,
         pulsesRemaining: FREE_PULSES_ON_SIGNUP,
+        signupSource: parseSignupSource(
+          (await cookies()).get(SIGNUP_SOURCE_COOKIE)?.value,
+        ),
       })
       .returning()
 
     user = [newUser]
+    const alertTo = env.SIGNUP_ALERT_EMAIL
+    if (alertTo) {
+      // After the response, so a slow or failed alert never holds up a login.
+      after(() =>
+        sendSignupAlert({
+          to: alertTo,
+          email: newUser.email,
+          source: newUser.signupSource,
+        }).catch((error: unknown) => {
+          console.error('[signup alert]', error)
+        }),
+      )
+    }
   }
 
   const userData = user[0]

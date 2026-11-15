@@ -7,6 +7,17 @@ import { createBusiness, resetDatabase } from './support/db'
 import { db } from '@/db/index'
 import { otpCodes, users } from '@/db/schema'
 
+const afterCallbacks = vi.hoisted(() => {
+  process.env.SIGNUP_ALERT_EMAIL = 'founder@example.test'
+  return [] as Array<() => Promise<void>>
+})
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  after: (callback: () => Promise<void>) => afterCallbacks.push(callback),
+}))
+const sendSignupAlert = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/email/signup-alert', () => ({ sendSignupAlert }))
+
 const cookieJar = vi.hoisted(() => ({
   set: vi.fn(),
   get: vi.fn(),
@@ -49,7 +60,16 @@ beforeEach(async () => {
   cookieJar.set.mockClear()
   cookieJar.get.mockReset()
   cookieJar.delete.mockClear()
+  afterCallbacks.length = 0
+  sendSignupAlert.mockReset().mockResolvedValue(undefined)
 })
+
+const arrivedFrom = (value: string) =>
+  cookieJar.get.mockImplementation((name: string) =>
+    name === 'pulse_ref' ? { value } : undefined,
+  )
+const signedUp = async () =>
+  (await db.select().from(users).where(eq(users.email, email)))[0]
 
 describe('loginAction', () => {
   it('signs a new owner in with 5 free pulses and sends them to onboarding', async () => {
@@ -63,6 +83,45 @@ describe('loginAction', () => {
       expect.any(String),
       expect.anything(),
     )
+  })
+
+  it('records the tagged link a new owner came from and tells the founder', async () => {
+    arrivedFrom('meta/ng-founders')
+    await issueCode('123456')
+    await login('123456')
+    expect((await signedUp()).signupSource).toBe('meta/ng-founders')
+
+    expect(sendSignupAlert).not.toHaveBeenCalled()
+    await Promise.all(afterCallbacks.map((callback) => callback()))
+    expect(sendSignupAlert).toHaveBeenCalledWith({
+      to: 'founder@example.test',
+      email,
+      source: 'meta/ng-founders',
+    })
+  })
+
+  it('ignores a source cookie that has been tampered with', async () => {
+    arrivedFrom('meta/ng/<script>')
+    await issueCode('123456')
+    await login('123456')
+    expect((await signedUp()).signupSource).toBeNull()
+  })
+
+  it('a failed alert does not break the login', async () => {
+    sendSignupAlert.mockRejectedValue(new Error('Resend is down'))
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await issueCode('123456')
+    expect(await login('123456')).toBe('redirect:/onboarding')
+    await Promise.all(afterCallbacks.map((callback) => callback()))
+    expect(quiet).toHaveBeenCalled()
+    quiet.mockRestore()
+  })
+
+  it('only alerts for new owners, not returning ones', async () => {
+    await createBusiness({ email })
+    await issueCode('123456')
+    await login('123456')
+    expect(afterCallbacks).toHaveLength(0)
   })
 
   it('accepts a code only once', async () => {

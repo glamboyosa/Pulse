@@ -23,7 +23,7 @@ const SUBPROCESSORS = [
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy" updated="11 November 2026">
+    <LegalPage title="Privacy" updated="15 November 2026">
       <section>
         <p>
           Pulse lets businesses collect voice feedback through a QR code or a
@@ -113,7 +113,8 @@ export default function PrivacyPage() {
         <ul>
           <li>
             We keep your email, business details, settings, branches and tables,
-            the feedback you receive and a record of pulses you buy.
+            the feedback you receive, a record of pulses you buy and which of
+            our ads, if any, you signed up from.
           </li>
           <li>Polar handles payments. We never see your card details.</li>
           <li>
@@ -197,8 +198,10 @@ export default function PrivacyPage() {
         <p>
           Pulse sets one cookie, to keep you signed in. If you get a voucher,
           your browser also keeps one for 30 days, so the same business
-          doesn&apos;t give you a second. There are no analytics or advertising
-          cookies.
+          doesn&apos;t give you a second. If you arrive from one of our ads,
+          your browser keeps which ad for 30 days, so we can count signups per
+          ad. There are no other analytics or advertising cookies, and nothing
+          is shared with advertisers.
         </p>
       </section>
 

@@ -27,6 +27,8 @@ export const env = createEnv({
     SESSION_SECRET: z.string().min(32).optional(),
     // Cloudflare Turnstile on the login form. Without it the check is off.
     TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
+    // Gets an email on each new signup. Without it, no alerts.
+    SIGNUP_ALERT_EMAIL: z.string().email().optional(),
   },
 
   client: {
@@ -58,6 +60,7 @@ export const env = createEnv({
     CLOUDFLARE_R2_BUCKET_NAME: process.env.CLOUDFLARE_R2_BUCKET_NAME,
     SESSION_SECRET: process.env.SESSION_SECRET,
     TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
+    SIGNUP_ALERT_EMAIL: process.env.SIGNUP_ALERT_EMAIL,
     NEXT_PUBLIC_APP_TITLE: process.env.NEXT_PUBLIC_APP_TITLE,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
