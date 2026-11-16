@@ -45,6 +45,7 @@ describe('getInsights', () => {
     const insights = await getInsights(owner.id, 30)
 
     expect(insights).toMatchObject({
+      days: 30,
       total: 5,
       sentiment: { positive: 2, neutral: 1, negative: 2 },
       previousTotal: 2,
@@ -56,6 +57,38 @@ describe('getInsights', () => {
       { theme: 'price', mentions: 1, negative: 0, previousMentions: 0 },
       { theme: 'service', mentions: 1, negative: 0, previousMentions: 1 },
     ])
+  })
+
+  it('falls back to all time when the last 30 days were quiet', async () => {
+    const owner = await createBusiness()
+    await db.insert(feedback).values([
+      {
+        userId: owner.id,
+        sentiment: 'negative',
+        themes: ['wait time'],
+        status: 'ready',
+        createdAt: daysAgo(45),
+      },
+      {
+        userId: owner.id,
+        sentiment: 'positive',
+        themes: ['staff'],
+        status: 'ready',
+        createdAt: daysAgo(200),
+      },
+    ])
+
+    expect(await getInsights(owner.id)).toEqual({
+      days: null,
+      total: 2,
+      sentiment: { positive: 1, neutral: 0, negative: 1 },
+      previousTotal: 0,
+      previousNegative: 0,
+      themes: [
+        { theme: 'wait time', mentions: 1, negative: 1, previousMentions: 0 },
+        { theme: 'staff', mentions: 1, negative: 0, previousMentions: 0 },
+      ],
+    })
   })
 
   it('returns zeros for a business with no feedback', async () => {

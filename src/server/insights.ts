@@ -11,7 +11,8 @@ export type ThemeInsight = {
 }
 
 export type Insights = {
-  days: number
+  /** null: all time, because the last few weeks were quiet. */
+  days: number | null
   total: number
   sentiment: { positive: number; neutral: number; negative: number }
   previousTotal: number
@@ -20,15 +21,20 @@ export type Insights = {
 }
 
 /**
- * What an owner's customers talked about over the last `days`, against the
- * period before it. Themes are ranked by how often they come up negative, then
- * by mentions, so the list reads as "what to fix first".
+ * What an owner's customers talked about over the last `days` (or all time
+ * when `days` is null), against the period before it. Themes are ranked by how
+ * often they come up negative, then by mentions, so the list reads as "what to
+ * fix first".
  */
-export const getInsights = async (
+const insightsFor = async (
   userId: string,
-  days = 30,
+  days: number | null,
 ): Promise<Insights> => {
   const window = sql`make_interval(days => ${days})`
+  const current =
+    days === null ? sql`true` : sql`created_at > now() - ${window}`
+  const since =
+    days === null ? sql`true` : sql`created_at > now() - 2 * ${window}`
 
   const [totals] = (
     await db.execute<{
@@ -47,10 +53,9 @@ export const getInsights = async (
         count(*) filter (where not current)::int as previous_total,
         count(*) filter (where not current and sentiment = 'negative')::int as previous_negative
       from (
-        select sentiment, created_at > now() - ${window} as current
+        select sentiment, ${current} as current
         from feedback
-        where user_id = ${userId} and status = 'ready'
-          and created_at > now() - 2 * ${window}
+        where user_id = ${userId} and status = 'ready' and ${since}
       ) recent
     `)
   ).rows
@@ -66,11 +71,9 @@ export const getInsights = async (
       count(*) filter (where current and sentiment = 'negative')::int as negative,
       count(*) filter (where not current)::int as previous_mentions
     from (
-      select unnest(themes) as theme, sentiment,
-        created_at > now() - ${window} as current
+      select unnest(themes) as theme, sentiment, ${current} as current
       from feedback
-      where user_id = ${userId} and status = 'ready'
-        and created_at > now() - 2 * ${window}
+      where user_id = ${userId} and status = 'ready' and ${since}
     ) mentioned
     group by theme
     having count(*) filter (where current) > 0
@@ -95,4 +98,18 @@ export const getInsights = async (
       previousMentions: row.previous_mentions,
     })),
   }
+}
+
+/**
+ * The last `days`, or all time when those were quiet but older feedback
+ * exists, so a business that went quiet still sees what customers said.
+ */
+export const getInsights = async (
+  userId: string,
+  days = 30,
+): Promise<Insights> => {
+  const recent = await insightsFor(userId, days)
+  if (recent.total > 0) return recent
+  const allTime = await insightsFor(userId, null)
+  return allTime.total > 0 ? allTime : recent
 }

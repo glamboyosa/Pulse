@@ -59,8 +59,8 @@ export function InsightsPanel({
         <Card className={cardClass}>
           <h2 className="text-2xl font-black mb-1">How customers feel</h2>
           <p className="text-sm font-semibold text-muted-foreground mb-6">
-            Last {insights.days} days · {total} recording
-            {total === 1 ? '' : 's'}
+            {insights.days === null ? 'All time' : `Last ${insights.days} days`}{' '}
+            · {total} recording{total === 1 ? '' : 's'}
           </p>
           {total === 0 ? (
             <p className="font-semibold text-muted-foreground">
@@ -128,11 +128,13 @@ export function InsightsPanel({
                     <span className="font-black uppercase">{theme.theme}</span>
                     <span className="flex items-center gap-1 text-sm font-bold tabular-nums">
                       {theme.mentions}
-                      <Trend
-                        now={theme.mentions}
-                        before={theme.previousMentions}
-                        label={`${theme.previousMentions} the 30 days before`}
-                      />
+                      {insights.days !== null && (
+                        <Trend
+                          now={theme.mentions}
+                          before={theme.previousMentions}
+                          label={`${theme.previousMentions} the 30 days before`}
+                        />
+                      )}
                     </span>
                   </div>
                   <div className="flex h-4 border-2 border-foreground bg-secondary">
