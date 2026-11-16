@@ -205,6 +205,11 @@ export function FeedbackForm({
 
   // Stop unmounts the record button; focus moves here instead of the page.
   const listenBackRef = useRef<HTMLParagraphElement>(null)
+  // The thank-you or not-accepting heading, which replaces the whole form.
+  const outcomeRef = useRef<HTMLHeadingElement>(null)
+  const recordButtonRef = useRef<HTMLButtonElement>(null)
+  const typedRef = useRef<HTMLTextAreaElement>(null)
+  const switchedInput = useRef(false)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const startedAtRef = useRef(0)
@@ -241,8 +246,23 @@ export function FeedbackForm({
     if (stage.name === 'recorded' && previousStage.current === 'recording') {
       listenBackRef.current?.focus()
     }
+    // Not on page load, when "not accepting" is simply what the page says.
+    if (
+      stage.name === 'sent' ||
+      (stage.name === 'not-accepting' && previousStage.current !== 'loading')
+    ) {
+      outcomeRef.current?.focus()
+    }
     previousStage.current = stage.name
   }, [stage.name])
+
+  // Only after the customer switches, not when typing is the only option.
+  useEffect(() => {
+    if (!switchedInput.current) return
+    switchedInput.current = false
+    if (typing) typedRef.current?.focus()
+    else recordButtonRef.current?.focus()
+  }, [typing])
 
   const stopRecording = useCallback(() => {
     if (recorderRef.current?.state === 'recording') recorderRef.current.stop()
@@ -281,6 +301,8 @@ export function FeedbackForm({
     } catch {
       releaseMicrophone()
       setCanRecord(false)
+      // The record button goes; focus follows to the text box.
+      switchedInput.current = true
       setTyping(true)
       setError(
         "This browser can't record audio, so type your feedback instead.",
@@ -317,6 +339,8 @@ export function FeedbackForm({
     } catch {
       releaseMicrophone()
       setCanRecord(false)
+      // The record button goes; focus follows to the text box.
+      switchedInput.current = true
       setTyping(true)
       setError("Recording couldn't start here, so type your feedback instead.")
       setStage({ name: 'idle' })
@@ -439,7 +463,9 @@ export function FeedbackForm({
         <div className="w-20 h-20 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-foreground">
           <Check className="w-10 h-10" strokeWidth={3} />
         </div>
-        <h2 className="text-3xl font-black mb-4">Thank you!</h2>
+        <h2 ref={outcomeRef} tabIndex={-1} className="text-3xl font-black mb-4">
+          Thank you!
+        </h2>
         <p className="text-lg font-semibold leading-relaxed">
           Your feedback is on its way. Thanks for taking the time.
         </p>
@@ -468,7 +494,7 @@ export function FeedbackForm({
   if (stage.name === 'not-accepting') {
     return (
       <Card className={`${cardClass} text-center`}>
-        <h2 className="text-2xl font-black mb-3">
+        <h2 ref={outcomeRef} tabIndex={-1} className="text-2xl font-black mb-3">
           Not taking feedback right now
         </h2>
         <p className="font-semibold text-muted-foreground">
@@ -529,6 +555,29 @@ export function FeedbackForm({
 
   const recorded = stage.name === 'recorded' || stage.name === 'sending'
 
+  // Read out once per change. The clock itself stays silent, apart from a
+  // warning near the limit. An error speaks for itself, and once typing the
+  // microphone no longer matters.
+  const announcement = error
+    ? ''
+    : typing
+      ? sendingText
+        ? 'Sending…'
+        : ''
+      : stage.name === 'asking'
+        ? 'Allow the microphone to start.'
+        : stage.name === 'recording'
+          ? MAX_SECONDS - elapsed <= 30
+            ? '30 seconds left.'
+            : `Recording. It stops on its own at ${formatTime(MAX_SECONDS)}.`
+          : stage.name === 'recorded'
+            ? `Recorded ${formatTime(stage.seconds)}.`
+            : stage.name === 'sending'
+              ? 'Sending…'
+              : stage.name === 'denied'
+                ? 'Microphone is blocked.'
+                : ''
+
   return (
     <form onSubmit={submit}>
       <Card className={cardClass}>
@@ -548,13 +597,17 @@ export function FeedbackForm({
                   Your feedback
                 </Label>
                 <textarea
+                  ref={typedRef}
                   id="typed"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   maxLength={2000}
                   rows={6}
                   placeholder="What went well, and what could be better?"
-                  aria-describedby="typed-hint"
+                  aria-describedby={
+                    error ? 'typed-hint feedback-error' : 'typed-hint'
+                  }
+                  aria-invalid={error ? true : undefined}
                   className="w-full border-2 border-foreground bg-background p-3 text-base font-semibold"
                 />
               </div>
@@ -582,10 +635,7 @@ export function FeedbackForm({
             </div>
           ) : (
             <>
-              <div
-                className="flex flex-col items-center rounded-md bg-secondary px-6 py-8 text-center"
-                aria-live="polite"
-              >
+              <div className="flex flex-col items-center rounded-md bg-secondary px-6 py-8 text-center">
                 {recorded ? (
                   <>
                     <p
@@ -615,15 +665,19 @@ export function FeedbackForm({
                 ) : (
                   <>
                     <button
+                      ref={recordButtonRef}
                       type="button"
                       onClick={
                         stage.name === 'recording'
                           ? stopRecording
-                          : startRecording
+                          : stage.name === 'asking'
+                            ? undefined
+                            : startRecording
                       }
-                      disabled={
-                        stage.name === 'loading' || stage.name === 'asking'
-                      }
+                      disabled={stage.name === 'loading'}
+                      // Not disabled while the browser asks: that would drop
+                      // keyboard focus, and Enter couldn't then stop it.
+                      aria-disabled={stage.name === 'asking' || undefined}
                       aria-label={
                         stage.name === 'recording'
                           ? 'Stop recording'
@@ -631,7 +685,7 @@ export function FeedbackForm({
                             ? 'Try recording again'
                             : 'Start recording'
                       }
-                      className="relative flex size-28 cursor-pointer items-center justify-center rounded-full border-2 border-foreground shadow-brutal transition-transform duration-150 ease-out active:translate-x-[3px] active:translate-y-[3px] active:shadow-none before:absolute before:-inset-0.5 before:rounded-full active:before:-translate-x-[3px] active:before:-translate-y-[3px] disabled:cursor-wait disabled:opacity-60"
+                      className="relative flex size-28 cursor-pointer items-center justify-center rounded-full border-2 border-foreground shadow-brutal transition-transform duration-150 ease-out active:translate-x-[3px] active:translate-y-[3px] active:shadow-none before:absolute before:-inset-0.5 before:rounded-full active:before:-translate-x-[3px] active:before:-translate-y-[3px] disabled:cursor-wait disabled:opacity-60 aria-disabled:cursor-wait aria-disabled:opacity-60"
                       style={
                         stage.name === 'recording'
                           ? {
@@ -659,7 +713,10 @@ export function FeedbackForm({
                     {stage.name === 'recording' ? (
                       <>
                         <LevelMeter stream={streamRef.current} />
-                        <p className="font-display text-4xl font-extrabold tabular-nums">
+                        <p
+                          role="timer"
+                          className="font-display text-4xl font-extrabold tabular-nums"
+                        >
                           {formatTime(elapsed)}
                         </p>
                         <p className="mt-1 text-sm font-semibold text-muted-foreground">
@@ -714,6 +771,7 @@ export function FeedbackForm({
             <button
               type="button"
               onClick={() => {
+                switchedInput.current = true
                 setTyping(!typing)
                 setError(null)
               }}
@@ -759,10 +817,17 @@ export function FeedbackForm({
           )}
 
           {error && (
-            <p role="alert" className="font-bold text-destructive">
+            <p
+              id="feedback-error"
+              role="alert"
+              className="font-bold text-destructive"
+            >
               {error}
             </p>
           )}
+          <p role="status" className="sr-only">
+            {announcement}
+          </p>
         </div>
       </Card>
       <p className="text-center text-sm font-semibold text-muted-foreground mt-6">

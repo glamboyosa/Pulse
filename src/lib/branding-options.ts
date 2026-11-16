@@ -2,8 +2,8 @@
 export const ACCENTS = {
   black: '#111111',
   red: '#dc2626',
-  orange: '#ea580c',
-  green: '#16a34a',
+  orange: '#c2410c',
+  green: '#15803d',
   blue: '#2563eb',
   purple: '#7c3aed',
 } as const
