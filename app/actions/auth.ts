@@ -1,7 +1,7 @@
 'use server'
 
 import { after } from 'next/server'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { and, desc, eq, gt, lt, sql } from 'drizzle-orm'
 
@@ -15,9 +15,8 @@ import { getUserById } from '@/lib/auth-helpers'
 import { dashboardReturnPath } from '@/lib/return-path'
 import { SIGNUP_SOURCE_COOKIE, parseSignupSource } from '@/lib/signup-source'
 import { deleteAccount } from '@/server/account-data'
-
-// New businesses get this many pulses to try Pulse.
-const FREE_PULSES_ON_SIGNUP = 5
+import { freePulsesFor } from '@/server/free-pulses'
+import { ipFromHeaders } from '@/server/rate-limit'
 
 export async function loginAction(
   prevState: { error?: string } | undefined,
@@ -86,18 +85,26 @@ export async function loginAction(
     .limit(1)
 
   if (user.length === 0) {
-    // Create new user
-    const [newUser] = await db
-      .insert(users)
-      .values({
-        email: email.toLowerCase(),
-        isVerified: false,
-        pulsesRemaining: FREE_PULSES_ON_SIGNUP,
-        signupSource: parseSignupSource(
-          (await cookies()).get(SIGNUP_SOURCE_COOKIE)?.value,
-        ),
-      })
-      .returning()
+    const ip = ipFromHeaders(await headers())
+    const signupSource = parseSignupSource(
+      (await cookies()).get(SIGNUP_SOURCE_COOKIE)?.value,
+    )
+    // One transaction, so free pulses are only marked as given once the
+    // account really exists.
+    const { newUser, freePulses } = await db.transaction(async (tx) => {
+      const free = await freePulsesFor(email, ip, tx)
+      const [created] = await tx
+        .insert(users)
+        .values({
+          email: email.toLowerCase(),
+          isVerified: false,
+          pulsesRemaining: free.pulses,
+          freePulsesWithheld: free.reason,
+          signupSource,
+        })
+        .returning()
+      return { newUser: created, freePulses: free }
+    })
 
     user = [newUser]
     const alertTo = env.SIGNUP_ALERT_EMAIL
@@ -108,6 +115,7 @@ export async function loginAction(
           to: alertTo,
           email: newUser.email,
           source: newUser.signupSource,
+          noFreePulses: freePulses.reason,
         }).catch((error: unknown) => {
           console.error('[signup alert]', error)
         }),
@@ -178,5 +186,6 @@ export async function getCurrentUser() {
     uniqueCode: user.uniqueCode || null,
     isVerified: user.isVerified,
     pulsesRemaining: Math.max(0, user.pulsesRemaining), // Ensure no negative values
+    freePulsesWithheld: user.freePulsesWithheld,
   }
 }

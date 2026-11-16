@@ -23,6 +23,9 @@ export const users = pgTable('users', {
   uniqueCode: text('unique_code').unique(), // Unique code for QR/link (e.g., "acme-cafe")
   isVerified: boolean('is_verified').default(false).notNull(),
   pulsesRemaining: integer('pulses_remaining').default(0).notNull(), // Credit system
+  // Why a new account got no free pulses ('inbox' or 'connection'), so the
+  // dashboard can say so and point to support.
+  freePulsesWithheld: text('free_pulses_withheld'),
   // Branding on the customer page, all optional. See src/server/branding.ts.
   feedbackQuestion: text('feedback_question'),
   accentColor: text('accent_color'),
@@ -156,6 +159,13 @@ export const rateLimits = pgTable('rate_limits', {
   resetAt: timestamp('reset_at').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Inboxes that have had free pulses, as keyed fingerprints. Kept when an
+// account is deleted, so deleting and signing up again doesn't refill them.
+export const freePulseGrants = pgTable('free_pulse_grants', {
+  mailboxHash: text('mailbox_hash').primaryKey(),
+  grantedAt: timestamp('granted_at').defaultNow().notNull(),
 })
 
 // One AI digest per owner per week (weeks start Monday, UTC). An owner can

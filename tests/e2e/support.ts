@@ -49,8 +49,10 @@ export const customerWithVoice = async (context: BrowserContext) => {
 
 export const signIn = async (page: Page, email: string) => {
   // Every run signs in from this machine, so reset its per-connection login
-  // limit; the limit itself is covered in tests/api.test.ts.
-  await db.query("delete from rate_limits where key like 'otp:ip:%'")
+  // and free-pulse limits; tests/api.test.ts and tests/auth.test.ts cover them.
+  await db.query(
+    "delete from rate_limits where key like 'otp:ip:%' or key like 'free-pulses:ip:%'",
+  )
   await page.goto('/login')
   await page.getByLabel('Email').fill(email)
   await page.getByRole('button', { name: 'SEND LOGIN CODE' }).click()
@@ -87,4 +89,10 @@ export const signUpBusiness = async (
   await page.waitForURL(
     where === 'In person' ? /\/dashboard$/ : /\/settings\?setup=widget$/,
   )
+  // Every test owner uses Resend's one test inbox (delivered+…@resend.dev),
+  // so only the first ever gets free pulses; give each the usual start.
+  // tests/auth.test.ts covers who gets free pulses.
+  await db.query('update users set pulses_remaining = 5 where email = $1', [
+    email,
+  ])
 }

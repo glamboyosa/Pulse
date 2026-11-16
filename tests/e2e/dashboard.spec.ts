@@ -2,7 +2,6 @@ import { expect, test } from '@playwright/test'
 import { db, signUpBusiness } from './support'
 import type { Locator } from '@playwright/test'
 
-
 test("a note in another language shows the customer's words with the English under them", async ({
   page,
 }, testInfo) => {
@@ -165,4 +164,30 @@ test('long notes show two clean lines and expand in place', async ({
   await expect(
     short.getByRole('button', { name: /Show (more|less)/ }),
   ).toHaveCount(0)
+})
+
+test('an owner who got no free pulses is told why and who to ask', async ({
+  page,
+}, testInfo) => {
+  const run = `${testInfo.project.name}-${Date.now().toString(36)}`
+  const email = `delivered+withheld-${run}@resend.dev`
+  await signUpBusiness(page, email, `e2e-withheld-${run}`)
+  const note = page.getByText(/started without free pulses/)
+
+  await db.query(
+    "update users set pulses_remaining = 0, free_pulses_withheld = 'inbox' where email = $1",
+    [email],
+  )
+  await page.goto('/dashboard')
+  await expect(note).toContainText('this email already had them')
+  await expect(
+    page.getByRole('link', { name: 'support@pulseapp.click' }),
+  ).toHaveAttribute('href', /^mailto:support@pulseapp\.click/)
+
+  // Gone once the account has pulses again.
+  await db.query('update users set pulses_remaining = 10 where email = $1', [
+    email,
+  ])
+  await page.goto('/dashboard')
+  await expect(note).toHaveCount(0)
 })

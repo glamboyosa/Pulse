@@ -43,7 +43,11 @@ export const enforceRateLimit = async (
   }
 }
 
+/** The client's address as Vercel passes it on; it replaces any sent by the client. */
+export const ipFromHeaders = (headers: Headers): string | null =>
+  headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+  headers.get('x-real-ip') ||
+  null
+
 export const clientIp = (request: Request): string =>
-  request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-  request.headers.get('x-real-ip') ||
-  'unknown'
+  ipFromHeaders(request.headers) ?? 'unknown'

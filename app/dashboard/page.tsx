@@ -90,6 +90,22 @@ export default async function DashboardPage({
             {user.businessName ?? user.name}
           </h1>
         </div>
+        {user.freePulsesWithheld && user.pulsesRemaining === 0 && (
+          // A real owner caught by the free-pulse checks gets a way out.
+          <p className="mb-6 rounded-lg border-2 border-foreground bg-card p-4 font-semibold">
+            {user.freePulsesWithheld === 'inbox'
+              ? 'This account started without free pulses because this email already had them on another Pulse account.'
+              : 'This account started without free pulses because several new accounts were set up from this connection recently.'}{' '}
+            If that&apos;s not right, email{' '}
+            <a
+              href="mailto:support@pulseapp.click?subject=Free%20pulses"
+              className="underline underline-offset-4"
+            >
+              support@pulseapp.click
+            </a>{' '}
+            and we&apos;ll sort it out.
+          </p>
+        )}
         <DashboardStats
           pulsesRemaining={user.pulsesRemaining || 0}
           totalFeedback={totals.count}

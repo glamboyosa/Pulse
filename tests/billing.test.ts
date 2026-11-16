@@ -1,9 +1,10 @@
-import { sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createBusiness, pulsesOf, resetDatabase } from './support/db'
 import type { PaidOrder } from '@/server/billing'
 import { db } from '@/db/index'
+import { users } from '@/db/schema'
 import { customPriceCents } from '@/lib/pricing'
 import {
   CheckoutError,
@@ -129,6 +130,24 @@ describe('creditPaidOrder', () => {
 
     expect(result).toEqual({ status: 'credited', userId: owner.id, pulses: 60 })
     expect(await pulsesOf(owner.id)).toBe(62)
+  })
+
+  it('clears the no-free-pulses note once an owner buys pulses', async () => {
+    const owner = await createBusiness({
+      pulsesRemaining: 0,
+      freePulsesWithheld: 'inbox',
+    })
+    await creditPaidOrder(
+      order({
+        metadata: { pulses: '60' },
+        customer: { externalId: owner.id, email: owner.email },
+      }),
+    )
+    const [row] = await db
+      .select({ withheld: users.freePulsesWithheld })
+      .from(users)
+      .where(eq(users.id, owner.id))
+    expect(row.withheld).toBeNull()
   })
 
   it('falls back to the catalogue pack when the order has no metadata', async () => {

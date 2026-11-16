@@ -147,6 +147,21 @@ describe('deleting twice, or with storage down', () => {
 })
 
 describe('applyRetention', () => {
+  it('clears rate-limit windows that have ended, and keeps live ones', async () => {
+    await db.insert(rateLimits).values([
+      { key: 'free-pulses:ip:ended', count: 3, resetAt: daysAgo(1) },
+      {
+        key: 'free-pulses:ip:live',
+        count: 1,
+        resetAt: new Date(Date.now() + 86_400_000),
+      },
+    ])
+    expect(await applyRetention()).toMatchObject({ limitsCleared: 1 })
+    expect((await db.select().from(rateLimits)).map((row) => row.key)).toEqual([
+      'free-pulses:ip:live',
+    ])
+  })
+
   it('works through a backlog bigger than one batch', async () => {
     const owner = await createBusiness()
     await db.insert(feedback).values(

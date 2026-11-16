@@ -139,6 +139,12 @@ export default function PrivacyPage() {
           <li>Reply addresses: until a day after the reply, or 90 days.</li>
           <li>Login codes: they stop working after 10 minutes.</li>
           <li>
+            Free pulses: a scrambled fingerprint of each inbox that has had
+            them, kept so they&apos;re given once, even after an account is
+            deleted. A scrambled fingerprint of the connection used to sign up,
+            for 30 days.
+          </li>
+          <li>
             Security logs (a failed bot check or a hit rate limit, with the IP
             address): kept by our host for a short time to spot abuse.
           </li>

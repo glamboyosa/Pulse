@@ -17,14 +17,6 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     ).toBeVisible()
   })
 
-  await test.step('new businesses start with 5 pulses', async () => {
-    const { rows } = await db.query(
-      'select pulses_remaining from users where email = $1',
-      [email],
-    )
-    expect(rows[0].pulses_remaining).toBe(5)
-  })
-
   await test.step('owner brands the feedback page', async () => {
     await page.getByRole('link', { name: 'Feedback page settings' }).click()
     await page.waitForURL('**/settings')

@@ -190,6 +190,8 @@ export const creditPaidOrder = async (
     )
     update users set
       pulses_remaining = users.pulses_remaining + purchase.amount,
+      -- A paying owner no longer needs the "why no free pulses" note.
+      free_pulses_withheld = null,
       updated_at = now()
     from purchase
     where users.id = purchase.user_id

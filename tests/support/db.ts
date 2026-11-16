@@ -5,7 +5,7 @@ import { users } from '@/db/schema'
 
 export const resetDatabase = () =>
   db.execute(
-    sql`truncate feedback, pulse_purchases, otp_codes, rate_limits, users restart identity cascade`,
+    sql`truncate feedback, pulse_purchases, otp_codes, rate_limits, free_pulse_grants, users restart identity cascade`,
   )
 
 export const createBusiness = async (

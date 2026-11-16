@@ -232,5 +232,15 @@ export const applyRetention = async (
     )
     .returning({ id: feedback.id })
 
-  return { audioDeleted, contactsForgotten: forgotten.length }
+  // Rate-limit windows that have ended, so their (fingerprinted) keys go too.
+  const limitsCleared = await db
+    .delete(rateLimits)
+    .where(lt(rateLimits.resetAt, now))
+    .returning({ key: rateLimits.key })
+
+  return {
+    audioDeleted,
+    contactsForgotten: forgotten.length,
+    limitsCleared: limitsCleared.length,
+  }
 }
