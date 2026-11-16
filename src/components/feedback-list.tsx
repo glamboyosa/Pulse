@@ -87,6 +87,75 @@ const SENTIMENT_FILTERS = [
   { value: 'negative', label: 'Negative' },
 ] as const
 
+/**
+ * The customer's words, and the English under them when they spoke another
+ * language. Two lines each, with "Show more" only when something is cut off.
+ */
+const NoteText = ({
+  original,
+  english,
+}: {
+  original: string
+  english: string | null
+}) => {
+  const [expanded, setExpanded] = useState(false)
+  const [clipped, setClipped] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const element = box.current
+    if (!element || expanded) return
+    const measure = () =>
+      setClipped(
+        [...element.querySelectorAll('[data-clamp]')].some(
+          (line) => line.scrollHeight > line.clientHeight + 1,
+        ),
+      )
+    measure()
+    // Text can rewrap once the web font swaps in, without the box resizing.
+    void document.fonts.ready.then(measure)
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [expanded, original, english])
+
+  const clamp = expanded ? '' : 'line-clamp-2'
+  return (
+    <div
+      ref={box}
+      className="rounded-md border-2 border-foreground bg-secondary p-3 leading-relaxed"
+    >
+      <p data-clamp className={`font-medium ${clamp}`}>
+        {original}
+      </p>
+      {english && (
+        // The customer's own words with the English right under them: the
+        // "any language" promise, at a glance.
+        <p className="mt-1.5 flex gap-2 text-muted-foreground">
+          <Languages aria-hidden="true" className="mt-1 size-4 shrink-0" />
+          <span data-clamp className={clamp}>
+            <span className="sr-only">In English: </span>
+            {english}
+          </span>
+        </p>
+      )}
+      {(clipped || expanded) && (
+        <button
+          type="button"
+          onClick={(event) => {
+            // The card opens the note; this only expands the text.
+            event.stopPropagation()
+            setExpanded((open) => !open)
+          }}
+          className="relative mt-2 text-sm font-bold underline underline-offset-4 transition-transform duration-150 ease-out before:absolute before:-inset-x-2 before:-top-2 before:-bottom-3 active:scale-[0.96]"
+        >
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export function FeedbackList({
   hasFeedback = true,
   initialData = [],
@@ -390,34 +459,20 @@ export function FeedbackList({
                   </p>
                 )}
                 {item.transcript ? (
-                  item.translation ? (
-                    // The customer's own words with the English right under
-                    // them: the "any language" promise, at a glance.
-                    <div className="rounded-md border-2 border-foreground bg-secondary p-3 leading-relaxed">
-                      <p className="line-clamp-2 font-medium">
-                        {item.transcript}
-                      </p>
-                      {/* The summary above may already say it in English. */}
-                      {!sameText(item.translation, item.summary) && (
-                        <p className="mt-1.5 flex gap-2 text-muted-foreground">
-                          <Languages
-                            aria-hidden="true"
-                            className="mt-1 size-4 shrink-0"
-                          />
-                          <span className="line-clamp-2">
-                            <span className="sr-only">In English: </span>
-                            {item.translation}
-                          </span>
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    // Short notes often say the same as the summary; skip the repeat.
-                    !sameText(item.transcript, item.summary) && (
-                      <p className="line-clamp-2 rounded-md border-2 border-foreground bg-secondary p-3 font-medium leading-relaxed">
-                        {item.transcript}
-                      </p>
-                    )
+                  // Short notes often say the same as the summary; skip the
+                  // repeat, unless it's in another language.
+                  (item.translation ||
+                    !sameText(item.transcript, item.summary)) && (
+                    <NoteText
+                      original={item.transcript}
+                      english={
+                        // The summary above may already say it in English.
+                        item.translation &&
+                        !sameText(item.translation, item.summary)
+                          ? item.translation
+                          : null
+                      }
+                    />
                   )
                 ) : (
                   <p className="rounded-md border-2 border-dashed border-foreground p-3 font-medium text-muted-foreground">
