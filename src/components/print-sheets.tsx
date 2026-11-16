@@ -6,12 +6,25 @@ import Link from 'next/link'
 import QRCodeSVG from 'react-qr-code'
 
 import type { Spot } from '@/server/spots'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 
 type Layout = 'tent' | 'stickers'
 
 // Not a possible spot slug, so a spot named "All" can't clash with it.
 const EVERY_SPOT = '*'
+// The Select can't use '' for the main code; slugs never contain '~'.
+const MAIN_CODE = '~'
+const LAYOUTS: Record<Layout, string> = {
+  tent: 'Table tent (folds in half)',
+  stickers: 'Stickers, 6 per sheet',
+}
 
 type Label = { url: string; spotName: string | null }
 
@@ -161,35 +174,58 @@ export function PrintSheets({
           tents along the middle.
         </p>
         <div className="flex flex-wrap items-end gap-4 border-4 border-foreground bg-card p-4 shadow-brutal">
-          <label className="flex flex-col gap-1 font-bold">
-            Layout
-            <select
+          <div className="flex flex-col gap-1">
+            <label htmlFor="print-layout" className="font-bold">
+              Layout
+            </label>
+            <Select
               value={layout}
-              onChange={(event) => setLayout(event.target.value as Layout)}
-              className="border-4 border-foreground bg-background px-3 py-2 text-base"
+              onValueChange={(value) => setLayout(value as Layout)}
             >
-              <option value="tent">Table tent (folds in half)</option>
-              <option value="stickers">Stickers, 6 per sheet</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 font-bold">
-            QR code
-            <select
-              value={spot}
-              onChange={(event) => setSpot(event.target.value)}
-              className="border-4 border-foreground bg-background px-3 py-2 text-base"
+              <SelectTrigger id="print-layout">
+                <SelectValue>{LAYOUTS[layout]}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(LAYOUTS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="print-code" className="font-bold">
+              QR code
+            </label>
+            <Select
+              value={spot || MAIN_CODE}
+              onValueChange={(value) =>
+                setSpot(value === MAIN_CODE ? '' : value)
+              }
             >
-              <option value="">Main code</option>
-              {spots.map((s) => (
-                <option key={s.id} value={s.slug}>
-                  {s.name}
-                </option>
-              ))}
-              {spots.length > 1 && (
-                <option value={EVERY_SPOT}>Every branch &amp; table</option>
-              )}
-            </select>
-          </label>
+              <SelectTrigger id="print-code">
+                <SelectValue>
+                  {spot === EVERY_SPOT
+                    ? 'Every branch & table'
+                    : (spots.find((s) => s.slug === spot)?.name ?? 'Main code')}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={MAIN_CODE}>Main code</SelectItem>
+                {spots.map((s) => (
+                  <SelectItem key={s.id} value={s.slug}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+                {spots.length > 1 && (
+                  <SelectItem value={EVERY_SPOT}>
+                    Every branch &amp; table
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
           <Button
             type="button"
             onClick={() => window.print()}

@@ -119,11 +119,29 @@ test('an owner can use the dashboard and buy page by keyboard alone', async ({
 
     // A filter that matches nothing can still be undone.
     await page.getByRole('button', { name: 'Positive' }).press('Enter')
-    await page.getByLabel('Left at').selectOption('Patio')
+    // Real keys: open, type to jump to the place, choose it.
+    const leftAt = page.getByLabel('Left at')
+    await leftAt.press('Enter')
+    // Opening moves focus to the chosen option; keys go there.
+    await expect(
+      page.getByRole('option', { name: 'All branches & tables' }),
+    ).toBeFocused()
+    await page.keyboard.type('Pat')
+    await expect(page.getByRole('option', { name: 'Patio' })).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(leftAt).toHaveText('Patio')
+    await expect(leftAt).toBeFocused()
     await expect(
       page.getByText('No feedback matches your filters.'),
     ).toBeVisible()
-    await page.getByLabel('Left at').selectOption('All branches & tables')
+    await leftAt.press('Enter')
+    await expect(page.getByRole('option', { name: 'Patio' })).toBeFocused()
+    await page.keyboard.press('ArrowUp')
+    await expect(
+      page.getByRole('option', { name: 'All branches & tables' }),
+    ).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(leftAt).toHaveText('All branches & tables')
     await expect(page.getByText('Test Customer 2')).toBeVisible()
 
     await page

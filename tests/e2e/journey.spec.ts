@@ -134,7 +134,8 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
     await page.reload()
     await expect(page.getByText('Tunde')).toBeVisible()
 
-    await page.getByLabel('Left at', { exact: true }).selectOption('Patio')
+    await page.getByLabel('Left at', { exact: true }).click()
+    await page.getByRole('option', { name: 'Patio' }).click()
     await expect(page.getByText('Grace').first()).toBeVisible()
     await expect(page.getByText('Tunde')).toHaveCount(0)
   })

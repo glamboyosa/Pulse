@@ -7,6 +7,13 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/empty-state'
 import { SENTIMENT_STYLE } from '@/lib/sentiment'
@@ -134,10 +141,13 @@ export function FeedbackList({
       ),
     ),
   ].sort(([, a], [, b]) => a.localeCompare(b))
+  // A place whose last note went away drops out of the list; show everything.
+  const spotLabel = spotOptions.find(([id]) => id === spotFilter)?.[1]
+  const activeSpot = spotLabel ? spotFilter : 'all'
   const filteredFeedback = feedbackList.filter(
     (f) =>
       (filter === 'all' || f.sentiment === filter) &&
-      (spotFilter === 'all' || f.spot?.id === spotFilter),
+      (activeSpot === 'all' || f.spot?.id === activeSpot),
   )
 
   useEffect(() => () => audioRef.current?.pause(), [])
@@ -241,22 +251,26 @@ export function FeedbackList({
 
       {spotOptions.length > 0 && (
         <div className="mb-6 flex items-center gap-3">
-          <label htmlFor="spot-filter" className="text-sm font-bold uppercase">
+          <label
+            htmlFor="spot-filter"
+            className="shrink-0 text-sm font-bold whitespace-nowrap uppercase"
+          >
             Left at
           </label>
-          <select
-            id="spot-filter"
-            value={spotFilter}
-            onChange={(event) => setSpotFilter(event.target.value)}
-            className="min-w-0 border-2 border-foreground bg-card px-3 py-1.5 text-base font-bold"
-          >
-            <option value="all">All branches &amp; tables</option>
-            {spotOptions.map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <Select value={activeSpot} onValueChange={setSpotFilter}>
+            <SelectTrigger id="spot-filter">
+              {/* Given directly, so the server-rendered page shows it too. */}
+              <SelectValue>{spotLabel ?? 'All branches & tables'}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All branches &amp; tables</SelectItem>
+              {spotOptions.map(([id, label]) => (
+                <SelectItem key={id} value={id}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
       <p role="status" className="sr-only">

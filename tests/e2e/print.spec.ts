@@ -3,6 +3,12 @@ import { expect, test } from '@playwright/test'
 import { db, signUpBusiness } from './support'
 import type { Page } from '@playwright/test'
 
+/** Opens a labelled Select and chooses an option by its text. */
+const pick = async (page: Page, label: string, option: string) => {
+  await page.getByLabel(label, { exact: true }).click()
+  await page.getByRole('option', { name: option, exact: true }).click()
+}
+
 /** The page count a PDF declares in its page tree. */
 const pageCount = (pdf: Buffer) =>
   Number(
@@ -77,7 +83,7 @@ test('the owner prints table tents and stickers as an A4 PDF', async ({
         .getByRole('region', { name: 'Table tent main code' })
         .locator('[data-print-url]'),
     ).toHaveCount(2)
-    await page.getByLabel('QR code').selectOption('Every branch & table')
+    await pick(page, 'QR code', 'Every branch & table')
     await expect(
       page.getByRole('region', { name: /^Table tent / }),
     ).toHaveCount(2)
@@ -87,8 +93,8 @@ test('the owner prints table tents and stickers as an A4 PDF', async ({
   })
 
   await test.step('stickers: six of one code on a sheet', async () => {
-    await page.getByLabel('Layout').selectOption('stickers')
-    await page.getByLabel('QR code').selectOption('Table 4')
+    await pick(page, 'Layout', 'Stickers, 6 per sheet')
+    await pick(page, 'QR code', 'Table 4')
     const sheet = page.getByRole('region', { name: 'Sticker sheet 1' })
     await expect(sheet.locator('[data-print-url]')).toHaveCount(6)
     await expect(sheet.locator('[data-print-url]').first()).toHaveText(
@@ -110,10 +116,13 @@ test('the owner prints table tents and stickers as an A4 PDF', async ({
       ],
     )
     await page.reload()
-    for (const layout of ['tent', 'stickers']) {
+    for (const layout of [
+      'Table tent (folds in half)',
+      'Stickers, 6 per sheet',
+    ]) {
       // The toolbar is hidden in print, so choose the layout first.
       await page.emulateMedia({ media: 'screen' })
-      await page.getByLabel('Layout').selectOption(layout)
+      await pick(page, 'Layout', layout)
       await page.emulateMedia({ media: 'print' })
       expect(await cardsFit(page), layout).toBe(true)
     }

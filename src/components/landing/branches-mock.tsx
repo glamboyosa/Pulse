@@ -3,6 +3,14 @@
 import { useState } from 'react'
 import QRCodeSVG from 'react-qr-code'
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
 type Note = { name: string; time: string; summary: string }
 
 const PLACES: Array<{ name: string; notes: [Note, Note] }> = [
@@ -122,18 +130,23 @@ export function BranchesMock() {
           >
             Left at
           </label>
-          <select
-            id="branches-filter"
-            value={picked}
-            onChange={(event) => setPicked(Number(event.target.value))}
-            className="cursor-pointer border-2 border-foreground bg-card px-3 py-1.5 text-base font-bold"
+          <Select
+            value={String(picked)}
+            onValueChange={(value) => setPicked(Number(value))}
           >
-            {PLACES.map((place, i) => (
-              <option key={place.name} value={i}>
-                {place.name}
-              </option>
-            ))}
-          </select>
+            {/* As wide as "Manchester", so switching places doesn't move it. */}
+            <SelectTrigger id="branches-filter" className="min-w-40">
+              {/* Given directly, so the server-rendered page shows it too. */}
+              <SelectValue>{PLACES[picked].name}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {PLACES.map((place, i) => (
+                <SelectItem key={place.name} value={String(i)}>
+                  {place.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         {/* Every place's notes share one cell, so the card keeps the height
             of the tallest and the page doesn't jump when switching. */}
