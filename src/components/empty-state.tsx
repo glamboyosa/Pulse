@@ -30,7 +30,7 @@ export function EmptyState({
       {action && (
         <Button
           onClick={action.onClick}
-          className="border-3 border-foreground font-bold shadow-brutal-sm"
+          className="border-3 border-foreground font-bold shadow-brutal-sm before:-inset-[3px]"
         >
           {action.label}
         </Button>

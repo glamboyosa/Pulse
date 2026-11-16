@@ -268,7 +268,7 @@ export function OnboardingForm() {
                 (!formData.uniqueCode.trim() ||
                   !/^[a-z0-9-]+$/.test(formData.uniqueCode)))
             }
-            className="flex-1 border-3 border-foreground"
+            className="flex-1 border-3 border-foreground before:-inset-[3px]"
           >
             {isPending
               ? 'Processing…'

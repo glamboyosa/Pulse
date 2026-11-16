@@ -226,10 +226,10 @@ export function HeroMock() {
             aria-controls="hero-example"
             tabIndex={i === active ? 0 : -1}
             onClick={() => setActive(i)}
-            className={`min-h-11 cursor-pointer rounded-md border-2 border-foreground px-3 py-1.5 text-sm font-bold md:min-h-9 transition-[transform,box-shadow] duration-150 ease-out ${
+            className={`relative min-h-11 cursor-pointer rounded-md before:absolute before:-inset-0.5 border-2 border-foreground px-3 py-1.5 text-sm font-bold md:min-h-9 transition-[transform,box-shadow] duration-150 ease-out ${
               i === active
                 ? 'bg-foreground text-background'
-                : 'bg-card shadow-brutal-sm hover:-translate-y-0.5 hover:shadow-brutal active:translate-x-[2px] active:translate-y-[2px] active:shadow-none'
+                : 'bg-card shadow-brutal-sm hover:-translate-y-0.5 hover:shadow-brutal active:translate-x-[2px] active:translate-y-[2px] active:shadow-none hover:before:translate-y-0.5 active:before:-translate-x-[2px] active:before:-translate-y-[2px]'
             }`}
           >
             {item.name}

@@ -96,7 +96,7 @@ export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
         </div>
         <Button
           onClick={handleCopy}
-          className="w-full font-bold border-2 border-foreground shadow-brutal-sm hover:shadow-brutal hover:translate-x-[-2px] hover:translate-y-[-2px] transition-[transform,box-shadow,background-color]"
+          className="w-full font-bold border-2 border-foreground shadow-brutal-sm hover:shadow-brutal hover:translate-x-[-2px] hover:translate-y-[-2px] hover:before:translate-x-[2px] hover:before:translate-y-[2px] transition-[transform,box-shadow,background-color]"
         >
           <Share2 className="w-4 h-4 mr-2" />
           {copied ? 'COPIED!' : 'COPY LINK'}
@@ -104,7 +104,7 @@ export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
         <Button
           variant="outline"
           onClick={handleDownload}
-          className="w-full font-bold border-2 border-foreground bg-background shadow-brutal-sm hover:shadow-brutal hover:translate-x-[-2px] hover:translate-y-[-2px] transition-[transform,box-shadow,background-color]"
+          className="w-full font-bold border-2 border-foreground bg-background shadow-brutal-sm hover:shadow-brutal hover:translate-x-[-2px] hover:translate-y-[-2px] hover:before:translate-x-[2px] hover:before:translate-y-[2px] transition-[transform,box-shadow,background-color]"
         >
           <Download className="w-4 h-4 mr-2" />
           DOWNLOAD QR

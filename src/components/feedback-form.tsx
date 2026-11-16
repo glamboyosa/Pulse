@@ -65,7 +65,7 @@ const formatTime = (seconds: number) =>
 
 const cardClass = 'p-8 border-2 border-foreground shadow-brutal-lg bg-card'
 const primaryButton =
-  'flex-1 text-lg font-bold border-2 border-foreground shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 transition-[transform,box-shadow]'
+  'flex-1 text-lg font-bold border-2 border-foreground shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 hover:before:translate-x-0.5 hover:before:translate-y-0.5 transition-[transform,box-shadow]'
 const outlineButton =
   'font-bold border-2 border-foreground shadow-brutal-sm bg-transparent'
 
@@ -631,7 +631,7 @@ export function FeedbackForm({
                             ? 'Try recording again'
                             : 'Start recording'
                       }
-                      className="relative flex size-28 cursor-pointer items-center justify-center rounded-full border-2 border-foreground shadow-brutal transition-transform duration-150 ease-out active:translate-x-[3px] active:translate-y-[3px] active:shadow-none disabled:cursor-wait disabled:opacity-60"
+                      className="relative flex size-28 cursor-pointer items-center justify-center rounded-full border-2 border-foreground shadow-brutal transition-transform duration-150 ease-out active:translate-x-[3px] active:translate-y-[3px] active:shadow-none before:absolute before:-inset-0.5 before:rounded-full active:before:-translate-x-[3px] active:before:-translate-y-[3px] disabled:cursor-wait disabled:opacity-60"
                       style={
                         stage.name === 'recording'
                           ? {

@@ -194,7 +194,7 @@ export function PrintSheets({
             type="button"
             onClick={() => window.print()}
             disabled={!origin}
-            className="ml-auto border-4 border-foreground px-6 py-5 text-lg font-bold shadow-brutal-sm"
+            className="ml-auto border-4 border-foreground before:-inset-1 px-6 py-5 text-lg font-bold shadow-brutal-sm"
           >
             <Printer className="mr-2 size-5" />
             PRINT

@@ -244,7 +244,7 @@ export function BrandingForm({
         <Button
           type="submit"
           disabled={state === 'saving'}
-          className="text-lg font-bold border-2 border-foreground shadow-brutal px-8 py-6 active:translate-x-0.5 active:translate-y-0.5 active:shadow-brutal-sm"
+          className="text-lg font-bold border-2 border-foreground shadow-brutal px-8 py-6 active:translate-x-0.5 active:translate-y-0.5 active:before:-translate-x-0.5 active:before:-translate-y-0.5 active:shadow-brutal-sm"
         >
           {state === 'saving'
             ? 'SAVING…'

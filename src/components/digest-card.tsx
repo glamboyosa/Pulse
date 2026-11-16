@@ -67,7 +67,7 @@ export function DigestCard({
             onClick={write}
             disabled={writing}
             variant="outline"
-            className="font-bold border-2 border-foreground bg-card shadow-brutal-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-brutal-sm"
+            className="font-bold border-2 border-foreground bg-card shadow-brutal-sm active:translate-x-0.5 active:translate-y-0.5 active:before:-translate-x-0.5 active:before:-translate-y-0.5 active:shadow-brutal-sm"
           >
             <RefreshCw
               className={`size-4 mr-2 ${writing ? 'animate-spin' : ''}`}

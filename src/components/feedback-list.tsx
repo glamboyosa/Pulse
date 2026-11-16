@@ -333,7 +333,7 @@ export function FeedbackList({
             key={item.id}
             // New cards arrive with a short stagger; existing ones keep still.
             style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
-            className="group cursor-pointer gap-0 rounded-lg border-2 border-foreground bg-card p-5 shadow-brutal transition-[transform,box-shadow] duration-150 ease-out animate-in fade-in slide-in-from-bottom-2 fill-mode-both hover:-translate-y-0.5 hover:shadow-brutal-lg md:p-6"
+            className="group cursor-pointer gap-0 rounded-lg border-2 border-foreground bg-card p-5 shadow-brutal transition-[transform,box-shadow] duration-150 ease-out animate-in fade-in slide-in-from-bottom-2 fill-mode-both hover:-translate-y-0.5 hover:shadow-brutal-lg md:p-6 relative before:absolute before:-inset-0.5 before:-z-10 hover:before:translate-y-0.5"
             onClick={() => handleViewFeedback(item.id)}
           >
             <div className="flex items-start gap-4">

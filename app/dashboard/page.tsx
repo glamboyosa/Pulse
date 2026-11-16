@@ -24,10 +24,10 @@ import { VouchersCard } from '@/components/vouchers-card'
 import { monthlyVoucherStats, voucherSettings } from '@/server/vouchers'
 
 const tabClass = (active: boolean) =>
-  `rounded-md border-2 border-foreground px-5 py-2 font-bold transition-[transform,box-shadow] duration-150 ${
+  `relative rounded-md border-2 border-foreground px-5 py-2 before:absolute before:-inset-0.5 font-bold transition-[transform,box-shadow] duration-150 ${
     active
       ? 'bg-foreground text-background'
-      : 'bg-card shadow-brutal-sm hover:-translate-y-0.5 hover:shadow-brutal'
+      : 'bg-card shadow-brutal-sm hover:-translate-y-0.5 hover:shadow-brutal hover:before:translate-y-0.5'
   }`
 
 export default async function DashboardPage({

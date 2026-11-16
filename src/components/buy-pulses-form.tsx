@@ -229,7 +229,7 @@ export function BuyPulsesForm({
             getAmount() === 0 ||
             (selectedPackage !== 'custom' && !getSelectedPackage())
           }
-          className="w-full border-3 border-foreground font-bold text-lg py-6 shadow-brutal-sm hover:shadow-brutal"
+          className="w-full border-3 border-foreground before:-inset-[3px] font-bold text-lg py-6 shadow-brutal-sm hover:shadow-brutal"
         >
           {isRedirecting ? 'OPENING CHECKOUT…' : 'PROCEED TO CHECKOUT'}
         </Button>

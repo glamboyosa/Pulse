@@ -139,7 +139,7 @@ export function LoginForm({ next }: { next: string }) {
             <Button
               type="submit"
               disabled={isPending || otpCode.length !== 6}
-              className="w-full text-lg font-bold border-2 border-foreground shadow-brutal hover:shadow-brutal-lg hover:translate-x-[-2px] hover:translate-y-[-2px] transition-[transform,box-shadow,background-color]"
+              className="w-full text-lg font-bold border-2 border-foreground shadow-brutal hover:shadow-brutal-lg hover:translate-x-[-2px] hover:translate-y-[-2px] hover:before:translate-x-[2px] hover:before:translate-y-[2px] transition-[transform,box-shadow,background-color]"
             >
               {isPending ? 'VERIFYING…' : 'VERIFY CODE'}
             </Button>
@@ -221,7 +221,7 @@ export function LoginForm({ next }: { next: string }) {
           <Button
             type="submit"
             disabled={isLoading || (!!turnstileSiteKey && !turnstileToken)}
-            className="w-full text-lg font-bold border-2 border-foreground shadow-brutal hover:shadow-brutal-lg hover:translate-x-[-2px] hover:translate-y-[-2px] transition-[transform,box-shadow,background-color]"
+            className="w-full text-lg font-bold border-2 border-foreground shadow-brutal hover:shadow-brutal-lg hover:translate-x-[-2px] hover:translate-y-[-2px] hover:before:translate-x-[2px] hover:before:translate-y-[2px] transition-[transform,box-shadow,background-color]"
           >
             {isLoading
               ? 'SENDING CODE…'
