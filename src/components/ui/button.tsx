@@ -7,19 +7,21 @@ import { cn } from '@/lib/utils'
 
 // Neobrutalist buttons: ink border, hard shadow, a lift on hover and a press
 // on click. Tailwind v4 only applies hover on devices that can hover.
+// The ::before layer moves against the lift and the press, so the hit area
+// stays where the button started. Without it, a pointer on the bottom edge
+// loses hover as the button rises, the button drops back, and it flickers.
+const lift =
+  "relative shadow-brutal-sm hover:-translate-y-0.5 hover:shadow-brutal active:translate-x-[3px] active:translate-y-[3px] active:shadow-none before:absolute before:-inset-0.5 hover:before:translate-y-0.5 active:before:-translate-x-[3px] active:before:-translate-y-[3px]"
+
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border-2 border-foreground text-sm font-bold cursor-pointer transition-[transform,box-shadow,background-color] duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-foreground aria-invalid:border-destructive",
   {
     variants: {
       variant: {
-        default:
-          'bg-primary text-primary-foreground shadow-brutal-sm hover:-translate-y-0.5 hover:shadow-brutal active:translate-x-[3px] active:translate-y-[3px] active:shadow-none',
-        accent:
-          'bg-accent text-accent-foreground shadow-brutal-sm hover:-translate-y-0.5 hover:shadow-brutal active:translate-x-[3px] active:translate-y-[3px] active:shadow-none',
-        destructive:
-          'bg-destructive text-white shadow-brutal-sm hover:-translate-y-0.5 hover:shadow-brutal active:translate-x-[3px] active:translate-y-[3px] active:shadow-none',
-        outline:
-          'bg-card text-foreground shadow-brutal-sm hover:-translate-y-0.5 hover:shadow-brutal active:translate-x-[3px] active:translate-y-[3px] active:shadow-none',
+        default: `bg-primary text-primary-foreground ${lift}`,
+        accent: `bg-accent text-accent-foreground ${lift}`,
+        destructive: `bg-destructive text-white ${lift}`,
+        outline: `bg-card text-foreground ${lift}`,
         secondary: 'bg-secondary text-secondary-foreground hover:bg-accent',
         ghost: 'border-transparent hover:bg-secondary',
         link: 'border-transparent underline-offset-4 hover:underline',
