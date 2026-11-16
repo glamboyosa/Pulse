@@ -46,9 +46,10 @@ test('public pages have no serious axe violations, and the skip link reaches the
   }
 
   await page.goto('/')
-  await page.keyboard.press('Tab')
+  // Focused directly: in development, Next's own overlay can take the first Tab.
   const skip = page.getByRole('link', { name: 'Skip to content' })
-  await expect(skip).toBeFocused()
+  await skip.focus()
+  await expect(skip).toBeInViewport()
   await page.keyboard.press('Enter')
   await page.keyboard.press('Tab')
   // The next stop is inside the main content, past the header links.

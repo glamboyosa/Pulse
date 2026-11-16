@@ -169,7 +169,7 @@ export function HeroMock() {
 
         <div
           key={`${example.name}-note`}
-          className="relative -mt-3 mr-2 ml-auto w-64 rotate-[2deg] rounded-lg border-2 border-foreground bg-accent p-4 shadow-brutal animate-in fade-in zoom-in-95 duration-200 ease-out md:-mr-6"
+          className="relative -mt-3 mr-2 ml-auto w-64 rotate-[2deg] rounded-lg border-2 border-foreground bg-accent p-4 shadow-brutal animate-in fade-in zoom-in-95 duration-200 ease-out xl:-mr-6"
         >
           {example.sentiment === 'negative' ? (
             <>

@@ -80,7 +80,7 @@ export function BranchesMock() {
   return (
     <div>
       <ul
-        aria-label="QR codes"
+        aria-label="Show notes left at"
         className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4"
       >
         {PLACES.map((place, i) => (
@@ -165,6 +165,10 @@ export function BranchesMock() {
             </ul>
           ))}
         </div>
+        {/* The lists swap by visibility, which screen readers don't announce. */}
+        <p role="status" className="sr-only">
+          Showing notes left at {PLACES[picked].name}
+        </p>
       </div>
     </div>
   )
