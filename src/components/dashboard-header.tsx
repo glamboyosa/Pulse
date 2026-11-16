@@ -37,12 +37,13 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
               Pulse
             </span>
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/buy-pulses">
-              <Button
-                variant="outline"
-                className="font-bold border-2 border-foreground shadow-brutal-sm bg-accent hover:bg-accent/80"
-              >
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button
+              asChild
+              variant="outline"
+              className="font-bold border-2 border-foreground shadow-brutal-sm bg-accent hover:bg-accent/80"
+            >
+              <Link href="/buy-pulses">
                 <Zap className="w-4 h-4 mr-2" fill="currentColor" />
                 <span className="hidden sm:inline">
                   {isLowPulse
@@ -51,9 +52,12 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                 </span>
                 <span className="sm:hidden">
                   {isLowPulse ? 'Buy' : pulsesRemaining}
+                  <span className="sr-only">
+                    {isLowPulse ? ` more (${pulsesRemaining} left)` : ' pulses'}
+                  </span>
                 </span>
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <div className="hidden md:block text-right">
               <p className="font-bold">{user.name}</p>
               <p className="text-sm font-medium text-muted-foreground">
@@ -72,8 +76,8 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
               onClick={handleLogout}
               className="font-bold border-2 border-foreground shadow-brutal-sm bg-transparent"
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Logout</span>
+              <LogOut className="w-4 h-4 sm:mr-2" />
+              <span className="sr-only sm:not-sr-only">Logout</span>
             </Button>
           </div>
         </div>

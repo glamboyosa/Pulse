@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, FileText, Languages, Mic, Pause, Play } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 
@@ -72,6 +73,13 @@ const formatRelativeTime = (isoString: string): string => {
   return new Date(isoString).toLocaleDateString()
 }
 
+const SENTIMENT_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'positive', label: 'Positive' },
+  { value: 'neutral', label: 'Neutral' },
+  { value: 'negative', label: 'Negative' },
+] as const
+
 export function FeedbackList({
   hasFeedback = true,
   initialData = [],
@@ -79,9 +87,8 @@ export function FeedbackList({
   const router = useRouter()
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [playError, setPlayError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<
-    'all' | 'positive' | 'neutral' | 'negative'
-  >('all')
+  const [filter, setFilter] =
+    useState<(typeof SENTIMENT_FILTERS)[number]['value']>('all')
   const [spotFilter, setSpotFilter] = useState('all')
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -204,97 +211,31 @@ export function FeedbackList({
     )
   }
 
-  // Show empty state if filtered results are empty (but we have feedback)
-  if (filteredFeedback.length === 0) {
-    return (
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-3xl font-extrabold tracking-tight">
-            Recent feedback
-          </h2>
-          <div className="flex gap-2">
-            <Button
-              variant={filter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('all')}
-              className="font-bold border-2 border-foreground shadow-brutal-sm"
-            >
-              All
-            </Button>
-            <Button
-              variant={filter === 'positive' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('positive')}
-              className="font-bold border-2 border-foreground shadow-brutal-sm"
-            >
-              Positive
-            </Button>
-            <Button
-              variant={filter === 'neutral' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('neutral')}
-              className="font-bold border-2 border-foreground shadow-brutal-sm"
-            >
-              Neutral
-            </Button>
-            <Button
-              variant={filter === 'negative' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter('negative')}
-              className="font-bold border-2 border-foreground shadow-brutal-sm"
-            >
-              Negative
-            </Button>
-          </div>
-        </div>
-        <EmptyState
-          icon={Mic}
-          title="No Feedback Found"
-          description={`No ${filter === 'all' ? '' : filter} feedback matches your filter.`}
-        />
-      </div>
-    )
-  }
-
-  return (
-    <div>
+  // One set of filters for both the list and its empty state, so a filter
+  // that matches nothing can still be changed back.
+  const filters = (
+    <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-3xl font-extrabold tracking-tight">
           Recent feedback
         </h2>
-        <div className="flex gap-2">
-          <Button
-            variant={filter === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('all')}
-            className="font-bold border-2 border-foreground shadow-brutal-sm"
-          >
-            All
-          </Button>
-          <Button
-            variant={filter === 'positive' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('positive')}
-            className="font-bold border-2 border-foreground shadow-brutal-sm"
-          >
-            Positive
-          </Button>
-          <Button
-            variant={filter === 'neutral' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('neutral')}
-            className="font-bold border-2 border-foreground shadow-brutal-sm"
-          >
-            Neutral
-          </Button>
-          <Button
-            variant={filter === 'negative' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter('negative')}
-            className="font-bold border-2 border-foreground shadow-brutal-sm"
-          >
-            Negative
-          </Button>
+        <div
+          role="group"
+          aria-label="Sentiment"
+          className="flex flex-wrap gap-2"
+        >
+          {SENTIMENT_FILTERS.map(({ value, label }) => (
+            <Button
+              key={value}
+              variant={filter === value ? 'default' : 'outline'}
+              size="sm"
+              aria-pressed={filter === value}
+              onClick={() => setFilter(value)}
+              className="font-bold border-2 border-foreground shadow-brutal-sm"
+            >
+              {label}
+            </Button>
+          ))}
         </div>
       </div>
 
@@ -307,7 +248,7 @@ export function FeedbackList({
             id="spot-filter"
             value={spotFilter}
             onChange={(event) => setSpotFilter(event.target.value)}
-            className="border-2 border-foreground bg-card px-3 py-1.5 text-base font-bold"
+            className="min-w-0 border-2 border-foreground bg-card px-3 py-1.5 text-base font-bold"
           >
             <option value="all">All branches &amp; tables</option>
             {spotOptions.map(([id, label]) => (
@@ -318,6 +259,30 @@ export function FeedbackList({
           </select>
         </div>
       )}
+      <p role="status" className="sr-only">
+        {filteredFeedback.length === 1
+          ? '1 note'
+          : `${filteredFeedback.length} notes`}
+      </p>
+    </>
+  )
+
+  if (filteredFeedback.length === 0) {
+    return (
+      <div>
+        {filters}
+        <EmptyState
+          icon={Mic}
+          title="No Feedback Found"
+          description="No feedback matches your filters."
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {filters}
 
       {playError && (
         <p
@@ -342,9 +307,9 @@ export function FeedbackList({
                   size="icon"
                   variant="outline"
                   onClick={(e) => togglePlay(e, item)}
-                  aria-label={
-                    playingId === item.id ? 'Pause recording' : 'Play recording'
-                  }
+                  aria-label={`${
+                    playingId === item.id ? 'Pause' : 'Play'
+                  } recording from ${item.displayName}`}
                   className="shrink-0 w-12 h-12 border-2 border-foreground shadow-brutal-sm hover:bg-primary hover:text-primary-foreground transition-colors"
                 >
                   {playingId === item.id ? (
@@ -386,17 +351,21 @@ export function FeedbackList({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* The keyboard and screen reader way in; the card's own
+                        click is a larger target for the pointer. */}
                     <Button
+                      asChild
                       size="icon"
                       variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleViewFeedback(item.id)
-                      }}
-                      aria-label="View transcript"
                       className="border-2 border-transparent hover:border-foreground"
                     >
-                      <FileText className="w-5 h-5" />
+                      <Link
+                        href={`/feedback/${item.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`View transcript from ${item.displayName}`}
+                      >
+                        <FileText className="w-5 h-5" />
+                      </Link>
                     </Button>
                     <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-transform" />
                   </div>

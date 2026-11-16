@@ -120,6 +120,7 @@ export function AudioPlayer({
       <audio
         ref={audioRef}
         controls
+        aria-label="Recording"
         className="w-full"
         onError={handleAudioError}
       >

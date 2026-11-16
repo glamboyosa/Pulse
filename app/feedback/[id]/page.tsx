@@ -76,16 +76,15 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-secondary">
+    <main id="main" className="min-h-screen bg-secondary">
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <Link href="/dashboard">
-          <Button
-            variant="outline"
-            className="mb-6 font-bold border-2 border-foreground shadow-brutal-sm"
-          >
-            ← Back to Dashboard
-          </Button>
-        </Link>
+        <Button
+          asChild
+          variant="outline"
+          className="mb-6 font-bold border-2 border-foreground shadow-brutal-sm"
+        >
+          <Link href="/dashboard">← Back to Dashboard</Link>
+        </Button>
 
         <Card className="p-8 border-2 border-foreground shadow-brutal-lg bg-card">
           <div className="flex items-start justify-between mb-6">
@@ -187,6 +186,6 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
           </div>
         </Card>
       </div>
-    </div>
+    </main>
   )
 }

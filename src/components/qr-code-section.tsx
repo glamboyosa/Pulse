@@ -101,6 +101,9 @@ export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
           <Share2 className="w-4 h-4 mr-2" />
           {copied ? 'COPIED!' : 'COPY LINK'}
         </Button>
+        <p role="status" className="sr-only">
+          {copied ? 'Link copied' : ''}
+        </p>
         <Button
           variant="outline"
           onClick={handleDownload}

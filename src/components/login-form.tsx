@@ -103,7 +103,10 @@ export function LoginForm({ next }: { next: string }) {
               </Label>
               <div className="flex justify-center">
                 <InputOTP
+                  id="otp"
                   maxLength={6}
+                  aria-describedby={error ? 'otp-error' : undefined}
+                  aria-invalid={error ? true : undefined}
                   value={otpCode}
                   onChange={(value) => {
                     // Only allow numbers, max 6 digits
@@ -128,11 +131,13 @@ export function LoginForm({ next }: { next: string }) {
               </div>
             </div>
 
-            {(error || loginState?.error) && (
-              <div className="bg-destructive/10 border-2 border-destructive text-destructive-foreground p-4">
-                <p className="font-bold text-sm">
-                  {error || loginState?.error}
-                </p>
+            {error && (
+              <div
+                id="otp-error"
+                role="alert"
+                className="bg-destructive/10 border-2 border-destructive text-destructive-foreground p-4"
+              >
+                <p className="font-bold text-sm">{error}</p>
               </div>
             )}
 
@@ -173,10 +178,13 @@ export function LoginForm({ next }: { next: string }) {
             <Input
               id="email"
               type="email"
+              autoComplete="email"
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              aria-describedby={error ? 'email-error' : undefined}
+              aria-invalid={error ? true : undefined}
               className="border-2 border-foreground font-semibold"
             />
           </div>
@@ -194,7 +202,10 @@ export function LoginForm({ next }: { next: string }) {
           )}
 
           {turnstileFailed && (
-            <div className="bg-destructive/10 border-2 border-destructive p-4 space-y-2">
+            <div
+              role="alert"
+              className="bg-destructive/10 border-2 border-destructive p-4 space-y-2"
+            >
               <p className="font-bold text-sm">
                 We couldn&apos;t run the check that stops bots. If you use an ad
                 or tracker blocker, allow this page, then try again.
@@ -213,7 +224,11 @@ export function LoginForm({ next }: { next: string }) {
           )}
 
           {error && (
-            <div className="bg-destructive/10 border-2 border-destructive text-destructive-foreground p-4">
+            <div
+              id="email-error"
+              role="alert"
+              className="bg-destructive/10 border-2 border-destructive text-destructive-foreground p-4"
+            >
               <p className="font-bold text-sm">{error}</p>
             </div>
           )}

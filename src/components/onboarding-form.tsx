@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 
 import { completeOnboardingAction } from '../../app/actions/onboarding'
 import { Button } from '@/components/ui/button'
@@ -81,10 +81,22 @@ export function OnboardingForm() {
 
   const error = completeState?.error
 
+  // Each step swaps the form under the button just pressed; the new heading
+  // takes focus so it is read out. Not on first load.
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const firstStep = useRef(true)
+  useEffect(() => {
+    if (firstStep.current) {
+      firstStep.current = false
+      return
+    }
+    titleRef.current?.focus()
+  }, [step])
+
   return (
     <div className="border-2 border-foreground bg-card p-8">
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
+        <div aria-hidden="true" className="flex items-center gap-2 mb-4">
           {[1, 2, 3, 4].map((num) => (
             <div
               key={num}
@@ -94,7 +106,15 @@ export function OnboardingForm() {
             />
           ))}
         </div>
-        <h1 id="onboarding-title" className="text-3xl font-bold mb-2">
+        <h1
+          ref={titleRef}
+          tabIndex={-1}
+          id="onboarding-title"
+          className="text-3xl font-bold mb-2"
+        >
+          <span className="sr-only">
+            Step {step} of {LAST_STEP}:{' '}
+          </span>
           {step === 1 && 'Welcome to Pulse'}
           {step === 2 && 'Where will people leave feedback?'}
           {step === 3 && 'Tell us about your business'}
@@ -179,12 +199,19 @@ export function OnboardingForm() {
 
         {step === 3 && (
           <div className="space-y-3">
-            <Label>Business Type</Label>
-            <div className="grid grid-cols-2 gap-3">
+            <Label id="business-type" asChild>
+              <p>Business Type</p>
+            </Label>
+            <div
+              role="group"
+              aria-labelledby="business-type"
+              className="grid grid-cols-2 gap-3"
+            >
               {BUSINESS_TYPES.map((type) => (
                 <button
                   key={type}
                   type="button"
+                  aria-pressed={formData.businessType === type}
                   onClick={() =>
                     setFormData({ ...formData, businessType: type })
                   }
@@ -211,6 +238,12 @@ export function OnboardingForm() {
                 </span>
                 <Input
                   id="uniqueCode"
+                  aria-describedby={
+                    error
+                      ? 'uniqueCode-hint onboarding-error'
+                      : 'uniqueCode-hint'
+                  }
+                  aria-invalid={error ? true : undefined}
                   placeholder="your-business"
                   value={formData.uniqueCode}
                   onChange={(e) =>
@@ -224,7 +257,7 @@ export function OnboardingForm() {
                   className="border-2 border-foreground font-mono"
                 />
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p id="uniqueCode-hint" className="text-sm text-muted-foreground">
                 This will be your custom feedback collection URL
               </p>
             </div>
@@ -243,7 +276,11 @@ export function OnboardingForm() {
         )}
 
         {error && (
-          <div className="p-3 bg-destructive/10 border-2 border-destructive text-destructive text-sm font-semibold">
+          <div
+            id="onboarding-error"
+            role="alert"
+            className="p-3 bg-destructive/10 border-2 border-destructive text-destructive text-sm font-semibold"
+          >
             {error}
           </div>
         )}

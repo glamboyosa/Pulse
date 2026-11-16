@@ -140,7 +140,7 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
   })
 
   await test.step('the detail page shows the full transcript', async () => {
-    await page.getByRole('button', { name: 'View transcript' }).click()
+    await page.getByRole('link', { name: /^View transcript/ }).click()
     await page.waitForURL('**/feedback/**')
     await expect(page.getByText(/Hi, my name is Grace/)).toBeVisible()
     // The one-line summary and themes from the analysis sit above it.
@@ -224,15 +224,18 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
   await test.step('the owner deletes one piece of feedback', async () => {
     await page.goto('/dashboard')
     const before = await page
-      .getByRole('button', { name: 'View transcript' })
+      .getByRole('link', { name: /^View transcript/ })
       .count()
-    await page.getByRole('button', { name: 'View transcript' }).first().click()
+    await page
+      .getByRole('link', { name: /^View transcript/ })
+      .first()
+      .click()
     await page.waitForURL('**/feedback/**')
     page.once('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: 'DELETE FEEDBACK' }).click()
     await page.waitForURL('**/dashboard')
     await expect(
-      page.getByRole('button', { name: 'View transcript' }),
+      page.getByRole('link', { name: /^View transcript/ }),
     ).toHaveCount(before - 1)
   })
 
