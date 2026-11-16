@@ -251,7 +251,10 @@ export function WidgetInstall({
             </button>
           ))}
         </div>
-        <pre className="max-h-96 overflow-auto border-2 border-foreground bg-secondary p-3 text-sm">
+        <pre
+          tabIndex={0}
+          className="max-h-96 overflow-auto border-2 border-foreground bg-secondary p-3 text-sm"
+        >
           <code>{code}</code>
         </pre>
         <div className="flex flex-wrap items-center gap-4">

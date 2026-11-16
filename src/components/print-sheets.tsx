@@ -144,7 +144,7 @@ export function PrintSheets({
   )
 
   return (
-    <div className="min-h-dvh bg-secondary print:bg-white">
+    <main id="main" className="min-h-dvh bg-secondary print:bg-white">
       <style>{'@page { size: A4; margin: 0 }'}</style>
 
       <div className="mx-auto max-w-3xl p-4 md:p-8 print:hidden">
@@ -204,7 +204,12 @@ export function PrintSheets({
 
       {origin && (
         // Sheets are A4-wide; on a phone the preview scrolls sideways.
-        <div className="overflow-x-auto pb-12 print:overflow-visible print:p-0">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Print preview"
+          className="overflow-x-auto pb-12 print:overflow-visible print:p-0"
+        >
           <div className="mx-auto flex w-max flex-col gap-8 px-4 print:block print:gap-0 print:px-0">
             {layout === 'tent'
               ? labels.map((label, i) => (
@@ -242,6 +247,6 @@ export function PrintSheets({
           </div>
         </div>
       )}
-    </div>
+    </main>
   )
 }

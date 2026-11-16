@@ -30,7 +30,7 @@ export default async function SettingsPage() {
     .where(eq(users.id, user.id))
 
   return (
-    <div className="min-h-screen bg-secondary p-4 md:p-8">
+    <main id="main" className="min-h-screen bg-secondary p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
         <Link
           href="/dashboard"
@@ -76,6 +76,6 @@ export default async function SettingsPage() {
           <AccountData confirmWord={user.uniqueCode ?? 'DELETE'} />
         </div>
       </div>
-    </div>
+    </main>
   )
 }

@@ -35,7 +35,7 @@ export default async function EmbedPage({
   if (!widget?.code || !branding) notFound()
 
   return (
-    <main className="relative min-h-dvh bg-secondary p-4">
+    <main id="main" className="relative min-h-dvh bg-secondary p-4">
       {inApp && <AppCloseButton />}
       {/* Right padding clears the close button. */}
       <h1 className="mb-4 pr-12 text-2xl font-black text-balance">

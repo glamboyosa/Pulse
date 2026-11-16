@@ -207,7 +207,7 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <main>
+      <main id="main">
         <section className="border-b-2 border-foreground">
           <div className="mx-auto grid max-w-6xl items-center gap-16 px-4 pt-14 pb-24 md:grid-cols-[1.1fr_1fr] md:pt-20 md:pb-28">
             <div>

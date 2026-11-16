@@ -14,7 +14,7 @@ export default async function BuyPulsesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <main id="main" className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto">
         <Link
           href="/dashboard"
@@ -31,6 +31,6 @@ export default async function BuyPulsesPage() {
         </div>
         <BuyPulsesForm localPricing={await getLocalPricing()} />
       </div>
-    </div>
+    </main>
   )
 }

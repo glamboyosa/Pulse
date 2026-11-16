@@ -81,7 +81,7 @@ export default async function DashboardPage({
   return (
     <div className="min-h-screen bg-secondary">
       <DashboardHeader user={user} />
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main id="main" className="mx-auto max-w-6xl px-4 py-8">
         <div className="mb-6">
           <p className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
             Welcome back

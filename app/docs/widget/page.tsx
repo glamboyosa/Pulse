@@ -64,7 +64,10 @@ const Block = ({
     case 'code':
       return (
         <div className="space-y-3">
-          <pre className="overflow-x-auto border-2 border-foreground bg-secondary p-4 text-sm leading-relaxed">
+          <pre
+            tabIndex={0}
+            className="overflow-x-auto border-2 border-foreground bg-secondary p-4 text-sm leading-relaxed"
+          >
             <code>{block.code}</code>
           </pre>
           <CopyButton
@@ -97,7 +100,7 @@ export default function WidgetDocsPage() {
           </Link>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-12">
+      <main id="main" className="mx-auto max-w-3xl px-4 py-12">
         <h1 className="mb-6 text-4xl font-black text-balance md:text-5xl">
           {title}
         </h1>

@@ -19,7 +19,10 @@ export default function AboutPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-10 px-4 py-12 text-lg leading-relaxed">
+      <main
+        id="main"
+        className="mx-auto max-w-3xl space-y-10 px-4 py-12 text-lg leading-relaxed"
+      >
         <h1 className="text-4xl font-extrabold tracking-tight md:text-5xl">
           About Pulse
         </h1>

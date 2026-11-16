@@ -27,7 +27,7 @@ export default async function VouchersPage({
   ])
 
   return (
-    <div className="min-h-dvh bg-secondary p-4 md:p-8">
+    <main id="main" className="min-h-dvh bg-secondary p-4 md:p-8">
       <div className="mx-auto max-w-xl">
         <Link
           href="/dashboard"
@@ -44,6 +44,6 @@ export default async function VouchersPage({
         </p>
         <VoucherRedeem key={code} initialCode={code} initialVoucher={voucher} />
       </div>
-    </div>
+    </main>
   )
 }

@@ -26,7 +26,10 @@ export default async function LoginPage({
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-secondary p-4">
+    <main
+      id="main"
+      className="min-h-screen flex items-center justify-center bg-secondary p-4"
+    >
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3 mb-6">

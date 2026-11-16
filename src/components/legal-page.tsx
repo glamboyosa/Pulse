@@ -25,7 +25,7 @@ export function LegalPage({
           </Link>
         </div>
       </header>
-      <main className="container mx-auto max-w-3xl px-4 py-12">
+      <main id="main" className="container mx-auto max-w-3xl px-4 py-12">
         <h1 className="mb-3 text-4xl font-black md:text-5xl">{title}</h1>
         <p className="mb-12 font-semibold text-muted-foreground">
           Last updated {updated}

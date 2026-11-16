@@ -118,7 +118,7 @@ export default async function SoftwarePage() {
         </div>
       </header>
 
-      <main>
+      <main id="main">
         <section className="border-b-2 border-foreground">
           <div className="mx-auto grid max-w-6xl items-center gap-16 px-4 pt-14 pb-24 md:grid-cols-[1.1fr_1fr] md:pt-20 md:pb-28">
             <div>
@@ -196,7 +196,10 @@ export default async function SoftwarePage() {
                 </li>
               ))}
             </ol>
-            <pre className="mt-10 overflow-x-auto rounded-lg border-2 border-foreground bg-card p-5 text-sm shadow-brutal">
+            <pre
+              tabIndex={0}
+              className="mt-10 overflow-x-auto rounded-lg border-2 border-foreground bg-card p-5 text-sm shadow-brutal"
+            >
               <code>{SNIPPET}</code>
             </pre>
             <p className="mt-4 font-semibold">

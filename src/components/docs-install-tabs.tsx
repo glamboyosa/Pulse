@@ -69,7 +69,10 @@ export function DocsInstallTabs({ appUrl }: { appUrl: string }) {
           </button>
         ))}
       </div>
-      <pre className="overflow-x-auto border-2 border-foreground bg-secondary p-4 text-sm leading-relaxed">
+      <pre
+        tabIndex={0}
+        className="overflow-x-auto border-2 border-foreground bg-secondary p-4 text-sm leading-relaxed"
+      >
         <code>{code}</code>
       </pre>
       <CopyButton text={code} describes="install code" />
