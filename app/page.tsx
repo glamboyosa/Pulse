@@ -20,6 +20,7 @@ import {
   title as siteTitle,
 } from './layout'
 import type { Metadata } from 'next'
+import { BranchesMock } from '@/components/landing/branches-mock'
 import { HeroMock } from '@/components/landing/hero-mock'
 import { PulseLogo } from '@/components/pulse-logo'
 import { Button } from '@/components/ui/button'
@@ -65,7 +66,7 @@ const FEATURES = [
   },
   {
     icon: MapPin,
-    title: 'Spots for every branch and table',
+    title: 'Branches & tables',
     body: 'Give each place its own QR code and see which one the feedback came from.',
   },
   {
@@ -297,6 +298,22 @@ export default async function HomePage() {
                 </li>
               ))}
             </ul>
+          </div>
+        </section>
+
+        <section className="border-b-2 border-foreground">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 md:grid-cols-2 md:gap-16">
+            <div>
+              <h2 className="mb-4 text-4xl font-extrabold tracking-tight md:text-5xl">
+                Running more than one branch?
+              </h2>
+              <p className="max-w-[52ch] text-lg font-medium text-muted-foreground">
+                Each branch, table or event gets its own QR code, and every note
+                left through it is tagged with that name. Filter your feedback
+                by place, and print table tents for each code.
+              </p>
+            </div>
+            <BranchesMock />
           </div>
         </section>
 
