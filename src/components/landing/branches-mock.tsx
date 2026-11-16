@@ -1,78 +1,170 @@
+'use client'
+
+import { useState } from 'react'
 import QRCodeSVG from 'react-qr-code'
 
-const PLACES = ['Lekki', 'Manchester', 'Table 4', 'Cape Town']
-const PICKED = 'Manchester'
+type Note = { name: string; time: string; summary: string }
 
-const NOTES = [
+const PLACES: Array<{ name: string; notes: [Note, Note] }> = [
   {
-    name: 'Hannah',
-    time: '4 min ago',
-    summary: 'The queue at the till was too long at lunch.',
+    name: 'Lekki',
+    notes: [
+      {
+        name: 'Tobi',
+        time: '6 min ago',
+        summary: 'Great jollof, but the air conditioning was off.',
+      },
+      {
+        name: 'Kemi',
+        time: '2 hr ago',
+        summary: 'Waited twenty minutes to pay at the counter.',
+      },
+    ],
   },
   {
-    name: 'Priya',
-    time: '1 hr ago',
-    summary: 'Friendly staff, and the room was nice and cool.',
+    name: 'Manchester',
+    notes: [
+      {
+        name: 'Hannah',
+        time: '4 min ago',
+        summary: 'The queue at the till was too long at lunch.',
+      },
+      {
+        name: 'Priya',
+        time: '1 hr ago',
+        summary: 'Friendly staff, and the room was nice and cool.',
+      },
+    ],
+  },
+  {
+    name: 'Table 4',
+    notes: [
+      {
+        name: 'Marco',
+        time: '12 min ago',
+        summary: 'Our waiter checked on us often. Lovely evening.',
+      },
+      {
+        name: 'Sofia',
+        time: '3 hr ago',
+        summary: 'The table wobbled the whole time we ate.',
+      },
+    ],
+  },
+  {
+    name: 'Cape Town',
+    notes: [
+      {
+        name: 'Thabo',
+        time: '9 min ago',
+        summary: 'The coffee was cold by the time it arrived.',
+      },
+      {
+        name: 'Lerato',
+        time: '5 hr ago',
+        summary: 'Great music, and the staff remembered my order.',
+      },
+    ],
   },
 ]
 
 /**
- * A code-built picture of one QR code per place, and the dashboard filtered to
- * one of them. Decorative: the section's text says the same thing.
+ * One QR code per place, and the dashboard's "Left at" filter showing that
+ * place's notes. Picking a code or a filter option selects the same place.
  */
 export function BranchesMock() {
+  const [picked, setPicked] = useState(() =>
+    PLACES.findIndex((place) => place.name === 'Manchester'),
+  )
+
   return (
-    <div aria-hidden="true">
-      <ul className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4">
-        {PLACES.map((place) => (
-          <li
-            key={place}
-            className={`rounded-lg border-2 border-foreground p-2 shadow-brutal sm:p-3 ${place === PICKED ? 'bg-accent' : 'bg-card'}`}
-          >
-            <div className="rounded-sm bg-white p-1.5">
-              {/* Each code opens the homepage; the fragment only varies the pattern. */}
-              <QRCodeSVG
-                value={`https://www.pulseapp.click/#${place}`}
-                size={256}
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-              />
-            </div>
-            <p className="mt-2 truncate text-center text-sm font-bold">
-              {place}
-            </p>
+    <div>
+      <ul
+        aria-label="QR codes"
+        className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4"
+      >
+        {PLACES.map((place, i) => (
+          <li key={place.name}>
+            <button
+              type="button"
+              aria-pressed={i === picked}
+              onClick={() => setPicked(i)}
+              className={`relative w-full cursor-pointer rounded-lg border-2 border-foreground p-2 transition-[transform,box-shadow] duration-150 ease-out before:absolute before:-inset-0.5 sm:p-3 ${
+                i === picked
+                  ? 'bg-accent shadow-brutal'
+                  : 'bg-card shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg hover:before:translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none active:before:-translate-x-[2px] active:before:-translate-y-[2px]'
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className="block rounded-sm bg-white p-1.5"
+              >
+                {/* Each code opens the homepage; the fragment only varies the pattern. */}
+                <QRCodeSVG
+                  value={`https://www.pulseapp.click/#${place.name}`}
+                  size={256}
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                />
+              </span>
+              <span className="mt-2 block truncate text-center text-sm font-bold">
+                {place.name}
+              </span>
+            </button>
           </li>
         ))}
       </ul>
 
       <div className="rounded-lg border-2 border-foreground bg-card p-4 shadow-brutal-lg sm:p-5">
         <div className="mb-4 flex items-center gap-3">
-          <span className="text-sm font-bold uppercase">Left at</span>
-          <span className="flex items-center gap-2 border-2 border-foreground bg-card px-3 py-1 font-bold">
-            {PICKED}
-            <svg viewBox="0 0 10 6" className="size-2.5">
-              <path d="M0 0l5 6 5-6z" fill="currentColor" />
-            </svg>
-          </span>
+          <label
+            htmlFor="branches-filter"
+            className="text-sm font-bold uppercase"
+          >
+            Left at
+          </label>
+          <select
+            id="branches-filter"
+            value={picked}
+            onChange={(event) => setPicked(Number(event.target.value))}
+            className="cursor-pointer border-2 border-foreground bg-card px-3 py-1.5 text-base font-bold"
+          >
+            {PLACES.map((place, i) => (
+              <option key={place.name} value={i}>
+                {place.name}
+              </option>
+            ))}
+          </select>
         </div>
-        <ul className="space-y-3">
-          {NOTES.map((note) => (
-            <li
-              key={note.name}
-              className="rounded-md border-2 border-foreground p-3"
+        {/* Every place's notes share one cell, so the card keeps the height
+            of the tallest and the page doesn't jump when switching. */}
+        <div className="grid">
+          {PLACES.map((place, i) => (
+            <ul
+              key={place.name}
+              className={`col-start-1 row-start-1 space-y-3 ${i === picked ? '' : 'invisible'}`}
             >
-              <p className="text-sm font-semibold text-muted-foreground">
-                <span className="font-bold text-foreground">{note.name}</span> ·{' '}
-                {note.time}
-              </p>
-              <p className="mt-1 font-display font-bold leading-snug">
-                {note.summary}
-              </p>
-              <span className="mt-2 inline-block border-2 border-foreground bg-foreground px-2 py-0.5 text-xs font-bold uppercase text-background">
-                {PICKED}
-              </span>
-            </li>
+              {place.notes.map((note) => (
+                <li
+                  key={note.name}
+                  className="rounded-md border-2 border-foreground p-3"
+                >
+                  <p className="text-sm font-semibold text-muted-foreground">
+                    <span className="font-bold text-foreground">
+                      {note.name}
+                    </span>{' '}
+                    · {note.time}
+                  </p>
+                  <p className="mt-1 font-display font-bold leading-snug">
+                    {note.summary}
+                  </p>
+                  <span className="mt-2 inline-block border-2 border-foreground bg-foreground px-2 py-0.5 text-xs font-bold uppercase text-background">
+                    {place.name}
+                  </span>
+                </li>
+              ))}
+            </ul>
           ))}
-        </ul>
+        </div>
       </div>
     </div>
   )
