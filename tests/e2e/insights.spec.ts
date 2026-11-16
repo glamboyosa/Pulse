@@ -37,7 +37,7 @@ test('the owner sees what customers feel and gets a digest of what to fix', asyn
   // Analysed recordings, as the background job would have saved them.
   await db.query(
     `insert into feedback (user_id, status, sentiment, themes, transcript, summary, created_at)
-     select u.id, 'ready', r.sentiment, r.themes, r.transcript, r.transcript, now() - interval '1 day'
+     select u.id, 'ready', r.sentiment, r.themes, r.transcript, r.transcript, now()
      from users u, json_to_recordset($2::json) as r(sentiment text, themes text[], transcript text)
      where u.email = $1`,
     [
