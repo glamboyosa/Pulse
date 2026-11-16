@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 import { and, avg, count, eq, gte } from 'drizzle-orm'
 
 import { getCurrentUser } from '../actions/auth'
@@ -16,6 +17,7 @@ import {
   currentWeek,
   latestDigest,
 } from '@/server/digest'
+import { retryStuckAnalyses } from '@/server/feedback-submission'
 import { listFeedback } from '@/server/feedback-queries'
 import { getInsights } from '@/server/insights'
 import { listSpots } from '@/server/spots'
@@ -40,6 +42,8 @@ export default async function DashboardPage({
   if (!user) {
     redirect('/login')
   }
+
+  after(() => retryStuckAnalyses(user.id))
 
   const showInsights = (await searchParams).tab === 'insights'
   const userFeedback = eq(feedback.userId, user.id)

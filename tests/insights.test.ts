@@ -91,6 +91,20 @@ describe('getInsights', () => {
     })
   })
 
+  it('leaves out notes that were never analysed, so the shares add up', async () => {
+    const owner = await createBusiness()
+    await db.insert(feedback).values([
+      { userId: owner.id, sentiment: 'negative', status: 'ready' },
+      // An old recording that never got a transcript or a sentiment.
+      { userId: owner.id, sentiment: null, status: 'ready' },
+    ])
+    expect(await getInsights(owner.id)).toMatchObject({
+      days: 30,
+      total: 1,
+      sentiment: { positive: 0, neutral: 0, negative: 1 },
+    })
+  })
+
   it('returns zeros for a business with no feedback', async () => {
     const owner = await createBusiness()
     expect(await getInsights(owner.id)).toEqual({

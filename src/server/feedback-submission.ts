@@ -371,3 +371,33 @@ export const retryAnalysis = async (feedbackId: string): Promise<void> => {
       .where(eq(feedback.id, feedbackId))
   }
 }
+
+/**
+ * Called on each dashboard load, so a stuck note doesn't wait for its owner to
+ * open it. Runs that died with no retries left become 'failed', and the newest
+ * stuck note gets one more try: a run that died over 10 minutes ago, or an old
+ * recording that never got a transcript. Notes that failed outright (often
+ * silence) are left alone, to avoid paying to transcribe them again; opening
+ * one still retries it.
+ */
+export const retryStuckAnalyses = async (userId: string): Promise<void> => {
+  await db.execute(sql`
+    update feedback set status = 'failed'
+    where user_id = ${userId} and status = 'processing'
+      and analysis_attempts >= ${MAX_ANALYSIS_RETRIES}
+      and analysis_started_at < now() - ${STUCK_AFTER}
+  `)
+  const stuck = await db.execute<{ id: string }>(sql`
+    select id from feedback
+    where user_id = ${userId}
+      and analysis_attempts < ${MAX_ANALYSIS_RETRIES}
+      and (
+        (status = 'processing' and analysis_started_at < now() - ${STUCK_AFTER})
+        or (status = 'ready' and transcript is null and audio_key is not null)
+      )
+    order by created_at desc
+    limit 1
+  `)
+  const next = stuck.rows.at(0)
+  if (next) await retryAnalysis(next.id)
+}

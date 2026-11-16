@@ -55,7 +55,9 @@ const insightsFor = async (
       from (
         select sentiment, ${current} as current
         from feedback
-        where user_id = ${userId} and status = 'ready' and ${since}
+        -- Only analysed notes, so the shares add up to 100%.
+        where user_id = ${userId} and status = 'ready'
+          and sentiment is not null and ${since}
       ) recent
     `)
   ).rows

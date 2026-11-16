@@ -12,6 +12,7 @@ import {
   claimPulse,
   processFeedback,
   retryAnalysis,
+  retryStuckAnalyses,
   submitFeedback,
   submitTypedFeedback,
 } from '@/server/feedback-submission'
@@ -520,5 +521,89 @@ describe('typed feedback', () => {
       status: 'ready',
       transcript: 'Lovely service.',
     })
+  })
+})
+
+describe('retryStuckAnalyses', () => {
+  const minutesAgo = (minutes: number) =>
+    new Date(Date.now() - minutes * 60_000)
+
+  beforeEach(() => {
+    storage.downloadAudio.mockResolvedValue({
+      buffer: Buffer.from('x'),
+      type: 'audio/webm',
+    })
+  })
+
+  it("retries the owner's newest stuck note, one per call", async () => {
+    const owner = await createBusiness()
+    const other = await createBusiness()
+    await db.insert(feedback).values([
+      // An old recording that never got a transcript.
+      {
+        userId: owner.id,
+        audioKey: 'test/old.webm',
+        status: 'ready',
+        createdAt: minutesAgo(60),
+      },
+      // A run that died 20 minutes ago: newer, so it goes first.
+      {
+        userId: owner.id,
+        audioKey: 'test/died.webm',
+        status: 'processing',
+        analysisStartedAt: minutesAgo(20),
+        createdAt: minutesAgo(20),
+      },
+      // Still running: left alone.
+      {
+        userId: owner.id,
+        audioKey: 'test/fresh.webm',
+        status: 'processing',
+        createdAt: minutesAgo(1),
+      },
+      // Failed outright, often silence: not paid for again from here.
+      {
+        userId: owner.id,
+        audioKey: 'test/silent.webm',
+        status: 'failed',
+        createdAt: minutesAgo(2),
+      },
+      { userId: other.id, audioKey: 'test/other.webm', status: 'ready' },
+    ])
+
+    await retryStuckAnalyses(owner.id)
+    expect(storage.downloadAudio.mock.calls).toEqual([['test/died.webm']])
+
+    await retryStuckAnalyses(owner.id)
+    expect(storage.downloadAudio.mock.calls).toEqual([
+      ['test/died.webm'],
+      ['test/old.webm'],
+    ])
+
+    await retryStuckAnalyses(owner.id)
+    expect(storage.downloadAudio).toHaveBeenCalledTimes(2)
+  })
+
+  it('marks a dead run with no retries left as failed', async () => {
+    const owner = await createBusiness()
+    const [dead] = await db
+      .insert(feedback)
+      .values({
+        userId: owner.id,
+        audioKey: 'test/dead.webm',
+        status: 'processing',
+        analysisAttempts: MAX_ANALYSIS_RETRIES,
+        analysisStartedAt: minutesAgo(20),
+      })
+      .returning()
+
+    await retryStuckAnalyses(owner.id)
+
+    expect(storage.downloadAudio).not.toHaveBeenCalled()
+    const [row] = await db
+      .select()
+      .from(feedback)
+      .where(eq(feedback.id, dead.id))
+    expect(row.status).toBe('failed')
   })
 })

@@ -438,7 +438,9 @@ export function FeedbackList({
                   )
                 ) : (
                   <p className="rounded-md border-2 border-dashed border-foreground p-3 font-medium text-muted-foreground">
-                    Transcribing…
+                    {item.status === 'processing'
+                      ? 'Transcribing…'
+                      : `No transcript for this one.${item.audioUrl ? ' Play it to listen.' : ''}`}
                   </p>
                 )}
                 {(item.themes.length > 0 ||
