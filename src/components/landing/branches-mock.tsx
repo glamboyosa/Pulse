@@ -1,16 +1,16 @@
 import QRCodeSVG from 'react-qr-code'
 
-const PLACES = ['Lekki', 'Ikeja', 'Table 4']
-const PICKED = 'Ikeja'
+const PLACES = ['Lekki', 'Manchester', 'Table 4', 'Cape Town']
+const PICKED = 'Manchester'
 
 const NOTES = [
   {
-    name: 'Chidi',
+    name: 'Hannah',
     time: '4 min ago',
     summary: 'The queue at the till was too long at lunch.',
   },
   {
-    name: 'Ama',
+    name: 'Priya',
     time: '1 hr ago',
     summary: 'Friendly staff, and the room was nice and cool.',
   },
@@ -23,7 +23,7 @@ const NOTES = [
 export function BranchesMock() {
   return (
     <div aria-hidden="true">
-      <ul className="mb-6 grid grid-cols-3 gap-3">
+      <ul className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4">
         {PLACES.map((place) => (
           <li
             key={place}
