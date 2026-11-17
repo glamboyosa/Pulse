@@ -7,6 +7,15 @@ const axePath = createRequire(import.meta.url).resolve('axe-core')
 
 /** Serious and critical axe violations against WCAG 2.2 AA, as rule ids. */
 const axeViolations = async (page: Page) => {
+  // Mid fade-in, text colours blend with the background and fail contrast.
+  await page.evaluate(() =>
+    Promise.allSettled(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .map((a) => a.finished),
+    ),
+  )
   await page.addScriptTag({ path: axePath })
   const violations = await page.evaluate(async () => {
     const result = await (

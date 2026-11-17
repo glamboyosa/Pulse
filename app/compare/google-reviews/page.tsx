@@ -1,5 +1,6 @@
 import { pageMetadata } from '../../layout'
-import { GuidePage } from '@/components/landing/guide-page'
+import { GuidePage, GuideSection } from '@/components/landing/guide-page'
+import { HeroMock } from '@/components/landing/hero-mock'
 
 const title = 'Pulse vs Google reviews'
 const description =
@@ -65,31 +66,48 @@ const FAQS = [
   },
 ]
 
+const WHEN = [
+  {
+    title: 'Google reviews, to be found',
+    body: 'They shape your rating in Search and Maps.',
+  },
+  {
+    title: 'Pulse, to improve',
+    body: 'Hear the specific problems from the many customers who would never write a public review.',
+  },
+  {
+    title: 'Both, together',
+    body: 'Pulse collects private feedback first, then points every customer to your Google profile once you add your review link.',
+  },
+]
+
 export default function GoogleReviewsComparisonPage() {
   return (
     <GuidePage
+      eyebrow="Comparison"
       title={title}
       answer="Google reviews are public star ratings that help new customers find and trust you. Pulse is private voice feedback: customers scan a QR code, talk for a minute in their own language, and you get what to fix, with an alert when someone is unhappy. Most businesses benefit from both, and Pulse can show every customer your Google review link after they leave feedback."
+      visual={<HeroMock />}
       faqs={FAQS}
+      closing="Hear what customers won’t post publicly."
     >
-      <section className="space-y-4">
-        <h2 className="text-3xl font-black text-balance">Side by side</h2>
+      <GuideSection heading="Side by side" tinted>
         <div
           tabIndex={0}
           role="region"
           aria-label="Pulse vs Google reviews"
-          className="overflow-x-auto rounded-lg border-2 border-foreground"
+          className="overflow-x-auto rounded-lg border-2 border-foreground bg-card shadow-brutal"
         >
           <table className="w-full border-collapse text-left text-sm sm:text-base">
-            <thead className="bg-secondary">
+            <thead className="bg-accent">
               <tr>
-                <th scope="col" className="p-2 font-bold sm:p-3">
+                <th scope="col" className="p-2 font-bold sm:p-4">
                   <span className="sr-only">Question</span>
                 </th>
-                <th scope="col" className="p-2 font-bold sm:p-3">
+                <th scope="col" className="p-2 text-lg font-extrabold sm:p-4">
                   Pulse
                 </th>
-                <th scope="col" className="p-2 font-bold sm:p-3">
+                <th scope="col" className="p-2 text-lg font-extrabold sm:p-4">
                   Google reviews
                 </th>
               </tr>
@@ -97,35 +115,32 @@ export default function GoogleReviewsComparisonPage() {
             <tbody>
               {ROWS.map(([label, pulse, google]) => (
                 <tr key={label} className="border-t-2 border-foreground">
-                  <th scope="row" className="p-2 align-top font-bold sm:p-3">
+                  <th scope="row" className="p-2 align-top font-bold sm:p-4">
                     {label}
                   </th>
-                  <td className="p-2 align-top sm:p-3">{pulse}</td>
-                  <td className="p-2 align-top sm:p-3">{google}</td>
+                  <td className="p-2 align-top font-medium sm:p-4">{pulse}</td>
+                  <td className="p-2 align-top font-medium sm:p-4">{google}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </section>
-      <section className="space-y-4">
-        <h2 className="text-3xl font-black text-balance">When to use which</h2>
-        <ul className="max-w-[65ch] list-disc space-y-2 pl-6">
-          <li>
-            Use Google reviews to be found: they shape your rating in Search and
-            Maps.
-          </li>
-          <li>
-            Use Pulse to improve: hear the specific problems from the many
-            customers who would never write a public review.
-          </li>
-          <li>
-            Use both together: Pulse collects private feedback first, then
-            points every customer to your Google profile once you add your
-            review link.
-          </li>
+      </GuideSection>
+      <GuideSection heading="When to use which">
+        <ul className="grid gap-6 md:grid-cols-3">
+          {WHEN.map((item) => (
+            <li
+              key={item.title}
+              className="rounded-lg border-2 border-foreground bg-card p-6 shadow-brutal"
+            >
+              <h3 className="mb-2 text-2xl font-bold leading-tight">
+                {item.title}
+              </h3>
+              <p className="font-medium text-muted-foreground">{item.body}</p>
+            </li>
+          ))}
         </ul>
-      </section>
+      </GuideSection>
     </GuidePage>
   )
 }
