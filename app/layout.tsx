@@ -31,6 +31,39 @@ export const preview = {
   alt: 'Pulse: a voice note in Nigerian Pidgin, translated and summarised, with an unhappy-customer alert',
 }
 
+/**
+ * Metadata for a public page: its own canonical URL and link-preview text.
+ * The root openGraph and twitter below describe the homepage, so a page that
+ * sets none of its own would be shared with the homepage's title.
+ */
+export const pageMetadata = ({
+  title: pageTitle,
+  description: pageDescription,
+  path,
+}: {
+  title: string
+  description: string
+  path: string
+}): Metadata => ({
+  title: pageTitle,
+  description: pageDescription,
+  alternates: { canonical: path },
+  openGraph: {
+    title: `${pageTitle} | Pulse`,
+    description: pageDescription,
+    url: path,
+    siteName: 'Pulse',
+    type: 'website',
+    images: [{ ...preview, type: 'image/jpeg' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `${pageTitle} | Pulse`,
+    description: pageDescription,
+    images: [preview],
+  },
+})
+
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {

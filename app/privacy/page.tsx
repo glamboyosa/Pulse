@@ -1,8 +1,14 @@
 import Link from 'next/link'
 
+import { pageMetadata } from '../layout'
 import { LegalPage } from '@/components/legal-page'
 
-export const metadata = { title: 'Privacy' }
+export const metadata = pageMetadata({
+  title: 'Privacy',
+  description:
+    'What Pulse collects from businesses and their customers, which services process it, and how long it is kept.',
+  path: '/privacy',
+})
 
 const SUBPROCESSORS = [
   ['Vercel', 'Hosts the app and runs it'],

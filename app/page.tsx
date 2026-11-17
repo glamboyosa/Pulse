@@ -31,6 +31,11 @@ import {
   formatLocalApprox,
   formatUsd,
 } from '@/lib/pricing'
+import {
+  faqJsonLd,
+  jsonLdScript,
+  organizationJsonLd,
+} from '@/lib/structured-data'
 import { getLocalPricing } from '@/server/local-pricing'
 
 const STEPS = [
@@ -121,9 +126,11 @@ const FAQS = [
  */
 export const generateMetadata = async (): Promise<Metadata> => {
   const userAgent = (await headers()).get('user-agent') ?? ''
-  if (userAgent.includes('LinkedInBot')) return {}
+  if (userAgent.includes('LinkedInBot'))
+    return { alternates: { canonical: '/' } }
   const video = new URL('/og-preview.mp4', appUrl).href
   return {
+    alternates: { canonical: '/' },
     openGraph: {
       title: siteTitle,
       description: siteDescription,
@@ -159,6 +166,13 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-dvh bg-background">
+      {[organizationJsonLd(appUrl), faqJsonLd(FAQS)].map((data) => (
+        <script
+          key={String(data['@type'])}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdScript(data) }}
+        />
+      ))}
       <header className="border-b-2 border-foreground">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
           <Link href="/" className="flex items-center gap-2.5">

@@ -1,8 +1,13 @@
 import Link from 'next/link'
 
+import { pageMetadata } from '../layout'
 import { LegalPage } from '@/components/legal-page'
 
-export const metadata = { title: 'Terms' }
+export const metadata = pageMetadata({
+  title: 'Terms',
+  description: 'The terms for using Pulse and buying pulses.',
+  path: '/terms',
+})
 
 export default function TermsPage() {
   return (

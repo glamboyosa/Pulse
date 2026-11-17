@@ -1,8 +1,14 @@
 import Link from 'next/link'
 
+import { pageMetadata } from '../layout'
 import { LegalPage } from '@/components/legal-page'
 
-export const metadata = { title: 'Data processing agreement' }
+export const metadata = pageMetadata({
+  title: 'Data processing agreement',
+  description:
+    'How Pulse processes customer feedback on behalf of businesses, as their data processor.',
+  path: '/dpa',
+})
 
 export default function DpaPage() {
   return (

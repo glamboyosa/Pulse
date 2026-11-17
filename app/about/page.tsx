@@ -1,9 +1,15 @@
 import Link from 'next/link'
 
+import { pageMetadata } from '../layout'
 import { PulseLogo } from '@/components/pulse-logo'
 import { Button } from '@/components/ui/button'
 
-export const metadata = { title: 'About' }
+export const metadata = pageMetadata({
+  title: 'About',
+  description:
+    'Why Pulse asks customers for a short voice note instead of a form, and who builds it.',
+  path: '/about',
+})
 
 export default function AboutPage() {
   return (

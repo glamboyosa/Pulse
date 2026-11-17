@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { pageMetadata } from '../../layout'
 import type { DocBlock } from '@/lib/widget-docs'
 import { CopyButton } from '@/components/copy-button'
 import { DocsInstallTabs } from '@/components/docs-install-tabs'
@@ -12,7 +13,11 @@ const title = 'Website widget guide'
 const description =
   'Add the Pulse voice feedback button to any website or app: install code for each framework, options, single-page apps, troubleshooting and security.'
 
-export const metadata = { title, description }
+export const metadata = pageMetadata({
+  title,
+  description,
+  path: '/docs/widget',
+})
 
 /** Text with `code` spans, the only inline formatting the guide uses. */
 const Inline = ({ text }: { text: string }) =>

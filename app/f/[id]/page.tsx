@@ -10,6 +10,9 @@ interface FeedbackPageProps {
   searchParams: Promise<{ spot?: string | Array<string> }>
 }
 
+// Each business's own feedback page: for its customers, not for search.
+export const metadata = { title: 'Leave feedback', robots: { index: false } }
+
 export default async function FeedbackPage({
   params,
   searchParams,

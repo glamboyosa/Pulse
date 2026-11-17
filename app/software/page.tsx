@@ -9,20 +9,22 @@ import {
 } from 'lucide-react'
 
 import { getCurrentUser } from '../actions/auth'
+import { appUrl, pageMetadata } from '../layout'
 import { PulseLogo } from '@/components/pulse-logo'
 import { Button } from '@/components/ui/button'
 import { PACKS, formatLocalApprox, formatUsd } from '@/lib/pricing'
+import { jsonLdScript, softwareJsonLd } from '@/lib/structured-data'
 import { getLocalPricing } from '@/server/local-pricing'
 
 const title = 'Voice feedback for your website or app'
 const description =
   'One script tag adds a feedback button to your product. Users leave a voice note in any language, and you get the transcript, a summary and the exact page it happened on.'
 
-export const metadata = {
+export const metadata = pageMetadata({
   title,
   description,
-  openGraph: { title: `${title} | Pulse`, description },
-}
+  path: '/software',
+})
 
 const STEPS = [
   {
@@ -86,6 +88,18 @@ export default async function SoftwarePage() {
 
   return (
     <div className="min-h-dvh bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: jsonLdScript(
+            softwareJsonLd({
+              appUrl,
+              url: `${appUrl}/software`,
+              description,
+            }),
+          ),
+        }}
+      />
       <header className="border-b-2 border-foreground">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
           <Link href="/" className="flex items-center gap-2.5">
