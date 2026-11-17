@@ -59,6 +59,8 @@ export const config = {
   matcher: [
     '/',
     '/software',
+    '/restaurants',
+    '/compare/:path*',
     '/dashboard/:path*',
     '/onboarding/:path*',
     '/embed/:path*',

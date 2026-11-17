@@ -26,17 +26,19 @@ test('picking a place on the landing shows only its notes', async ({
   await expect(page.getByText('The table wobbled')).toBeHidden()
 })
 
-test('the landing page never scrolls sideways, from phone to desktop', async ({
+test('public pages never scroll sideways, from phone to desktop', async ({
   page,
 }) => {
-  for (const width of [320, 390, 768, 1024, 1280]) {
-    await page.setViewportSize({ width, height: 900 })
-    await page.goto('/')
-    const overflow = await page.evaluate(
-      () =>
-        document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
-    )
-    expect(overflow, `${width}px`).toBe(0)
+  for (const path of ['/', '/restaurants', '/compare/google-reviews']) {
+    for (const width of [320, 390, 768, 1024, 1280]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto(path)
+      const overflow = await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      )
+      expect(overflow, `${path} at ${width}px`).toBe(0)
+    }
   }
 })

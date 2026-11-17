@@ -40,7 +40,14 @@ const axeViolations = async (page: Page) => {
 test('public pages have no serious axe violations, and the skip link reaches the content', async ({
   page,
 }) => {
-  for (const path of ['/', '/login', '/software', '/docs/widget']) {
+  for (const path of [
+    '/',
+    '/login',
+    '/software',
+    '/restaurants',
+    '/compare/google-reviews',
+    '/docs/widget',
+  ]) {
     await page.goto(path)
     expect(await axeViolations(page), path).toEqual([])
   }

@@ -433,6 +433,12 @@ export default async function HomePage() {
             <PulseLogo className="size-5" />© 2026 Pulse
           </span>
           <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2">
+            <Link href="/restaurants" className="hover:underline">
+              For restaurants
+            </Link>
+            <Link href="/compare/google-reviews" className="hover:underline">
+              Pulse vs Google reviews
+            </Link>
             <Link href="/about" className="hover:underline">
               About
             </Link>

@@ -9,6 +9,8 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.pulseapp.click'
 const PUBLIC_PATHS = [
   '/',
   '/software',
+  '/restaurants',
+  '/compare/google-reviews',
   '/docs/widget',
   '/about',
   '/privacy',
