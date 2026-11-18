@@ -381,6 +381,30 @@ export default async function HomePage() {
                 )
               })}
             </ul>
+            <div className="mt-6 flex flex-col gap-6 rounded-lg border-2 border-foreground bg-card p-6 shadow-brutal md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="mb-1 text-sm font-bold uppercase tracking-wider">
+                  Flexible
+                </p>
+                <p className="mb-2 font-display text-2xl font-bold">
+                  Events, groups and big venues
+                </p>
+                <p className="max-w-[60ch] font-medium text-muted-foreground">
+                  Need more than {CUSTOM_PULSES_MAX} pulses at once? We’ll work
+                  out a price that fits. Still no subscription.
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-col gap-2 md:items-end">
+                <Button asChild variant="outline">
+                  <a href="mailto:support@pulseapp.click?subject=Flexible%20pricing">
+                    Talk to us
+                  </a>
+                </Button>
+                <p className="text-sm font-semibold text-muted-foreground">
+                  support@pulseapp.click
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
