@@ -105,7 +105,7 @@ export function BuyPulsesForm({
     <div className="space-y-8">
       <fieldset className="min-w-0 space-y-8">
         <legend className="sr-only">Pack</legend>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {PULSE_PACKAGES.map((pkg) => (
             <label
               key={pkg.amount}

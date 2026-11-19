@@ -24,10 +24,16 @@ export const polarWebhookSecret = (environment: PolarEnvironment) =>
     ? env.POLAR_SANDBOX_WEBHOOK_SECRET
     : env.POLAR_WEBHOOK_SECRET
 
-// The Polar catalogue products behind each pack, per Polar environment.
-const PACK_PRODUCTS: Record<PolarEnvironment, Record<PackId, string>> = {
+const SANDBOX_STARTER = '9d2ffe60-4204-4ed0-abc2-9707e66d713f'
+
+// The Polar catalogue products behind the original packs, per Polar
+// environment. Newer packs use the neutral credits product below.
+const PACK_PRODUCTS: Record<
+  PolarEnvironment,
+  Partial<Record<PackId, string>>
+> = {
   sandbox: {
-    starter: '9d2ffe60-4204-4ed0-abc2-9707e66d713f',
+    starter: SANDBOX_STARTER,
     popular: '1d502f05-c411-49f8-8f27-83e7b6e7e515',
     growth: 'd04c9f17-af15-4ee1-86bb-da89b340b562',
     scale: 'cfa4b754-6a75-4c39-a703-93cf92597d02',
@@ -43,7 +49,7 @@ const PACK_PRODUCTS: Record<PolarEnvironment, Record<PackId, string>> = {
 // A neutral "Pulse credits" product for custom amounts, so the checkout and
 // receipt don't show a pack's name. Sandbox has none and uses its starter pack.
 const CUSTOM_PRODUCT: Record<PolarEnvironment, string> = {
-  sandbox: PACK_PRODUCTS.sandbox.starter,
+  sandbox: SANDBOX_STARTER,
   production: '87b9fe15-5339-4b5c-a3d3-6fe6cca3cdfe',
 }
 
@@ -81,13 +87,14 @@ export const createCheckout = async (
 
   let productId: string
   let pulses: number
-  let prices: Parameters<CheckoutClient['checkouts']['create']>[0]['prices']
+  let priceCents: number
 
   if (request.kind === 'pack') {
     const pack = PACKS.find((p) => p.id === request.packId)
     if (!pack) throw new CheckoutError('Unknown pack')
-    productId = products[pack.id]
+    productId = products[pack.id] ?? CUSTOM_PRODUCT[environment]
     pulses = pack.pulses
+    priceCents = pack.priceCents
   } else {
     if (
       !Number.isInteger(request.pulses) ||
@@ -100,21 +107,18 @@ export const createCheckout = async (
     }
     productId = CUSTOM_PRODUCT[environment]
     pulses = request.pulses
-    // An ad-hoc price for this checkout only, so no catalogue product is created.
-    prices = {
-      [productId]: [
-        {
-          amountType: 'fixed',
-          priceAmount: customPriceCents(pulses),
-          priceCurrency: 'usd',
-        },
-      ],
-    }
+    priceCents = customPriceCents(pulses)
   }
 
   const checkout = await client.checkouts.create({
     products: [productId],
-    prices,
+    // An ad-hoc price for this checkout only, so the amount always comes from
+    // PACKS and never from a catalogue price set in the Polar dashboard.
+    prices: {
+      [productId]: [
+        { amountType: 'fixed', priceAmount: priceCents, priceCurrency: 'usd' },
+      ],
+    },
     externalCustomerId: user.id,
     customerEmail: user.email,
     customerName: user.name,

@@ -33,15 +33,18 @@ beforeEach(resetDatabase)
 
 describe('custom pricing', () => {
   it('charges the rate of the largest pack the amount reaches', () => {
-    expect(customPriceCents(11)).toBe(770) // starter rate, $0.70
-    expect(customPriceCents(30)).toBe(1920) // popular rate, $0.64
-    expect(customPriceCents(60)).toBe(3600) // growth rate, $0.60
-    expect(customPriceCents(200)).toBe(11000) // scale rate, $0.55
+    expect(customPriceCents(11)).toBe(440) // starter rate, $0.40
+    expect(customPriceCents(30)).toBe(1080) // popular rate, $0.36
+    expect(customPriceCents(60)).toBe(1920) // growth rate, $0.32
+    expect(customPriceCents(200)).toBe(5600) // scale rate, $0.28
+    expect(customPriceCents(300)).toBe(7800) // pro rate, $0.26
+    expect(customPriceCents(1000)).toBe(24000) // bulk rate, $0.24
   })
 
   it('is never cheaper per pulse than the pack at the same size', () => {
-    expect(customPriceCents(100)).toBe(5500)
-    expect(customPriceCents(25)).toBe(1600)
+    expect(customPriceCents(25)).toBe(900)
+    expect(customPriceCents(100)).toBe(2800)
+    expect(customPriceCents(500)).toBe(12000)
   })
 })
 
@@ -58,7 +61,7 @@ describe('createCheckout', () => {
     return { create, client: { checkouts: { create } } as never }
   }
 
-  it('uses the catalogue product and puts the pulses in metadata for a pack', async () => {
+  it('uses the catalogue product with the price from code for a pack', async () => {
     const { create, client } = fakeClient()
     const result = await createCheckout(
       user,
@@ -69,8 +72,11 @@ describe('createCheckout', () => {
 
     expect(result.url).toBe('https://polar.test/checkout')
     const args = create.mock.calls[0][0]
-    expect(args.products).toEqual(['1d502f05-c411-49f8-8f27-83e7b6e7e515'])
-    expect(args.prices).toBeUndefined()
+    const product = '1d502f05-c411-49f8-8f27-83e7b6e7e515'
+    expect(args.products).toEqual([product])
+    expect(args.prices[product]).toEqual([
+      { amountType: 'fixed', priceAmount: 900, priceCurrency: 'usd' },
+    ])
     expect(args.externalCustomerId).toBe(user.id)
     expect(args.metadata).toEqual({ pulses: '25', userId: user.id })
     expect(args.successUrl).toBe('https://pulse.test/dashboard?payment=success')
@@ -89,12 +95,12 @@ describe('createCheckout', () => {
     const product = CREDITS_PRODUCTION
     expect(args.products).toEqual([product])
     expect(args.prices[product]).toEqual([
-      { amountType: 'fixed', priceAmount: 3600, priceCurrency: 'usd' },
+      { amountType: 'fixed', priceAmount: 1920, priceCurrency: 'usd' },
     ])
     expect(args.metadata.pulses).toBe('60')
   })
 
-  it('sells the $7 starter pack as the production Starter Pack product', async () => {
+  it('sells the $4 starter pack as the production Starter Pack product', async () => {
     const { create, client } = fakeClient()
     await createCheckout(
       user,
@@ -102,10 +108,26 @@ describe('createCheckout', () => {
       client,
       'production',
     )
-    expect(create.mock.calls[0][0].products).toEqual([STARTER_PRODUCTION])
+    const args = create.mock.calls[0][0]
+    expect(args.products).toEqual([STARTER_PRODUCTION])
+    expect(args.prices[STARTER_PRODUCTION][0].priceAmount).toBe(400)
   })
 
-  it.each([0, 10, 501, 2.5, -10])(
+  it('sells a pack without a catalogue product as Pulse credits', async () => {
+    const { create, client } = fakeClient()
+    await createCheckout(
+      user,
+      { kind: 'pack', packId: 'bulk' },
+      client,
+      'production',
+    )
+    const args = create.mock.calls[0][0]
+    expect(args.products).toEqual([CREDITS_PRODUCTION])
+    expect(args.prices[CREDITS_PRODUCTION][0].priceAmount).toBe(12000)
+    expect(args.metadata.pulses).toBe('500')
+  })
+
+  it.each([0, 10, 1001, 2.5, -10])(
     'rejects a custom amount of %s pulses',
     async (pulses) => {
       const { create, client } = fakeClient()

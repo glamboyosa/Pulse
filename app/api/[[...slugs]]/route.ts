@@ -412,6 +412,8 @@ const app = new Elysia({ prefix: '/api' })
             t.Literal('popular'),
             t.Literal('growth'),
             t.Literal('scale'),
+            t.Literal('pro'),
+            t.Literal('bulk'),
           ]),
         ),
         pulses: t.Optional(t.Integer()),

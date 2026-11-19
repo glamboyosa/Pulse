@@ -344,7 +344,7 @@ export default async function HomePage() {
               transcription, translation and alerts included. Or choose any
               amount from {CUSTOM_PULSES_MIN} to {CUSTOM_PULSES_MAX}.
             </p>
-            <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {PACKS.map((pack) => {
                 const popular = pack.id === 'popular'
                 return (

@@ -12,9 +12,9 @@ describe('structured data', () => {
     expect(app.offers).toEqual({
       '@type': 'AggregateOffer',
       priceCurrency: 'USD',
-      lowPrice: 7,
-      highPrice: 55,
-      offerCount: 4,
+      lowPrice: 4,
+      highPrice: 120,
+      offerCount: 6,
     })
   })
 

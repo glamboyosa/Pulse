@@ -208,10 +208,16 @@ test('a business signs up, a customer leaves voice feedback, the owner hears it'
 
   await test.step('the buy page prices a custom amount at the pack rate', async () => {
     await page.goto('/buy-pulses')
-    await expect(page.getByText('$16').first()).toBeVisible()
+    await expect(page.getByText('$9').first()).toBeVisible()
     await page.getByText('CUSTOM AMOUNT').click()
     await expect(page.getByText('50 pulses', { exact: true })).toBeVisible()
-    await expect(page.getByText('$30').first()).toBeVisible()
+    // The total switches from the popular pack's $9 to 50 pulses at $0.32.
+    await expect(
+      page.getByText('50 pulses = 50 voice feedback submissions'),
+    ).toBeVisible()
+    await expect(page.getByText('$9')).toHaveCount(1)
+    // The 50-pulse pack card, the custom slider and the total.
+    await expect(page.getByText('$16')).toHaveCount(3)
   })
 
   await test.step('the owner deletes one piece of feedback', async () => {

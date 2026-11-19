@@ -397,7 +397,7 @@ describe('checkout', () => {
     expect(await response.json()).toEqual({ url: 'https://polar.test/c/1' })
     const args = polar.create.mock.calls[0][0]
     expect(Object.values(args.prices)[0]).toEqual([
-      { amountType: 'fixed', priceAmount: 3000, priceCurrency: 'usd' },
+      { amountType: 'fixed', priceAmount: 1600, priceCurrency: 'usd' },
     ])
     expect(args.externalCustomerId).toBe(owner.id)
   })

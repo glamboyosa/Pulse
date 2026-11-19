@@ -2,17 +2,19 @@
 // server, which is the only place a checkout price is actually set.
 
 export const PACKS = [
-  { id: 'starter', pulses: 10, priceCents: 700 },
-  { id: 'popular', pulses: 25, priceCents: 1600 },
-  { id: 'growth', pulses: 50, priceCents: 3000 },
-  { id: 'scale', pulses: 100, priceCents: 5500 },
+  { id: 'starter', pulses: 10, priceCents: 400 },
+  { id: 'popular', pulses: 25, priceCents: 900 },
+  { id: 'growth', pulses: 50, priceCents: 1600 },
+  { id: 'scale', pulses: 100, priceCents: 2800 },
+  { id: 'pro', pulses: 250, priceCents: 6500 },
+  { id: 'bulk', pulses: 500, priceCents: 12000 },
 ] as const
 
 export type PackId = (typeof PACKS)[number]['id']
 
 // Above the smallest pack, so a custom amount never undercuts it.
 export const CUSTOM_PULSES_MIN = 11
-export const CUSTOM_PULSES_MAX = 500
+export const CUSTOM_PULSES_MAX = 1000
 
 /**
  * Price in cents for a custom number of pulses. A custom amount costs the
