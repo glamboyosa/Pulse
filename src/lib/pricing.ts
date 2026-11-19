@@ -84,22 +84,24 @@ const STERLING = ['GBP', 'GIP', 'FKP', 'SHP']
 
 /**
  * Approximate local price for a USD amount, like "~₦10,000", written the way
- * the visitor's country writes it. Rounded to two significant figures with no
- * decimals: the figure is a guide, and the exact amount depends on the bank.
+ * the visitor's country writes it. Rounded to two significant figures, so big
+ * amounts lose their decimals (~₦10,000) and small ones keep them (~£0.30):
+ * the figure is a guide, and the exact amount depends on the bank.
  */
 export const formatLocalApprox = (
   usdCents: number,
   { country, currency, usdRate }: LocalPricing,
 ): string => {
-  const amount = (usdCents / 100) * usdRate
-  const step = 10 ** Math.max(0, Math.floor(Math.log10(amount)) - 1)
-  const rounded = Math.round(amount / step) * step
+  const rounded = Number(((usdCents / 100) * usdRate).toPrecision(2))
+  // Money reads oddly with one decimal, so show none (£3) or two (£6.80).
+  const decimals = Number.isInteger(rounded) ? 0 : 2
   const format = (locale: string, currencyDisplay: 'narrowSymbol' | 'symbol') =>
     new Intl.NumberFormat(locale, {
       style: 'currency',
       currency,
       currencyDisplay,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     }).format(rounded)
   const local = format(`en-${country}`, 'narrowSymbol')
   // A local "$" (Canada, Mexico, ...) would read as USD next to the real price,

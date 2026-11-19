@@ -347,6 +347,9 @@ export default async function HomePage() {
             <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {PACKS.map((pack) => {
                 const popular = pack.id === 'popular'
+                const perFeedbackCents = Math.round(
+                  pack.priceCents / pack.pulses,
+                )
                 return (
                   <li
                     key={pack.id}
@@ -364,9 +367,10 @@ export default async function HomePage() {
                       )}
                     </p>
                     <p className="mt-1 mb-6 font-semibold text-muted-foreground tabular-nums">
-                      {pack.pulses} pulses ·{' '}
-                      {formatUsd(Math.round(pack.priceCents / pack.pulses))}{' '}
-                      each
+                      {pack.pulses} pulses · {formatUsd(perFeedbackCents)}
+                      {localPricing &&
+                        ` (${formatLocalApprox(perFeedbackCents, localPricing)})`}{' '}
+                      per feedback
                     </p>
                     <Button
                       asChild

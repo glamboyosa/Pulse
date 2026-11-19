@@ -74,23 +74,28 @@ describe('formatLocalApprox', () => {
 
   it('never shows a bare $ for a local dollar', () => {
     const ca = { country: 'CA', currency: 'CAD', usdRate: 1.4 }
-    expect(formatLocalApprox(700, ca)).toBe('~CA$10')
+    expect(formatLocalApprox(700, ca)).toBe('~CA$9.80')
     const mx = { country: 'MX', currency: 'MXN', usdRate: 18.4 }
     expect(formatLocalApprox(700, mx)).toBe('~MX$130')
   })
 
   it('keeps £ for sterling but not for other pounds', () => {
     const gb = { country: 'GB', currency: 'GBP', usdRate: 0.76 }
-    expect(formatLocalApprox(700, gb)).toBe('~£5')
+    expect(formatLocalApprox(700, gb)).toBe('~£5.30')
     const sy = { country: 'SY', currency: 'SYP', usdRate: 13000 }
     expect(formatLocalApprox(700, sy)).not.toContain('£')
     const eg = { country: 'EG', currency: 'EGP', usdRate: 48.5 }
     expect(formatLocalApprox(700, eg)).toBe('~E£340')
   })
 
-  it('rounds small amounts to whole units', () => {
+  it('keeps two significant figures with no or two decimals, never zero', () => {
     const za = { country: 'ZA', currency: 'ZAR', usdRate: 18.2 }
-    expect(formatLocalApprox(55, za)).toBe('~R 10')
+    expect(formatLocalApprox(40, za)).toBe('~R\u00a07,30')
+    const gb = { country: 'GB', currency: 'GBP', usdRate: 0.76 }
+    expect(formatLocalApprox(40, gb)).toBe('~£0.30')
+    expect(formatLocalApprox(400, gb)).toBe('~£3')
+    expect(formatLocalApprox(900, gb)).toBe('~£6.80')
+    expect(formatLocalApprox(40, ng)).toBe('~₦580')
   })
 })
 

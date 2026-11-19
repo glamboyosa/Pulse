@@ -150,8 +150,15 @@ export function BuyPulsesForm({
                 ${pkg.price}
                 {localApprox(pkg.price * 100)}
               </div>
-              <div className="text-xs font-semibold text-muted-foreground mt-1">
-                ${(pkg.price / pkg.amount).toFixed(2)} per pulse
+              <div
+                suppressHydrationWarning
+                className="text-xs font-semibold text-muted-foreground mt-1"
+              >
+                {`$${(pkg.price / pkg.amount).toFixed(2)}${
+                  localPricing
+                    ? ` (${formatLocalApprox(Math.round((pkg.price * 100) / pkg.amount), localPricing)})`
+                    : ''
+                } per feedback`}
               </div>
             </label>
           ))}
