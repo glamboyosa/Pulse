@@ -23,6 +23,10 @@ const nextConfig = {
   headers: async () => [
     { source: '/((?!embed/).*)', headers: securityHeaders },
   ],
+  // Outside sites link to /contact; the support address is on /about.
+  redirects: async () => [
+    { source: '/contact', destination: '/about', permanent: true },
+  ],
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
