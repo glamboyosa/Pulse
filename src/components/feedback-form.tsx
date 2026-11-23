@@ -14,6 +14,8 @@ import { MAX_CONTEXT_LENGTH } from '@/lib/widget-limits'
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 const STILL_CHECKING =
   'One moment, we’re checking you’re not a bot. Try sending again in a few seconds.'
+const CHECK_FAILED =
+  'We couldn’t run the check that stops bots. If you use an ad or tracker blocker, allow this page, then try again.'
 
 const MAX_SECONDS = 120
 
@@ -358,7 +360,7 @@ export function FeedbackForm({
   const submitText = async () => {
     if (text.trim().length < 3 || sendingText) return
     if (turnstileSiteKey && !turnstileToken) {
-      setError(STILL_CHECKING)
+      setError(turnstileFailed ? CHECK_FAILED : STILL_CHECKING)
       return
     }
     setError(null)
@@ -407,7 +409,7 @@ export function FeedbackForm({
     }
     if (stage.name !== 'recorded') return
     if (turnstileSiteKey && !turnstileToken) {
-      setError(STILL_CHECKING)
+      setError(turnstileFailed ? CHECK_FAILED : STILL_CHECKING)
       return
     }
     setError(null)
@@ -790,30 +792,15 @@ export function FeedbackForm({
                 if (!token) return
                 setTurnstileFailed(false)
                 setError((current) =>
-                  current === STILL_CHECKING ? null : current,
+                  current === STILL_CHECKING || current === CHECK_FAILED
+                    ? null
+                    : current,
                 )
               }}
+              // Cloudflare often retries and passes on its own, so say
+              // nothing until the visitor tries to send.
               onError={() => setTurnstileFailed(true)}
             />
-          )}
-
-          {turnstileFailed && (
-            <div className="space-y-2">
-              <p role="alert" className="font-bold text-destructive">
-                We couldn&apos;t run the check that stops bots. If you use an ad
-                or tracker blocker, allow this page, then try again.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setTurnstileFailed(false)
-                  freshTurnstile()
-                }}
-                className="font-bold underline underline-offset-4"
-              >
-                Try the check again
-              </button>
-            </div>
           )}
 
           {error && (
@@ -824,6 +811,23 @@ export function FeedbackForm({
             >
               {error}
             </p>
+          )}
+          {error === CHECK_FAILED && (
+            <button
+              type="button"
+              onClick={(event) => {
+                // This button goes away: keep focus on the form's send button.
+                event.currentTarget.form
+                  ?.querySelector<HTMLButtonElement>('button[type="submit"]')
+                  ?.focus()
+                setTurnstileFailed(false)
+                setError(null)
+                freshTurnstile()
+              }}
+              className="font-bold underline underline-offset-4"
+            >
+              Try the check again
+            </button>
           )}
           <p role="status" className="sr-only">
             {announcement}

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { AppCloseButton } from '@/components/app-close-button'
 import { FeedbackForm } from '@/components/feedback-form'
 import { PulseLogo } from '@/components/pulse-logo'
+import { ReportHeight } from '@/components/report-height'
 import { brandingFor } from '@/server/branding'
 import { widgetByKey } from '@/server/widget'
 
@@ -37,27 +38,29 @@ export default async function EmbedPage({
   return (
     <main id="main" className="relative min-h-dvh bg-secondary p-4">
       {inApp && <AppCloseButton />}
-      {/* Right padding clears the close button. */}
-      <h1 className="mb-4 pr-12 text-2xl font-black text-balance">
-        {customHeading || branding.question || 'How are we doing?'}
-      </h1>
-      <FeedbackForm
-        businessId={widget.code}
-        spot={null}
-        accent={branding.accent}
-        thankYouMessage={branding.thankYouMessage}
-        googleReviewUrl={null}
-        widget={{ key }}
-      />
-      <a
-        href="https://www.pulseapp.click"
-        target="_blank"
-        rel="noreferrer"
-        className="mt-4 flex items-center justify-center gap-2 text-xs font-bold text-muted-foreground"
-      >
-        <PulseLogo className="size-4" />
-        Powered by Pulse
-      </a>
+      <ReportHeight>
+        {/* Right padding clears the close button. */}
+        <h1 className="mb-4 pr-12 text-2xl font-black text-balance">
+          {customHeading || branding.question || 'How are we doing?'}
+        </h1>
+        <FeedbackForm
+          businessId={widget.code}
+          spot={null}
+          accent={branding.accent}
+          thankYouMessage={branding.thankYouMessage}
+          googleReviewUrl={null}
+          widget={{ key }}
+        />
+        <a
+          href="https://www.pulseapp.click"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 flex items-center justify-center gap-2 text-xs font-bold text-muted-foreground"
+        >
+          <PulseLogo className="size-4" />
+          Powered by Pulse
+        </a>
+      </ReportHeight>
     </main>
   )
 }

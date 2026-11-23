@@ -105,6 +105,12 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
       await expect(site.getByRole('dialog')).toBeHidden()
       await site.getByRole('button', { name: 'Ask a question' }).click()
       await expect(site.getByRole('dialog')).toBeVisible()
+      // The panel fits the recorder rather than covering the page (it was
+      // 620px tall whatever it held).
+      const panelHeight = async () =>
+        (await site.getByRole('dialog').boundingBox())?.height ?? 0
+      await expect.poll(panelHeight).toBeLessThan(560)
+      const startHeight = await panelHeight()
       await expect(
         widget.getByRole('heading', { name: 'What went wrong?' }),
       ).toBeVisible()
@@ -117,6 +123,8 @@ test('a website shows the widget and a visitor leaves voice feedback with the pa
       await widget.getByRole('button', { name: 'START RECORDING' }).click()
       await site.waitForTimeout(6000)
       await widget.getByRole('button', { name: 'STOP' }).click()
+      // The name, email and send fields appear, and the panel grows to fit.
+      await expect.poll(panelHeight).toBeGreaterThan(startHeight)
       await widget.getByRole('button', { name: 'SEND FEEDBACK' }).click()
       // Sending uploads the recording to R2 first.
       await expect(widget.getByText('THANK YOU!')).toBeVisible({

@@ -51,6 +51,9 @@
   var frame = null
   var shown = false
   var builtNarrow = false
+  // The panel's height, fitted to the recorder once the frame reports it.
+  // Until then, roughly the recorder's first screen. Kept across reopens.
+  var fitted = 480
   var closing = false
 
   var dark = window.matchMedia
@@ -284,6 +287,12 @@
   })
   window.addEventListener('popstate', sendContext)
 
+  // Browsers without min() or dvh ignore this and keep the fixed height.
+  var fit = function () {
+    var limit = builtNarrow ? 'calc(100dvh - 16px)' : 'calc(100vh - 104px)'
+    panel.style.height = 'min(' + fitted + 'px,620px,' + limit + ')'
+  }
+
   // Built hidden when the visitor heads for the button, so the recorder has
   // loaded by the time they click. Hidden, it can't be seen, focused or read.
   var build = function () {
@@ -305,6 +314,7 @@
           side +
           ':20px;width:380px;height:calc(100vh - 104px);' +
           'height:min(620px,calc(100vh - 104px))')
+    fit()
 
     var close = document.createElement('button')
     close.type = 'button'
@@ -346,6 +356,12 @@
     var type = event.data && event.data.type
     if (type === 'pulse:close') api.close()
     if (type === 'pulse:ready') sendContext()
+    // Fit the panel to the recorder, up to the usual size, so it covers no
+    // more of the page than it needs.
+    if (type === 'pulse:height' && typeof event.data.height === 'number') {
+      fitted = event.data.height + 4
+      fit()
+    }
   })
 
   document.addEventListener('keydown', function (event) {
