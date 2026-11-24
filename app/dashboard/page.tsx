@@ -19,7 +19,7 @@ import {
 } from '@/server/digest'
 import { retryStuckAnalyses } from '@/server/feedback-submission'
 import { listFeedback } from '@/server/feedback-queries'
-import { getInsights } from '@/server/insights'
+import { getInsights, themeTracks } from '@/server/insights'
 import { listSpots } from '@/server/spots'
 import { SpotsSection } from '@/components/spots-section'
 import { VouchersCard } from '@/components/vouchers-card'
@@ -70,6 +70,14 @@ export default async function DashboardPage({
         [],
       ])
     : [null, null, false, await listFeedback(user.id)]
+  // Each theme's recordings, for "Play all", from the same period.
+  const tracks = insights
+    ? await themeTracks(
+        user.id,
+        insights.themes.map((theme) => theme.theme),
+        insights.days,
+      )
+    : {}
   const [spots, voucherStats, vouchersOn] = showInsights
     ? [[], null, false]
     : await Promise.all([
@@ -132,6 +140,7 @@ export default async function DashboardPage({
           {insights ? (
             <InsightsPanel
               insights={insights}
+              tracks={tracks}
               digest={digest}
               canWriteDigest={canWriteDigest}
             />

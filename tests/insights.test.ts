@@ -1,9 +1,13 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createBusiness, resetDatabase } from './support/db'
 import { db } from '@/db/index'
 import { feedback } from '@/db/schema'
-import { getInsights } from '@/server/insights'
+import { getInsights, themeTracks } from '@/server/insights'
+
+vi.mock('@/lib/storage/r2', () => ({
+  getAudioUrl: (key: string) => Promise.resolve(`https://audio.test/${key}`),
+}))
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000)
 
@@ -115,5 +119,84 @@ describe('getInsights', () => {
       previousNegative: 0,
       themes: [],
     })
+  })
+})
+
+describe('themeTracks', () => {
+  it("queues a theme's recordings, unhappy first then newest, from the same period", async () => {
+    const owner = await createBusiness()
+    const other = await createBusiness()
+    const note = (
+      audioKey: string | null,
+      sentiment: string | null,
+      themes: Array<string>,
+      createdAt: Date,
+      extra: Partial<typeof feedback.$inferInsert> = {},
+    ) => ({
+      userId: owner.id,
+      status: 'ready',
+      audioKey,
+      sentiment,
+      themes,
+      createdAt,
+      summary: audioKey,
+      ...extra,
+    })
+    await db.insert(feedback).values([
+      note('happy-new', 'positive', ['wait time'], daysAgo(1)),
+      note('unhappy-old', 'negative', ['wait time', 'price'], daysAgo(10)),
+      note('unhappy-new', 'negative', ['wait time'], daysAgo(2)),
+      // Typed, or audio since deleted: nothing to play.
+      note(null, 'negative', ['wait time'], daysAgo(1)),
+      // Older than the period, never analysed, or someone else's.
+      note('too-old', 'negative', ['wait time'], daysAgo(40)),
+      note('unanalysed', null, ['wait time'], daysAgo(1)),
+      note('processing', 'negative', ['wait time'], daysAgo(1), {
+        status: 'processing',
+      }),
+      note('others', 'negative', ['wait time'], daysAgo(1), {
+        userId: other.id,
+      }),
+    ])
+
+    const tracks = await themeTracks(
+      owner.id,
+      ['wait time', 'price', 'staff'],
+      30,
+    )
+    expect(tracks['wait time'].map((track) => track.summary)).toEqual([
+      'unhappy-new',
+      'unhappy-old',
+      'happy-new',
+    ])
+    // Only the first is signed with the page; the rest are fetched as they play.
+    expect(tracks['wait time'].map((track) => track.audioUrl)).toEqual([
+      'https://audio.test/unhappy-new',
+      null,
+      null,
+    ])
+    expect(tracks.price.map((track) => track.summary)).toEqual(['unhappy-old'])
+    expect(tracks.staff).toEqual([])
+
+    const allTime = await themeTracks(owner.id, ['wait time'], null)
+    expect(allTime['wait time'].map((track) => track.summary)).toContain(
+      'too-old',
+    )
+  })
+
+  it('keeps each queue to 50 recordings', async () => {
+    const owner = await createBusiness()
+    await db.insert(feedback).values(
+      Array.from({ length: 52 }, (_, i) => ({
+        userId: owner.id,
+        status: 'ready',
+        sentiment: 'negative',
+        themes: ['wait time'],
+        audioKey: `test/${i}.wav`,
+        createdAt: daysAgo(1),
+      })),
+    )
+    const tracks = await themeTracks(owner.id, ['wait time'], 30)
+    expect(tracks['wait time']).toHaveLength(50)
   })
 })

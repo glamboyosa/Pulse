@@ -1,6 +1,8 @@
-import { sql } from 'drizzle-orm'
+import { and, arrayOverlaps, desc, eq, gt, isNotNull, sql } from 'drizzle-orm'
 
 import { db } from '@/db/index'
+import { feedback } from '@/db/schema'
+import { getAudioUrl } from '@/lib/storage/r2'
 
 export type ThemeInsight = {
   theme: string
@@ -114,4 +116,85 @@ export const getInsights = async (
   if (recent.total > 0) return recent
   const allTime = await insightsFor(userId, null)
   return allTime.total > 0 ? allTime : recent
+}
+
+/** One recording in a theme's "Play all" queue. */
+export type ThemeTrack = {
+  id: string
+  customerName: string | null
+  summary: string | null
+  /** Signed for the first in each queue only; the rest are fetched as they play. */
+  audioUrl: string | null
+}
+
+// Enough to hear the pattern, and keeps the page small for busy accounts.
+const MAX_TRACKS_PER_THEME = 50
+
+/**
+ * Each theme's voice notes from the same period as the insights, unhappy
+ * ones first, then newest. Typed notes and recordings whose audio has been
+ * deleted have nothing to play. Only the first in each queue gets a link
+ * now, so a click can start it at once.
+ */
+export const themeTracks = async (
+  userId: string,
+  themes: Array<string>,
+  days: number | null,
+): Promise<Record<string, Array<ThemeTrack>>> => {
+  if (themes.length === 0) return {}
+  const rows = await db
+    .select({
+      id: feedback.id,
+      customerName: feedback.customerName,
+      summary: feedback.summary,
+      sentiment: feedback.sentiment,
+      themes: feedback.themes,
+      audioKey: feedback.audioKey,
+    })
+    .from(feedback)
+    .where(
+      and(
+        eq(feedback.userId, userId),
+        eq(feedback.status, 'ready'),
+        isNotNull(feedback.sentiment),
+        isNotNull(feedback.audioKey),
+        arrayOverlaps(feedback.themes, themes),
+        days === null
+          ? undefined
+          : gt(feedback.createdAt, new Date(Date.now() - days * 86_400_000)),
+      ),
+    )
+    .orderBy(desc(feedback.createdAt))
+
+  const unhappyFirst = [
+    ...rows.filter((row) => row.sentiment === 'negative'),
+    ...rows.filter((row) => row.sentiment !== 'negative'),
+  ]
+  return Object.fromEntries(
+    await Promise.all(
+      themes.map(async (theme) => {
+        const queue = unhappyFirst
+          .filter((row) => row.themes.includes(theme))
+          .slice(0, MAX_TRACKS_PER_THEME)
+        const tracks = await Promise.all(
+          queue.flatMap(({ audioKey, ...row }, index) =>
+            audioKey
+              ? [
+                  (index === 0
+                    ? getAudioUrl(audioKey)
+                    : Promise.resolve(null)
+                  ).then((audioUrl) => ({
+                    id: row.id,
+                    customerName: row.customerName,
+                    summary: row.summary,
+                    audioUrl,
+                  })),
+                ]
+              : [],
+          ),
+        )
+        return [theme, tracks] as const
+      }),
+    ),
+  )
 }

@@ -1,9 +1,15 @@
-import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react'
+'use client'
 
-import type { Insights } from '@/server/insights'
+import { ArrowDownRight, ArrowUpRight, Minus, Pause, Play } from 'lucide-react'
+
+import type { Insights, ThemeTrack } from '@/server/insights'
 import type { DigestContent } from '@/server/digest'
+import { NowPlaying, useThemePlaylist } from '@/components/theme-player'
 import { DigestCard } from '@/components/digest-card'
 import { Card } from '@/components/ui/card'
+
+const playButtonClass =
+  'relative flex items-center gap-1.5 text-sm font-bold underline underline-offset-4 transition-transform duration-150 ease-out before:absolute before:-inset-x-2 before:-inset-y-3 active:scale-[0.96]'
 
 const cardClass = 'p-6 border-2 border-foreground shadow-brutal bg-card'
 
@@ -31,13 +37,17 @@ const Trend = ({
 
 export function InsightsPanel({
   insights,
+  tracks,
   digest,
   canWriteDigest,
 }: {
   insights: Insights
+  /** Each theme's recordings, for "Play all". */
+  tracks: Record<string, Array<ThemeTrack>>
   digest: { weekStart: string; content: DigestContent } | null
   canWriteDigest: boolean
 }) {
+  const playlist = useThemePlaylist()
   const { sentiment, total, themes } = insights
   const negativeShare = percent(sentiment.negative, total)
   const previousNegativeShare = percent(
@@ -151,15 +161,69 @@ export function InsightsPanel({
                       }}
                     />
                   </div>
-                  {theme.negative > 0 && (
-                    <p className="text-xs font-bold text-destructive mt-1">
-                      {theme.negative} unhappy
-                    </p>
-                  )}
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    {theme.negative > 0 ? (
+                      <p className="text-xs font-bold text-destructive">
+                        {theme.negative} unhappy
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    {tracks[theme.theme].length > 0 &&
+                      (playlist.playing?.theme === theme.theme ? (
+                        // The theme that's playing pauses and resumes in place.
+                        <button
+                          type="button"
+                          data-play-theme={theme.theme}
+                          onClick={playlist.togglePause}
+                          aria-label={`${playlist.playing.paused ? 'Resume' : 'Pause'} ${theme.theme}`}
+                          className={playButtonClass}
+                        >
+                          {playlist.playing.paused ? (
+                            <Play
+                              aria-hidden="true"
+                              className="size-3.5"
+                              fill="currentColor"
+                            />
+                          ) : (
+                            <Pause
+                              aria-hidden="true"
+                              className="size-3.5"
+                              fill="currentColor"
+                            />
+                          )}
+                          {playlist.playing.paused ? 'Resume' : 'Pause'}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          data-play-theme={theme.theme}
+                          onClick={() =>
+                            playlist.start(theme.theme, tracks[theme.theme])
+                          }
+                          aria-label={
+                            tracks[theme.theme].length === 1
+                              ? `Play the ${theme.theme} recording`
+                              : `Play all ${tracks[theme.theme].length} ${theme.theme} recordings`
+                          }
+                          className={playButtonClass}
+                        >
+                          <Play
+                            aria-hidden="true"
+                            className="size-3.5"
+                            fill="currentColor"
+                          />
+                          {tracks[theme.theme].length === 1
+                            ? 'Play'
+                            : `Play all ${tracks[theme.theme].length}`}
+                        </button>
+                      ))}
+                  </div>
                 </li>
               ))}
             </ul>
           )}
+          <NowPlaying playlist={playlist} />
         </Card>
       </div>
     </div>
