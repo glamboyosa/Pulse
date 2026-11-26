@@ -66,19 +66,31 @@ export type VoucherSettings = {
   monthlyCap: number
 }
 
+export const voucherSettingsFromUser = (row: {
+  voucherEnabled: boolean
+  voucherOffer: string | null
+  voucherExpiryDays: number
+  voucherMonthlyCap: number
+}): VoucherSettings => ({
+  enabled: row.voucherEnabled,
+  offer: row.voucherOffer ?? '',
+  expiryDays: row.voucherExpiryDays,
+  monthlyCap: row.voucherMonthlyCap,
+})
+
 export const voucherSettings = async (
   userId: string,
 ): Promise<VoucherSettings> => {
   const [row] = await db
     .select({
-      enabled: users.voucherEnabled,
-      offer: users.voucherOffer,
-      expiryDays: users.voucherExpiryDays,
-      monthlyCap: users.voucherMonthlyCap,
+      voucherEnabled: users.voucherEnabled,
+      voucherOffer: users.voucherOffer,
+      voucherExpiryDays: users.voucherExpiryDays,
+      voucherMonthlyCap: users.voucherMonthlyCap,
     })
     .from(users)
     .where(eq(users.id, userId))
-  return { ...row, offer: row.offer ?? '' }
+  return voucherSettingsFromUser(row)
 }
 
 export const updateVoucherSettings = async (

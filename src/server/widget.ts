@@ -61,16 +61,31 @@ export const parseOrigin = (input: string): string => {
   return url.origin
 }
 
+export const widgetSettingsFromUser = (
+  row:
+    | {
+        widgetKey: string | null
+        widgetOrigins: Array<string>
+      }
+    | undefined,
+): WidgetSettings => ({
+  key: row?.widgetKey ?? null,
+  origins: row?.widgetOrigins ?? [],
+})
+
 export const widgetSettings = async (
   userId: string,
 ): Promise<WidgetSettings> => {
   const row = (
     await db
-      .select({ key: users.widgetKey, origins: users.widgetOrigins })
+      .select({
+        widgetKey: users.widgetKey,
+        widgetOrigins: users.widgetOrigins,
+      })
       .from(users)
       .where(eq(users.id, userId))
   ).at(0)
-  return { key: row?.key ?? null, origins: row?.origins ?? [] }
+  return widgetSettingsFromUser(row)
 }
 
 /** Creates the widget key, or replaces it so the old one stops working. */

@@ -189,8 +189,13 @@ export const logoUrlFor = async (code: string): Promise<string | null> => {
  * The stable address pages use for a logo. The version changes with each
  * upload, so browsers cache it until the owner replaces it.
  */
-const logoPath = (code: string, key: string) =>
-  `/api/businesses/${encodeURIComponent(code)}/logo?v=${key.split('/').pop()?.split('.')[0] ?? ''}`
+export const logoPathFor = (
+  code: string | null,
+  key: string | null,
+): string | null =>
+  code && key
+    ? `/api/businesses/${encodeURIComponent(code)}/logo?v=${key.split('/').pop()?.split('.')[0] ?? ''}`
+    : null
 
 /** Branding for a business by its QR code, or null if there is no such business. */
 export const brandingFor = async (code: string): Promise<Branding | null> => {
@@ -220,7 +225,7 @@ export const brandingFor = async (code: string): Promise<Branding | null> => {
       row.accent && Object.hasOwn(ACCENTS, row.accent)
         ? ACCENTS[row.accent as Accent]
         : ACCENTS.black,
-    logoUrl: row.logoKey ? logoPath(code, row.logoKey) : null,
+    logoUrl: logoPathFor(code, row.logoKey),
     googleReviewUrl: row.googleReviewUrl,
     thankYouMessage: row.thankYouMessage,
   }

@@ -1,33 +1,26 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { eq } from 'drizzle-orm'
 
-import { getCurrentUser } from '../actions/auth'
+import { getSession } from '../../lib/session'
 import { AccountData } from '@/components/account-data'
 import { BrandingForm } from '@/components/branding-form'
 import { VoucherSettings } from '@/components/voucher-settings'
 import { WidgetSettings } from '@/components/widget-settings'
-import { db } from '@/db/index'
-import { users } from '@/db/schema'
-import { brandingFor } from '@/server/branding'
-import { VOUCHER_LIMITS, voucherSettings } from '@/server/vouchers'
-import { widgetSettings } from '@/server/widget'
+import { getUserById } from '@/lib/auth-helpers'
+import { logoPathFor } from '@/server/branding'
+import { VOUCHER_LIMITS, voucherSettingsFromUser } from '@/server/vouchers'
+import { widgetSettingsFromUser } from '@/server/widget'
 import { env } from '@/env'
 
 export default async function SettingsPage() {
-  const user = await getCurrentUser()
+  const session = await getSession()
+  if (!session) redirect('/login')
+
+  const user = await getUserById(session.userId)
   if (!user) redirect('/login')
 
-  const [row] = await db
-    .select({
-      feedbackQuestion: users.feedbackQuestion,
-      accentColor: users.accentColor,
-      googleReviewUrl: users.googleReviewUrl,
-      thankYouMessage: users.thankYouMessage,
-    })
-    .from(users)
-    .where(eq(users.id, user.id))
+  const businessName = user.businessName || user.email.split('@')[0] || 'User'
 
   return (
     <main id="main" className="min-h-screen bg-secondary p-4 md:p-8">
@@ -46,29 +39,25 @@ export default async function SettingsPage() {
           What customers see when they scan your QR code.
         </p>
         <BrandingForm
-          businessName={user.businessName ?? user.name}
+          businessName={businessName}
           feedbackUrl={`/f/${user.uniqueCode ?? ''}`}
           initial={{
-            feedbackQuestion: row.feedbackQuestion ?? '',
-            accentColor: row.accentColor ?? 'black',
-            googleReviewUrl: row.googleReviewUrl ?? '',
-            thankYouMessage: row.thankYouMessage ?? '',
+            feedbackQuestion: user.feedbackQuestion ?? '',
+            accentColor: user.accentColor ?? 'black',
+            googleReviewUrl: user.googleReviewUrl ?? '',
+            thankYouMessage: user.thankYouMessage ?? '',
           }}
-          logoUrl={
-            user.uniqueCode
-              ? ((await brandingFor(user.uniqueCode))?.logoUrl ?? null)
-              : null
-          }
+          logoUrl={logoPathFor(user.uniqueCode, user.logoKey)}
         />
         <div className="mt-10">
           <VoucherSettings
-            initial={await voucherSettings(user.id)}
+            initial={voucherSettingsFromUser(user)}
             offerLimit={VOUCHER_LIMITS.offer}
           />
         </div>
         <div className="mt-10">
           <WidgetSettings
-            initial={await widgetSettings(user.id)}
+            initial={widgetSettingsFromUser(user)}
             appUrl={env.SERVER_URL ?? 'https://www.pulseapp.click'}
           />
         </div>
