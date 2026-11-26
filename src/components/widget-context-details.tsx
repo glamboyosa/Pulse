@@ -35,8 +35,8 @@ export function WidgetContextDetails({
         </p>
       ) : (
         <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-[max-content_1fr]">
-          {shown.map(([label, value], index) => (
-            <div key={index} className="contents">
+          {shown.map(([label, value]) => (
+            <div key={label} className="contents">
               <dt className="font-bold">{label}</dt>
               <dd className="break-words font-medium text-muted-foreground">
                 {value}

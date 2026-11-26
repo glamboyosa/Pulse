@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { ArrowLeft, Printer } from 'lucide-react'
 import Link from 'next/link'
 import QRCodeSVG from 'react-qr-code'
@@ -16,6 +16,8 @@ import {
 import { Button } from '@/components/ui/button'
 
 type Layout = 'tent' | 'stickers'
+
+const subscribeOrigin = () => () => {}
 
 // Not a possible spot slug, so a spot named "All" can't clash with it.
 const EVERY_SPOT = '*'
@@ -125,10 +127,13 @@ export function PrintSheets({
   /** '' for the main QR code, or one spot's slug. */
   initialSpot: string
 }) {
-  const [origin, setOrigin] = useState<string | null>(null)
+  const origin = useSyncExternalStore(
+    subscribeOrigin,
+    () => window.location.origin,
+    () => null,
+  )
   const [layout, setLayout] = useState<Layout>('tent')
   const [spot, setSpot] = useState(initialSpot)
-  useEffect(() => setOrigin(window.location.origin), [])
 
   const labelFor = (s: Spot | null): Label => ({
     url: `${origin}/f/${code}${s ? `?spot=${s.slug}` : ''}`,
@@ -140,10 +145,19 @@ export function PrintSheets({
       : [labelFor(spots.find((s) => s.slug === spot) ?? null)]
   // Stickers: six to a sheet, repeating a single code to fill the page.
   const stickers =
-    labels.length === 1 ? Array.from({ length: 6 }, () => labels[0]) : labels
+    labels.length === 1
+      ? Array.from({ length: 6 }, (_, slot) => ({
+          id: `${labels[0].url}#${slot}`,
+          label: labels[0],
+        }))
+      : labels.map((label) => ({ id: label.url, label }))
   const stickerPages = Array.from(
     { length: Math.ceil(stickers.length / 6) },
-    (_, page) => stickers.slice(page * 6, page * 6 + 6),
+    (_, page) => ({
+      id: `page-${page + 1}`,
+      number: page + 1,
+      items: stickers.slice(page * 6, page * 6 + 6),
+    }),
   )
 
   const card = (label: Label, compact: boolean) => (
@@ -248,9 +262,9 @@ export function PrintSheets({
         >
           <div className="mx-auto flex w-max flex-col gap-8 px-4 print:block print:gap-0 print:px-0">
             {layout === 'tent'
-              ? labels.map((label, i) => (
+              ? labels.map((label) => (
                   <section
-                    key={i}
+                    key={label.url}
                     aria-label={`Table tent ${label.spotName ?? 'main code'}`}
                     className="grid h-[297mm] w-[210mm] grid-rows-2 bg-white shadow-lg print:break-after-page print:shadow-none"
                   >
@@ -264,18 +278,18 @@ export function PrintSheets({
                     </div>
                   </section>
                 ))
-              : stickerPages.map((page, i) => (
+              : stickerPages.map((page) => (
                   <section
-                    key={i}
-                    aria-label={`Sticker sheet ${i + 1}`}
+                    key={page.id}
+                    aria-label={`Sticker sheet ${page.number}`}
                     className="grid h-[297mm] w-[210mm] grid-cols-2 grid-rows-3 gap-[6mm] bg-white p-[12mm] shadow-lg print:break-after-page print:shadow-none"
                   >
-                    {page.map((label, j) => (
+                    {page.items.map((item) => (
                       <div
-                        key={j}
+                        key={item.id}
                         className="overflow-hidden border border-dashed border-gray-400"
                       >
-                        {card(label, true)}
+                        {card(item.label, true)}
                       </div>
                     ))}
                   </section>

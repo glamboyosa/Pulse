@@ -20,11 +20,17 @@ export const metadata = pageMetadata({
 })
 
 /** Text with `code` spans, the only inline formatting the guide uses. */
-const Inline = ({ text }: { text: string }) =>
-  text.split(/(`[^`]+`)/).map((part, index) =>
+const Inline = ({ text }: { text: string }) => {
+  let offset = 0
+  const parts = text.split(/(`[^`]+`)/).map((part) => {
+    const start = offset
+    offset += part.length
+    return { key: `${start}:${part}`, part }
+  })
+  return parts.map(({ key, part }) =>
     part.startsWith('`') ? (
       <code
-        key={index}
+        key={key}
         className="rounded-sm bg-secondary px-1 py-0.5 text-[0.9em] break-words"
       >
         {part.slice(1, -1)}
@@ -33,6 +39,21 @@ const Inline = ({ text }: { text: string }) =>
       part
     ),
   )
+}
+
+const blockKey = (block: DocBlock) => {
+  switch (block.kind) {
+    case 'text':
+    case 'question':
+      return `${block.kind}:${block.text}`
+    case 'code':
+      return `${block.kind}:${block.language}:${block.code}`
+    case 'list':
+      return `${block.kind}:${block.items.join('\0')}`
+    case 'install':
+      return 'install'
+  }
+}
 
 const Block = ({
   block,
@@ -118,6 +139,8 @@ export default function WidgetDocsPage() {
             text={widgetDocsMarkdown(appUrl)}
             label="Copy as Markdown"
           />
+          {/* Raw Markdown route handler, not a Next.js page. */}
+          {/* oxlint-disable-next-line nextjs/no-html-link-for-pages */}
           <a
             href="/docs/widget.md"
             className="font-bold underline underline-offset-4"
@@ -146,9 +169,9 @@ export default function WidgetDocsPage() {
               <h2 className="text-3xl font-black text-balance">
                 {section.title}
               </h2>
-              {section.blocks.map((block, index) => (
+              {section.blocks.map((block) => (
                 <Block
-                  key={index}
+                  key={blockKey(block)}
                   block={block}
                   appUrl={appUrl}
                   section={section.title}

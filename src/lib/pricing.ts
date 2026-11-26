@@ -23,7 +23,7 @@ export const CUSTOM_PULSES_MAX = 1000
  */
 export const customPriceCents = (pulses: number): number => {
   const rate =
-    [...PACKS].reverse().find((pack) => pulses >= pack.pulses) ?? PACKS[0]
+    PACKS.toReversed().find((pack) => pulses >= pack.pulses) ?? PACKS[0]
   return Math.round((rate.priceCents / rate.pulses) * pulses)
 }
 
@@ -80,7 +80,7 @@ export type LocalPricing = {
 }
 
 // Pounds pegged 1:1 to sterling, which rightly show as "£".
-const STERLING = ['GBP', 'GIP', 'FKP', 'SHP']
+const STERLING = new Set(['GBP', 'GIP', 'FKP', 'SHP'])
 
 /**
  * Approximate local price for a USD amount, like "~₦10,000", written the way
@@ -109,6 +109,6 @@ export const formatLocalApprox = (
   // symbol like CA$ or a code like SYP instead.
   const misleading =
     local.includes('$') ||
-    (/(^|[^A-Za-z])£/.test(local) && !STERLING.includes(currency))
+    (/(^|[^A-Za-z])£/.test(local) && !STERLING.has(currency))
   return `~${misleading ? format('en-US', 'symbol') : local}`
 }

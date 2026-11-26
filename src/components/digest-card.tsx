@@ -86,7 +86,10 @@ export function DigestCard({
       {digest && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {digest.content.fixes.map((fix, i) => (
-            <div key={i} className="bg-card border-2 border-foreground p-4">
+            <div
+              key={`${fix.title}-${fix.quote}`}
+              className="bg-card border-2 border-foreground p-4"
+            >
               <p className="text-4xl font-black tabular-nums mb-2">{i + 1}</p>
               <p className="font-black text-lg leading-snug mb-1">
                 {fix.title}
@@ -114,9 +117,9 @@ export function DigestCard({
             What they loved
           </p>
           <ul className="flex flex-wrap gap-2">
-            {digest.content.wins.map((win, i) => (
+            {digest.content.wins.map((win) => (
               <li
-                key={i}
+                key={win}
                 className="bg-card border-2 border-foreground px-3 py-1 text-sm font-bold"
               >
                 {win}

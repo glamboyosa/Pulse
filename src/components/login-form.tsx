@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 
 import { loginAction } from '../../app/actions/auth'
 import { Button } from '@/components/ui/button'
@@ -33,12 +33,22 @@ export function LoginForm({ next }: { next: string }) {
     loginAction,
     undefined,
   )
+  const [dismissedLoginState, setDismissedLoginState] =
+    useState<typeof loginState>(undefined)
+  const otpInputRef = useRef<HTMLInputElement>(null)
+
+  const displayError =
+    step === 'otp'
+      ? loginState && loginState !== dismissedLoginState
+        ? (loginState.error ?? '')
+        : ''
+      : error
 
   useEffect(() => {
-    if (loginState?.error) {
-      setError(loginState.error)
+    if (step === 'otp') {
+      otpInputRef.current?.focus()
     }
-  }, [loginState])
+  }, [step])
 
   const handleEmailSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -95,16 +105,16 @@ export function LoginForm({ next }: { next: string }) {
               </Label>
               <div className="flex justify-center">
                 <InputOTP
+                  ref={otpInputRef}
                   id="otp"
                   maxLength={6}
-                  aria-describedby={error ? 'otp-error' : undefined}
-                  aria-invalid={error ? true : undefined}
+                  aria-describedby={displayError ? 'otp-error' : undefined}
+                  aria-invalid={displayError ? true : undefined}
                   value={otpCode}
                   onChange={(value) => {
                     const numericValue = value.replace(/\D/g, '').slice(0, 6)
                     setOtpCode(numericValue)
                   }}
-                  autoFocus
                   containerClassName="justify-center"
                 >
                   <InputOTPGroup>
@@ -122,13 +132,13 @@ export function LoginForm({ next }: { next: string }) {
               </div>
             </div>
 
-            {error && (
+            {displayError && (
               <div
                 id="otp-error"
                 role="alert"
                 className="bg-destructive/10 border-2 border-destructive text-destructive-foreground p-4"
               >
-                <p className="font-bold text-sm">{error}</p>
+                <p className="font-bold text-sm">{displayError}</p>
               </div>
             )}
 
@@ -147,6 +157,7 @@ export function LoginForm({ next }: { next: string }) {
                 setStep('email')
                 setOtpCode('')
                 setError('')
+                setDismissedLoginState(loginState)
               }}
               className="w-full font-bold border-2 border-transparent hover:border-foreground"
             >

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AlertCircle } from 'lucide-react'
 
 interface AudioPlayerProps {
@@ -9,50 +9,87 @@ interface AudioPlayerProps {
   initialAudioUrl?: string | null
 }
 
+const requestAudioUrl = async (feedbackId: string): Promise<string> => {
+  const response = await fetch(`/api/feedback/${feedbackId}/audio-url`)
+  if (!response.ok) {
+    throw new Error(`Failed to get audio URL: ${response.statusText}`)
+  }
+  const data = (await response.json()) as { audioUrl?: string; error?: string }
+  if (data.audioUrl) return data.audioUrl
+  if (data.error) throw new Error(data.error)
+  throw new Error('No audio URL in response')
+}
+
 export function AudioPlayer({
   feedbackId,
   audioKey,
   initialAudioUrl,
 }: AudioPlayerProps) {
+  const sourceKey = `${feedbackId}\0${audioKey ?? ''}\0${initialAudioUrl ?? ''}`
+  const [prevSourceKey, setPrevSourceKey] = useState(sourceKey)
   const [audioUrl, setAudioUrl] = useState<string | null>(
     initialAudioUrl || null,
   )
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(
+    !initialAudioUrl && Boolean(audioKey),
+  )
   const [reloadVersion, setReloadVersion] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const hasAutoRetriedRef = useRef(false)
   const requestIdRef = useRef(0)
 
-  const fetchAudioUrl = useCallback(
-    async (reloadAfterCommit = false) => {
-      if (!audioKey) {
-        setError('No audio key available')
-        return
+  if (prevSourceKey !== sourceKey) {
+    setPrevSourceKey(sourceKey)
+    setError(null)
+    setReloadVersion(0)
+    setAudioUrl(initialAudioUrl || null)
+    setIsLoading(!initialAudioUrl && Boolean(audioKey))
+  }
+
+  const fetchAudioUrl = async (reloadAfterCommit = false) => {
+    if (!audioKey) {
+      setError('No audio key available')
+      return
+    }
+
+    const requestId = ++requestIdRef.current
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const nextUrl = await requestAudioUrl(feedbackId)
+      if (requestId !== requestIdRef.current) return
+      setAudioUrl(nextUrl)
+      if (reloadAfterCommit) {
+        setReloadVersion((version) => version + 1)
       }
+    } catch (fetchError) {
+      if (requestId !== requestIdRef.current) return
+      console.error('Failed to fetch audio URL:', fetchError)
+      setError(
+        fetchError instanceof Error
+          ? fetchError.message
+          : 'Failed to load audio',
+      )
+      setAudioUrl(null)
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setIsLoading(false)
+      }
+    }
+  }
 
-      const requestId = ++requestIdRef.current
-      setIsLoading(true)
-      setError(null)
+  useEffect(() => {
+    const requestId = ++requestIdRef.current
+    hasAutoRetriedRef.current = false
+    if (initialAudioUrl || !audioKey) return
 
+    const load = async () => {
       try {
-        const response = await fetch(`/api/feedback/${feedbackId}/audio-url`)
-        if (!response.ok) {
-          throw new Error(`Failed to get audio URL: ${response.statusText}`)
-        }
-        const data = await response.json()
+        const nextUrl = await requestAudioUrl(feedbackId)
         if (requestId !== requestIdRef.current) return
-
-        if (data.audioUrl) {
-          setAudioUrl(data.audioUrl)
-          if (reloadAfterCommit) {
-            setReloadVersion((version) => version + 1)
-          }
-        } else if (data.error) {
-          throw new Error(data.error)
-        } else {
-          throw new Error('No audio URL in response')
-        }
+        setAudioUrl(nextUrl)
       } catch (fetchError) {
         if (requestId !== requestIdRef.current) return
         console.error('Failed to fetch audio URL:', fetchError)
@@ -67,29 +104,9 @@ export function AudioPlayer({
           setIsLoading(false)
         }
       }
-    },
-    [feedbackId, audioKey],
-  )
-
-  useEffect(() => {
-    requestIdRef.current += 1
-    hasAutoRetriedRef.current = false
-    setError(null)
-    setReloadVersion(0)
-
-    if (initialAudioUrl) {
-      setAudioUrl(initialAudioUrl)
-      setIsLoading(false)
-      return
     }
-
-    setAudioUrl(null)
-    if (audioKey) {
-      void fetchAudioUrl(false)
-    } else {
-      setIsLoading(false)
-    }
-  }, [feedbackId, audioKey, initialAudioUrl, fetchAudioUrl])
+    void load()
+  }, [feedbackId, audioKey, initialAudioUrl])
 
   useEffect(() => {
     if (reloadVersion > 0 && audioUrl) {

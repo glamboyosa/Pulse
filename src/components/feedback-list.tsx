@@ -48,16 +48,16 @@ interface FeedbackListProps {
   initialData?: Array<Feedback>
 }
 
+const plain = (text: string) =>
+  text
+    .trim()
+    .toLowerCase()
+    .replace(/[\s.!?…]+$/, '')
+    .replace(/\s+/g, ' ')
+
 /** Equal apart from case, spacing and end punctuation. */
-const sameText = (a: string, b: string | null) => {
-  const plain = (text: string) =>
-    text
-      .trim()
-      .toLowerCase()
-      .replace(/[\s.!?…]+$/, '')
-      .replace(/\s+/g, ' ')
-  return b !== null && plain(a) === plain(b)
-}
+const sameText = (a: string, b: string | null) =>
+  b !== null && plain(a) === plain(b)
 
 const formatDuration = (seconds: number): string => {
   if (!seconds) return '0 secs'
@@ -156,9 +156,11 @@ const NoteText = ({
   )
 }
 
+const EMPTY_FEEDBACK: Array<Feedback> = []
+
 export function FeedbackList({
   hasFeedback = true,
-  initialData = [],
+  initialData = EMPTY_FEEDBACK,
 }: FeedbackListProps) {
   const router = useRouter()
   const [playingId, setPlayingId] = useState<string | null>(null)
@@ -182,12 +184,13 @@ export function FeedbackList({
     refetchInterval: 30_000,
   })
 
-  const feedbackList = feedbackData.feedback.map((f) => ({
-    ...f,
-    date: formatRelativeTime(f.createdAt),
-    formattedDuration: f.typed ? null : formatDuration(f.duration),
-    displayName: f.customerName || 'Anonymous',
-  }))
+  const feedbackList = feedbackData.feedback.map((f) =>
+    Object.assign({}, f, {
+      date: formatRelativeTime(f.createdAt),
+      formattedDuration: f.typed ? null : formatDuration(f.duration),
+      displayName: f.customerName || 'Anonymous',
+    }),
+  )
 
   const error = queryError ? 'Failed to load feedback' : null
 
@@ -205,7 +208,7 @@ export function FeedbackList({
           : [],
       ),
     ),
-  ].sort(([, a], [, b]) => a.localeCompare(b))
+  ].toSorted(([, a], [, b]) => a.localeCompare(b))
   // A place whose last note went away drops out of the list; show everything.
   const spotLabel = spotOptions.find(([id]) => id === spotFilter)?.[1]
   const activeSpot = spotLabel ? spotFilter : 'all'
@@ -237,11 +240,11 @@ export function FeedbackList({
     }
     const audio = new Audio(item.audioUrl)
     audioRef.current = audio
-    audio.onended = () => setPlayingId(null)
-    audio.onerror = () => {
+    audio.addEventListener('ended', () => setPlayingId(null))
+    audio.addEventListener('error', () => {
       setPlayingId(null)
       setPlayError("This recording couldn't be played. Refresh and try again.")
-    }
+    })
     audio
       .play()
       .then(() => setPlayingId(item.id))

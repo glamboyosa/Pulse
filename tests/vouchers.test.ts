@@ -371,7 +371,9 @@ describe('issuing vouchers', () => {
       claim(a, { ip: '10.0.0.1' }),
       claim(b, { ip: '10.0.0.2' }),
     ])
-    expect(claims.map((c) => c.body.status).sort()).toEqual(['issued', 'none'])
+    expect(
+      claims.map((c) => c.body.status).toSorted((x, y) => x.localeCompare(y)),
+    ).toEqual(['issued', 'none'])
     expect(await db.select().from(vouchers)).toHaveLength(1)
   })
 
@@ -450,7 +452,9 @@ describe('redeeming vouchers', () => {
       redeem(code, cookie),
       redeem(code, cookie),
     ])
-    expect(results.map((r) => r.status).sort()).toEqual([200, 409])
+    expect(
+      results.map((r) => r.status).toSorted((a, b) => a - b),
+    ).toEqual([200, 409])
   })
 
   it('refuses an expired voucher', async () => {

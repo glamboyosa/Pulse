@@ -29,6 +29,8 @@ export function AccountData({ confirmWord }: { confirmWord: string }) {
           Download everything Pulse holds about your business: feedback,
           transcripts, branches and tables, purchases and digests.
         </p>
+        {/* Raw JSON download route handler, not a Next.js page. */}
+        {/* oxlint-disable-next-line nextjs/no-html-link-for-pages */}
         <a
           href="/api/account/export"
           className="inline-flex items-center gap-2 border-2 border-foreground bg-background px-4 py-2 font-bold"

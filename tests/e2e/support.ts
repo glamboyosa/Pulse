@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { expect } from '@playwright/test'
-import pg from 'pg'
+import { Pool } from 'pg'
 import type { BrowserContext, Page } from '@playwright/test'
 
 // Reads login codes and adjusts balances directly, as an operator would. Point
 // E2E_DATABASE_URL at the database the app under test uses; never production.
-export const db = new pg.Pool({
+export const db = new Pool({
   connectionString:
     process.env.E2E_DATABASE_URL ??
     'postgres://postgres@localhost:5440/pulse_dev',

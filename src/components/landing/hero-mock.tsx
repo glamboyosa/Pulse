@@ -78,7 +78,7 @@ const EXAMPLES: Array<Example> = [
 const WAVE = [
   6, 14, 22, 12, 28, 18, 34, 24, 16, 30, 20, 10, 26, 32, 14, 22, 8, 18, 28, 12,
   24, 16, 30, 10, 20, 26, 12, 18,
-]
+].map((height, position) => ({ id: `wave-${position}`, height, position }))
 
 const isEnglish = (language: string) => language.startsWith('English')
 
@@ -134,11 +134,11 @@ export function HeroMock() {
               </svg>
             </span>
             <div className="flex h-9 flex-1 items-center gap-[3px]">
-              {WAVE.map((height, i) => (
+              {WAVE.map((bar) => (
                 <span
-                  key={i}
-                  className={`w-full rounded-full ${i < 11 ? 'bg-foreground' : 'bg-foreground/25'}`}
-                  style={{ height }}
+                  key={bar.id}
+                  className={`w-full rounded-full ${bar.position < 11 ? 'bg-foreground' : 'bg-foreground/25'}`}
+                  style={{ height: bar.height }}
                 />
               ))}
             </div>
@@ -206,12 +206,6 @@ export function HeroMock() {
         role="tablist"
         aria-label="Example customers"
         className="flex flex-wrap gap-2"
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowRight') select(active + 1)
-          if (event.key === 'ArrowLeft') select(active - 1)
-          if (event.key === 'Home') select(0)
-          if (event.key === 'End') select(EXAMPLES.length - 1)
-        }}
       >
         {EXAMPLES.map((item, i) => (
           <button
@@ -226,6 +220,12 @@ export function HeroMock() {
             aria-controls="hero-example"
             tabIndex={i === active ? 0 : -1}
             onClick={() => setActive(i)}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowRight') select(active + 1)
+              if (event.key === 'ArrowLeft') select(active - 1)
+              if (event.key === 'Home') select(0)
+              if (event.key === 'End') select(EXAMPLES.length - 1)
+            }}
             className={`relative min-h-11 cursor-pointer rounded-md before:absolute before:-inset-0.5 border-2 border-foreground px-3 py-1.5 text-sm font-bold md:min-h-9 transition-[transform,box-shadow] duration-150 ease-out ${
               i === active
                 ? 'bg-foreground text-background'

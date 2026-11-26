@@ -46,16 +46,16 @@ export default async function DashboardPage({
   const stats = await getFeedbackStats(user.id)
   const hasFeedback = stats.totalFeedback > 0
 
-  const [insights, digest, canWriteDigest, formattedFeedback] = showInsights
+  const [insights, digest, canWriteDigest] = showInsights
     ? await Promise.all([
         getInsights(user.id),
         latestDigest(user.id),
         countReadyFeedback(user.id, currentWeek()).then(
           (n) => n >= MIN_FEEDBACK_FOR_DIGEST,
         ),
-        [],
       ])
-    : [null, null, false, await listFeedback(user.id)]
+    : [null, null, false]
+  const formattedFeedback = showInsights ? [] : await listFeedback(user.id)
   // Each theme's recordings, for "Play all", from the same period.
   const tracks = insights
     ? await themeTracks(

@@ -54,7 +54,9 @@ export function CustomerVoucher({ feedbackId }: { feedbackId: string }) {
       } else if (Date.now() - startedAt > GIVE_UP_MS) {
         setTimedOut(true)
       } else {
-        timer = setTimeout(ask, POLL_MS)
+        timer = setTimeout(() => {
+          void ask()
+        }, POLL_MS)
       }
     }
     void ask()

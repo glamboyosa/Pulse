@@ -172,19 +172,25 @@ export const useThemePlaylist = () => {
     }
   }
 
+  const handlersRef = useRef({ skip, recover, setPaused, prefetchNext })
+
+  useEffect(() => {
+    handlersRef.current = { skip, recover, setPaused, prefetchNext }
+  })
+
   useEffect(() => {
     const media = element()
-    const onEnded = () => skip()
-    const onError = () => void recover()
+    const onEnded = () => handlersRef.current.skip()
+    const onError = () => void handlersRef.current.recover()
     // Follow the element, so pausing from headphones or the lock screen
     // shows too. A recording that finished isn't paused; the next one starts.
     const onPlay = () => {
-      if (playingRef.current) setPaused(false)
+      if (playingRef.current) handlersRef.current.setPaused(false)
       else media.pause()
     }
-    const onPlaying = () => prefetchNext()
+    const onPlaying = () => handlersRef.current.prefetchNext()
     const onPause = () => {
-      if (!media.ended) setPaused(true)
+      if (!media.ended) handlersRef.current.setPaused(true)
     }
     media.addEventListener('ended', onEnded)
     media.addEventListener('error', onError)
@@ -202,7 +208,6 @@ export const useThemePlaylist = () => {
       media.removeAttribute('src')
       media.load()
     }
-    // Registered once; the handlers read the latest state through refs.
   }, [])
 
   // The lock screen and Control Center show what's playing, with next.
@@ -214,9 +219,10 @@ export const useThemePlaylist = () => {
       artist: track.customerName ?? 'A customer',
       album: playing.theme,
     })
-    navigator.mediaSession.setActionHandler('nexttrack', skip)
+    navigator.mediaSession.setActionHandler('nexttrack', () =>
+      handlersRef.current.skip(),
+    )
     return () => navigator.mediaSession.setActionHandler('nexttrack', null)
-    // skip reads the latest state through refs.
   }, [playing])
 
   return {

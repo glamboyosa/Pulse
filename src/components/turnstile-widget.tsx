@@ -30,11 +30,15 @@ const loadScript = () => {
     const script = document.createElement('script')
     script.src = SCRIPT_URL
     script.async = true
-    script.onload = () => resolve()
-    script.onerror = () => {
-      scriptLoad = null
-      reject(new Error('Turnstile failed to load'))
-    }
+    script.addEventListener('load', () => resolve(), { once: true })
+    script.addEventListener(
+      'error',
+      () => {
+        scriptLoad = null
+        reject(new Error('Turnstile failed to load'))
+      },
+      { once: true },
+    )
     document.head.appendChild(script)
   })
   return scriptLoad
@@ -57,15 +61,19 @@ export const TurnstileWidget = ({
 }) => {
   const container = useRef<HTMLDivElement>(null)
   const onTokenRef = useRef(onToken)
-  onTokenRef.current = onToken
   const onErrorRef = useRef(onError)
-  onErrorRef.current = onError
+
+  useEffect(() => {
+    onTokenRef.current = onToken
+    onErrorRef.current = onError
+  })
 
   useEffect(() => {
     let widgetId: string | undefined
     let cancelled = false
-    loadScript()
-      .then(() => {
+    const mount = async () => {
+      try {
+        await loadScript()
         if (cancelled || !container.current || !window.turnstile) return
         widgetId = window.turnstile.render(container.current, {
           sitekey: siteKey,
@@ -78,11 +86,12 @@ export const TurnstileWidget = ({
             onErrorRef.current()
           },
         })
-      })
-      .catch(() => {
+      } catch {
         onTokenRef.current('')
         onErrorRef.current()
-      })
+      }
+    }
+    void mount()
     return () => {
       cancelled = true
       if (widgetId) window.turnstile?.remove(widgetId)

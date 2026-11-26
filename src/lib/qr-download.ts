@@ -19,8 +19,12 @@ export const downloadQrPng = async (
   try {
     const image = new Image()
     await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve()
-      image.onerror = () => reject(new Error('Could not draw the QR code'))
+      image.addEventListener('load', () => resolve(), { once: true })
+      image.addEventListener(
+        'error',
+        () => reject(new Error('Could not draw the QR code')),
+        { once: true },
+      )
       image.src = svgUrl
     })
 

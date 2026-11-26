@@ -21,7 +21,7 @@ import { ipFromHeaders } from '@/server/rate-limit'
 export async function loginAction(
   prevState: { error?: string } | undefined,
   formData: FormData,
-): Promise<{ error: string } | never> {
+): Promise<{ error: string }> {
   const email = formData.get('email') as string
   const otpCode = formData.get('otpCode') as string
 
@@ -158,7 +158,7 @@ export async function loginAction(
 export async function deleteAccountAction(
   _prev: { error?: string } | undefined,
   formData: FormData,
-): Promise<{ error: string } | never> {
+): Promise<{ error: string }> {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
   const typed = formData.get('confirm')

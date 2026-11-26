@@ -31,7 +31,7 @@ const AUDIO_EXTENSIONS: Record<string, string> = {
 }
 
 // Owners get a low-balance email when the balance first drops to one of these.
-const LOW_BALANCE_THRESHOLDS = [9, 4, 0]
+const LOW_BALANCE_THRESHOLDS = new Set([9, 4, 0])
 
 export class SubmissionError extends Error {
   constructor(
@@ -316,7 +316,7 @@ export const processFeedback = async (
     }),
   )
 
-  if (LOW_BALANCE_THRESHOLDS.includes(business.pulsesRemaining)) {
+  if (LOW_BALANCE_THRESHOLDS.has(business.pulsesRemaining)) {
     await sendLowPulseEmail({
       to: business.email,
       userName: ownerName,

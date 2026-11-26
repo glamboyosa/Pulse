@@ -20,7 +20,7 @@ const CONNECTION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
 /** Why a new account got no free pulses, for the founder's signup alert. */
 export type NoFreePulsesReason = 'inbox' | 'connection'
 
-const GMAIL = ['gmail.com', 'googlemail.com']
+const GMAIL = new Set(['gmail.com', 'googlemail.com'])
 
 /**
  * The inbox an address delivers to. Mail providers ignore anything after a
@@ -29,7 +29,7 @@ const GMAIL = ['gmail.com', 'googlemail.com']
 export const mailboxOf = (email: string) => {
   const [local = '', domain = ''] = email.trim().toLowerCase().split('@')
   const name = local.split('+')[0]
-  return GMAIL.includes(domain)
+  return GMAIL.has(domain)
     ? `${name.replaceAll('.', '')}@gmail.com`
     : `${name}@${domain}`
 }

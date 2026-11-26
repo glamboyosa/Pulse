@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Mic } from 'lucide-react'
 
 import type {
@@ -259,12 +260,12 @@ export function WidgetInstall({
         </pre>
         <div className="flex flex-wrap items-center gap-4">
           <CopyButton text={code} />
-          <a
+          <Link
             href="/docs/widget"
             className="font-bold underline underline-offset-4"
           >
             Full guide
-          </a>
+          </Link>
         </div>
       </div>
     </div>

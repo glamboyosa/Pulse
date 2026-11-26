@@ -1,6 +1,12 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { Download, Link2, MapPin, Plus, Printer, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import QRCodeSVG from 'react-qr-code'
@@ -11,6 +17,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { downloadQrPng } from '@/lib/qr-download'
+
+const subscribeOrigin = () => () => {}
 
 const spotUrl = (origin: string, code: string, slug: string) =>
   `${origin}/f/${code}?spot=${slug}`
@@ -200,8 +208,11 @@ export function SpotsSection({
 }) {
   const queryClient = useQueryClient()
   // Same address as the main QR code: the one this dashboard is open on.
-  const [origin, setOrigin] = useState<string | null>(null)
-  useEffect(() => setOrigin(window.location.origin), [])
+  const origin = useSyncExternalStore(
+    subscribeOrigin,
+    () => window.location.origin,
+    () => null,
+  )
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
 

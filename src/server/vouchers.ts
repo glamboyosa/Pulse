@@ -54,7 +54,7 @@ export const generateVoucherCode = () =>
 export const normaliseVoucherCode = (input: string): string | null => {
   const code = input.replace(/[\s-]/g, '').toUpperCase()
   return code.length === CODE_LENGTH &&
-    [...code].every((char) => CODE_ALPHABET.includes(char))
+    Array.from(code).every((char) => CODE_ALPHABET.includes(char))
     ? code
     : null
 }
@@ -160,8 +160,8 @@ export const publicOffer = async (business: {
 export const monthlyVoucherStats = async (userId: string) => {
   const [row] = await db
     .select({
-      issued: sql<number>`count(*) filter (where ${vouchers.createdAt} >= ${startOfMonth})`,
-      redeemed: sql<number>`count(*) filter (where ${vouchers.redeemedAt} >= ${startOfMonth})`,
+      issued: sql<string>`count(*) filter (where ${vouchers.createdAt} >= ${startOfMonth})`,
+      redeemed: sql<string>`count(*) filter (where ${vouchers.redeemedAt} >= ${startOfMonth})`,
     })
     .from(vouchers)
     .where(eq(vouchers.userId, userId))

@@ -29,13 +29,16 @@ export function FeedbackTranscript({
   useEffect(() => {
     if (state !== 'waiting') return
 
-    const poll = setInterval(async () => {
+    const check = async () => {
       const response = await fetch(`/api/feedback/${feedbackId}`).catch(
         () => null,
       )
       if (!response?.ok) return
-      const data: { transcript: string | null; status: string } =
-        await response.json()
+      const data = (await response.json().catch(() => null)) as {
+        transcript: string | null
+        status: string
+      } | null
+      if (!data) return
       if (data.transcript) {
         setTranscript(data.transcript)
         setState('ready')
@@ -44,6 +47,9 @@ export function FeedbackTranscript({
       } else if (data.status === 'failed') {
         setState('failed')
       }
+    }
+    const poll = setInterval(() => {
+      void check()
     }, POLL_MS)
     const giveUp = setTimeout(() => setState('timed-out'), GIVE_UP_MS)
 

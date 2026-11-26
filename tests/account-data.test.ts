@@ -118,10 +118,11 @@ describe('deleteAccount', () => {
     expect(await db.select().from(weeklyDigests)).toHaveLength(0)
     expect(await db.select().from(otpCodes)).toHaveLength(0)
     expect(await db.select().from(rateLimits)).toHaveLength(0)
-    expect(storage.deleteAudio.mock.calls.map(([key]) => key).sort()).toEqual([
-      'test/1.webm',
-      'test/logo.png',
-    ])
+    expect(
+      storage.deleteAudio.mock.calls
+        .map(([key]) => key)
+        .toSorted((a, b) => String(a).localeCompare(String(b))),
+    ).toEqual(['test/1.webm', 'test/logo.png'])
   })
 })
 

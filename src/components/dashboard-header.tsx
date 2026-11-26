@@ -16,13 +16,13 @@ interface DashboardHeaderProps {
   }
 }
 
+const handleLogout = async () => {
+  await logoutAction()
+}
+
 export function DashboardHeader({ user }: DashboardHeaderProps) {
   const pulsesRemaining = user.pulsesRemaining || 0
   const isLowPulse = pulsesRemaining <= 3
-
-  const handleLogout = async () => {
-    await logoutAction()
-  }
 
   return (
     <header className="border-b-2 border-foreground bg-background">

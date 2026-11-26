@@ -1,6 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { Check, Mic, MicOff, RotateCcw, Send, Square } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -34,7 +40,7 @@ type Stage =
   | { name: 'idle' }
   | { name: 'asking' }
   | { name: 'denied' }
-  | { name: 'recording' }
+  | { name: 'recording'; stream: MediaStream }
   | { name: 'recorded'; audio: Blob; url: string; seconds: number }
   | { name: 'sending'; audio: Blob; url: string; seconds: number }
   | { name: 'sent'; feedbackId: string | null }
@@ -70,6 +76,8 @@ const primaryButton =
   'flex-1 text-lg font-bold border-2 border-foreground shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 hover:before:translate-x-0.5 hover:before:translate-y-0.5 transition-[transform,box-shadow]'
 
 const LEVEL_BARS = 16
+const LEVEL_BAR_IDS = Array.from({ length: LEVEL_BARS }, (_, n) => `bar-${n}`)
+const subscribeBrowserCapability = () => () => {}
 
 /** Live bars that move with the customer's voice, so they know it's working. */
 function LevelMeter({ stream }: { stream: MediaStream | null }) {
@@ -110,11 +118,11 @@ function LevelMeter({ stream }: { stream: MediaStream | null }) {
       aria-hidden="true"
       className="mt-6 mb-4 flex h-10 items-center justify-center gap-1"
     >
-      {levels.map((level, i) => (
+      {LEVEL_BAR_IDS.map((id, i) => (
         <span
-          key={i}
+          key={id}
           className="h-full w-1.5 origin-center rounded-full bg-foreground"
-          style={{ transform: `scaleY(${Math.max(0.12, level)})` }}
+          style={{ transform: `scaleY(${Math.max(0.12, levels[i])})` }}
         />
       ))}
     </div>
@@ -149,8 +157,15 @@ export function FeedbackForm({
   const [error, setError] = useState<string | null>(null)
   // Pulse is voice first. Typing appears only when voice can't work: the
   // browser can't record, or the customer blocked the microphone.
-  const [canRecord, setCanRecord] = useState(true)
-  const [typing, setTyping] = useState(false)
+  const browserCanRecord = useSyncExternalStore(
+    subscribeBrowserCapability,
+    () => typeof MediaRecorder !== 'undefined' && 'mediaDevices' in navigator,
+    () => true,
+  )
+  const [recordFailed, setRecordFailed] = useState(false)
+  const canRecord = browserCanRecord && !recordFailed
+  const [typingOverride, setTypingOverride] = useState<boolean | null>(null)
+  const typing = typingOverride ?? !canRecord
   const [text, setText] = useState('')
   const [sendingText, setSendingText] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState('')
@@ -215,21 +230,22 @@ export function FeedbackForm({
   const startedAtRef = useRef(0)
 
   useEffect(() => {
-    if (
-      typeof MediaRecorder === 'undefined' ||
-      !('mediaDevices' in navigator)
-    ) {
-      setCanRecord(false)
-      setTyping(true)
-    }
-    fetch(`/api/businesses/${encodeURIComponent(businessId)}/status`)
-      .then((response) => (response.ok ? response.json() : { accepting: true }))
-      .then((data: { accepting: boolean; offer?: string | null }) => {
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(
+          `/api/businesses/${encodeURIComponent(businessId)}/status`,
+        )
+        const data: { accepting: boolean; offer?: string | null } = response.ok
+          ? await response.json()
+          : { accepting: true }
         if (!widget) setOffer(data.offer ?? null)
         setStage(data.accepting ? { name: 'idle' } : { name: 'not-accepting' })
-      })
-      // If the check fails, let them record; the submit will say if it can't.
-      .catch(() => setStage({ name: 'idle' }))
+      } catch {
+        // If the check fails, let them record; the submit will say if it can't.
+        setStage({ name: 'idle' })
+      }
+    }
+    void checkStatus()
   }, [businessId, widget])
 
   const releaseMicrophone = () => {
@@ -294,10 +310,10 @@ export function FeedbackForm({
 
     const fallbackToTyping = (message: string) => {
       releaseMicrophone()
-      setCanRecord(false)
+      setRecordFailed(true)
       // The record button goes; focus follows to the text box.
       switchedInput.current = true
-      setTyping(true)
+      setTypingOverride(true)
       setError(message)
       setStage({ name: 'idle' })
     }
@@ -346,7 +362,7 @@ export function FeedbackForm({
       )
       return
     }
-    setStage({ name: 'recording' })
+    setStage({ name: 'recording', stream })
   }
 
   const recordAgain = () => {
@@ -712,7 +728,7 @@ export function FeedbackForm({
 
                     {stage.name === 'recording' ? (
                       <>
-                        <LevelMeter stream={streamRef.current} />
+                        <LevelMeter stream={stage.stream} />
                         <p
                           role="timer"
                           className="font-display text-4xl font-extrabold tabular-nums"
@@ -772,7 +788,7 @@ export function FeedbackForm({
               type="button"
               onClick={() => {
                 switchedInput.current = true
-                setTyping(!typing)
+                setTypingOverride(!typing)
                 setError(null)
               }}
               className="w-full text-center font-bold underline underline-offset-4"
@@ -834,6 +850,8 @@ export function FeedbackForm({
       </Card>
       <p className="text-center text-sm font-semibold text-muted-foreground mt-6">
         Your feedback goes only to this business, and is processed by AI.{' '}
+        {/* Full document navigation so WebView/iframe embeds hand off /privacy cleanly. */}
+        {/* oxlint-disable-next-line nextjs/no-html-link-for-pages */}
         <a href="/privacy#customers" className="underline underline-offset-4">
           Privacy
         </a>

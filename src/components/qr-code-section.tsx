@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState, useSyncExternalStore } from 'react'
 import { Download, Printer, QrCode, Share2 } from 'lucide-react'
 import Link from 'next/link'
 import QRCodeSVG from 'react-qr-code'
@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { downloadQrPng } from '@/lib/qr-download'
 
+const subscribeOrigin = () => () => {}
+
 interface QRCodeSectionProps {
   uniqueCode: string
 }
@@ -16,12 +18,13 @@ interface QRCodeSectionProps {
 export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
   const [copied, setCopied] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
-  const [feedbackUrl, setFeedbackUrl] = useState<string>('')
+  const origin = useSyncExternalStore(
+    subscribeOrigin,
+    () => window.location.origin,
+    () => '',
+  )
+  const feedbackUrl = origin ? `${origin}/f/${uniqueCode}` : ''
   const qrCodeRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setFeedbackUrl(`${window.location.origin}/f/${uniqueCode}`)
-  }, [uniqueCode])
 
   const handleCopy = async () => {
     if (!feedbackUrl) return

@@ -108,7 +108,9 @@ describe('replyToFeedback', () => {
   it('uses a new idempotency key when the retry has edited text', async () => {
     const { owner, row } = await withFeedback('ada@example.test')
     email.send.mockRejectedValueOnce(new Error('Timed out'))
-    await expect(replyToFeedback(owner.id, row.id, 'Hello')).rejects.toThrow()
+    await expect(replyToFeedback(owner.id, row.id, 'Hello')).rejects.toThrow(
+      'The reply didn’t send. Try again in a minute.',
+    )
     await replyToFeedback(owner.id, row.id, 'Hello again')
     const keys = email.send.mock.calls.map(
       ([args]) => (args as { idempotencyKey: string }).idempotencyKey,

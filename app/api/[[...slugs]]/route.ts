@@ -4,7 +4,6 @@ import { and, eq } from 'drizzle-orm'
 import { after } from 'next/server'
 
 import type { ResendEmailReceivedData } from '@/types/resend'
-import type { PaidOrder } from '@/server/billing'
 import { db } from '@/db/index'
 import { feedback, otpCodes, users } from '@/db/schema'
 import { env } from '@/env'
@@ -627,7 +626,7 @@ const app = new Elysia({ prefix: '/api' })
 
     // Errors below return 500 so Polar retries; both handlers are idempotent.
     if (event.type === 'order.paid') {
-      const result = await creditPaidOrder(event.data as PaidOrder)
+      const result = await creditPaidOrder(event.data)
       if (result.status === 'unmatched') {
         console.error('[polar] could not credit order', {
           orderId: event.data.id,
@@ -635,7 +634,7 @@ const app = new Elysia({ prefix: '/api' })
         })
       }
     } else if (event.type === 'order.refunded') {
-      await refundOrder(event.data as PaidOrder)
+      await refundOrder(event.data)
     }
     return { received: true }
   })

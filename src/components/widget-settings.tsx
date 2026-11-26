@@ -8,6 +8,8 @@ import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { WidgetInstall } from '@/components/widget-install'
 
+const toNewLines = (text: string) => text.replace(/[ \t]*,[ \t]*/g, '\n')
+
 const readError = async (response: Response | null) =>
   response
     ? (((await response.json().catch(() => ({}))) as { error?: string })
@@ -113,8 +115,6 @@ export function WidgetSettings({
                 // One site per line: a typed or pasted comma becomes a new line.
                 const field = event.target
                 const before = field.value.slice(0, field.selectionStart)
-                const toNewLines = (text: string) =>
-                  text.replace(/[ \t]*,[ \t]*/g, '\n')
                 const cursor = toNewLines(before).length
                 setSites(toNewLines(field.value))
                 setSaved(false)

@@ -21,6 +21,22 @@ interface FeedbackPageProps {
   params: Promise<{ id: string }>
 }
 
+const formatDate = (date: Date) =>
+  new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+
+const formatDuration = (seconds: number | null) => {
+  if (!seconds) return '0:00'
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}:${String(secs).padStart(2, '0')}`
+}
+
 export default async function FeedbackPage({ params }: FeedbackPageProps) {
   const { id: feedbackId } = await params
   const user = await getCurrentUser()
@@ -59,23 +75,6 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
     (!transcript && feedbackData.audioKey)
   ) {
     after(() => retryAnalysis(feedbackId))
-  }
-
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date)
-  }
-
-  const formatDuration = (seconds: number | null) => {
-    if (!seconds) return '0:00'
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${String(secs).padStart(2, '0')}`
   }
 
   return (
