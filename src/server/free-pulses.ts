@@ -105,6 +105,7 @@ export const freePulsesFor = async (
         `free-pulses:ip:${fingerprint('signup-network', networkOf(ip))}`,
         FREE_SIGNUPS_PER_CONNECTION,
         CONNECTION_WINDOW_MS,
+        executor,
       )
     } catch (error) {
       if (error instanceof RateLimitError) {

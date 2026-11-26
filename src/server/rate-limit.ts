@@ -8,6 +8,8 @@ export class RateLimitError extends Error {
   }
 }
 
+type Executor = Pick<typeof db, 'execute'>
+
 /**
  * Counts one hit against `key` in a fixed window and throws once the count
  * passes `limit`. One upsert statement, so concurrent requests can't both
@@ -17,8 +19,12 @@ export const enforceRateLimit = async (
   key: string,
   limit: number,
   windowMs: number,
+  executor: Executor = db,
 ): Promise<void> => {
-  const result = await db.execute<{ count: number; retry_after: number }>(sql`
+  const result = await executor.execute<{
+    count: number
+    retry_after: number
+  }>(sql`
     insert into rate_limits (key, count, reset_at, created_at, updated_at)
     values (${key}, 1, now() + ${windowMs} * interval '1 millisecond', now(), now())
     on conflict (key) do update set

@@ -160,7 +160,11 @@ export const submitTypedFeedback = async (input: {
  */
 export const submitFeedback = async (
   input: SubmissionInput,
-): Promise<{ feedbackId: string; business: Business }> => {
+): Promise<{
+  feedbackId: string
+  business: Business
+  audio: { buffer: Buffer; type: string }
+}> => {
   const audioType = normaliseAudioType(input.audio.type)
   if (!audioType) throw new SubmissionError('Unsupported audio format', 415)
   if (input.audio.size === 0) throw new SubmissionError('Empty recording', 400)
@@ -175,13 +179,11 @@ export const submitFeedback = async (
 
   const feedbackId = crypto.randomUUID()
   const audioKey = `${AUDIO_KEY_PREFIX}feedback/${business.id}/${feedbackId}.${AUDIO_EXTENSIONS[audioType]}`
+  let audioBuffer: Buffer
 
   try {
-    await uploadAudio(
-      audioKey,
-      Buffer.from(await input.audio.arrayBuffer()),
-      audioType,
-    )
+    audioBuffer = Buffer.from(await input.audio.arrayBuffer())
+    await uploadAudio(audioKey, audioBuffer, audioType)
     const spot = await findSpot(business.id, input.spot)
     await db.insert(feedback).values({
       id: feedbackId,
@@ -203,7 +205,11 @@ export const submitFeedback = async (
     throw error
   }
 
-  return { feedbackId, business }
+  return {
+    feedbackId,
+    business,
+    audio: { buffer: audioBuffer, type: audioType },
+  }
 }
 
 /** A recording to transcribe, or feedback the customer typed (already stored). */

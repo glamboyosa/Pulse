@@ -5,6 +5,7 @@ import { deleteAccountAction, loginAction } from '../app/actions/auth'
 import { encrypt } from '../lib/session'
 import { createBusiness, resetDatabase } from './support/db'
 import { deleteAccount } from '@/server/account-data'
+import { freePulsesFor } from '@/server/free-pulses'
 import { db } from '@/db/index'
 import { otpCodes, users } from '@/db/schema'
 
@@ -30,10 +31,14 @@ vi.mock('@/lib/storage/r2', () => ({
 // The connection a request comes from, as Vercel passes it on.
 const request = vi.hoisted(() => ({
   headers: { 'x-forwarded-for': '203.0.113.7' } as Record<string, string>,
+  onHeaders: null as null | (() => Promise<void>),
 }))
 vi.mock('next/headers', () => ({
   cookies: () => Promise.resolve(cookieJar),
-  headers: () => Promise.resolve(new Headers(request.headers)),
+  headers: async () => {
+    if (request.onHeaders) await request.onHeaders()
+    return new Headers(request.headers)
+  },
 }))
 vi.mock('next/navigation', () => ({
   redirect: (path: string) => {
@@ -68,6 +73,7 @@ beforeEach(async () => {
   cookieJar.delete.mockClear()
   afterCallbacks.length = 0
   request.headers = { 'x-forwarded-for': '203.0.113.7' }
+  request.onHeaders = null
   sendSignupAlert.mockReset().mockResolvedValue(undefined)
 })
 
@@ -190,6 +196,31 @@ describe('free pulses', () => {
     expect((await signUp('t@example.test', {})).pulsesRemaining).toBe(5)
   })
 
+  it('does not burn the connection quota when a signup transaction rolls back', async () => {
+    const sharedIp = '198.51.100.77'
+    for (let i = 0; i < 4; i += 1) {
+      await expect(
+        db.transaction(async (tx) => {
+          const grant = await freePulsesFor(
+            `rollback-${i}@example.test`,
+            sharedIp,
+            tx,
+          )
+          expect(grant).toEqual({ pulses: 5, reason: null })
+          throw new Error('simulated signup failure')
+        }),
+      ).rejects.toThrow('simulated signup failure')
+    }
+
+    for (const address of [
+      'real-1@example.test',
+      'real-2@example.test',
+      'real-3@example.test',
+    ]) {
+      expect((await signUp(address, from(sharedIp))).pulsesRemaining).toBe(5)
+    }
+  })
+
   it('tells the founder why a signup got none', async () => {
     await signUp('grace@gmail.com', from('198.51.100.20'))
     await signUp('g.race@gmail.com', from('198.51.100.21'))
@@ -282,6 +313,67 @@ describe('loginAction', () => {
     expect(await login('123456')).toEqual({
       error: 'Invalid or expired code. Please request a new one.',
     })
+  })
+
+  it('handles concurrent first-time signups for the same email without 23505 or double pulses', async () => {
+    const raceEmail = 'race-owner@example.test'
+    await issueCode('111111', {
+      email: raceEmail,
+      createdAt: new Date(Date.now() - 10_000),
+    })
+    await issueCode('222222', {
+      email: raceEmail,
+      createdAt: new Date(),
+    })
+
+    let firstReached!: () => void
+    let releaseFirst!: () => void
+    const firstAtBarrier = new Promise<void>((resolve) => {
+      firstReached = resolve
+    })
+    const gate = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+    let calls = 0
+    request.onHeaders = async () => {
+      calls += 1
+      if (calls === 1) {
+        firstReached()
+        await gate
+      } else {
+        releaseFirst()
+      }
+    }
+
+    const first = login('222222', raceEmail)
+    await firstAtBarrier
+    const second = login('111111', raceEmail)
+
+    expect(await Promise.all([first, second])).toEqual([
+      'redirect:/onboarding',
+      'redirect:/onboarding',
+    ])
+
+    const rows = await db.select().from(users).where(eq(users.email, raceEmail))
+    expect(rows).toHaveLength(1)
+    expect(rows[0].pulsesRemaining).toBe(5)
+    expect(afterCallbacks).toHaveLength(1)
+
+    // The losing concurrent signup rolled back its savepoint, so 2 more signups
+    // from this IP still get free pulses (3 total per connection).
+    request.onHeaders = null
+    for (const extra of [
+      'race-extra-1@example.test',
+      'race-extra-2@example.test',
+    ]) {
+      await issueCode('333333', { email: extra })
+      expect(await login('333333', extra)).toBe('redirect:/onboarding')
+      const [created] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, extra))
+      expect(created.pulsesRemaining).toBe(5)
+    }
   })
 
   it('allows only 5 guesses even when they all arrive at once', async () => {

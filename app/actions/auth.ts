@@ -77,10 +77,11 @@ export async function loginAction(
     return { error: 'Invalid or expired code. Please request a new one.' }
   }
 
+  const normalizedEmail = email.toLowerCase()
   let user = await db
     .select()
     .from(users)
-    .where(eq(users.email, email.toLowerCase()))
+    .where(eq(users.email, normalizedEmail))
     .limit(1)
 
   if (user.length === 0) {
@@ -90,30 +91,47 @@ export async function loginAction(
     )
     // One transaction, so free pulses are only marked as given once the
     // account really exists.
-    const { newUser, freePulses } = await db.transaction(async (tx) => {
-      const free = await freePulsesFor(email, ip, tx)
-      const [created] = await tx
-        .insert(users)
-        .values({
-          email: email.toLowerCase(),
-          isVerified: false,
-          pulsesRemaining: free.pulses,
-          freePulsesWithheld: free.reason,
-          signupSource,
-        })
-        .returning()
-      return { newUser: created, freePulses: free }
-    })
+    const { account, created, freePulses } = await db.transaction(
+      async (tx) => {
+        await tx.execute(sql`savepoint signup_grant`)
+        const free = await freePulsesFor(normalizedEmail, ip, tx)
+        const inserted = (
+          await tx
+            .insert(users)
+            .values({
+              email: normalizedEmail,
+              isVerified: false,
+              pulsesRemaining: free.pulses,
+              freePulsesWithheld: free.reason,
+              signupSource,
+            })
+            .onConflictDoNothing({ target: users.email })
+            .returning()
+        ).at(0)
 
-    user = [newUser]
+        if (inserted) {
+          return { account: inserted, created: true, freePulses: free }
+        }
+
+        await tx.execute(sql`rollback to savepoint signup_grant`)
+        const [existing] = await tx
+          .select()
+          .from(users)
+          .where(eq(users.email, normalizedEmail))
+          .limit(1)
+        return { account: existing, created: false, freePulses: free }
+      },
+    )
+
+    user = [account]
     const alertTo = env.SIGNUP_ALERT_EMAIL
-    if (alertTo) {
+    if (created && alertTo) {
       // After the response, so a slow or failed alert never holds up a login.
       after(() =>
         sendSignupAlert({
           to: alertTo,
-          email: newUser.email,
-          source: newUser.signupSource,
+          email: account.email,
+          source: account.signupSource,
           noFreePulses: freePulses.reason,
         }).catch((error: unknown) => {
           console.error('[signup alert]', error)

@@ -39,12 +39,13 @@ vi.mock('@/lib/ai/text-analysis', () => ({
   }),
 }))
 const sentOtps = vi.hoisted(() => [] as Array<{ to: string; otpCode: string }>)
-vi.mock('@/lib/email', () => ({
-  sendOTPEmail: vi.fn((args: { to: string; otpCode: string }) => {
+const sendOTPEmail = vi.hoisted(() =>
+  vi.fn((args: { to: string; otpCode: string }) => {
     sentOtps.push(args)
     return Promise.resolve()
   }),
-}))
+)
+vi.mock('@/lib/email', () => ({ sendOTPEmail }))
 vi.mock('@/lib/email/feedback-received', () => ({
   sendFeedbackReceivedEmail: vi.fn().mockResolvedValue(undefined),
 }))
@@ -113,6 +114,10 @@ beforeEach(async () => {
   await resetDatabase()
   background.tasks.length = 0
   sentOtps.length = 0
+  sendOTPEmail.mockReset().mockImplementation((args) => {
+    sentOtps.push(args)
+    return Promise.resolve()
+  })
 })
 
 describe('owner data is private', () => {
@@ -161,6 +166,15 @@ describe('owner data is private', () => {
     )
   })
 
+  it('rejects non-UUID ids on feedback detail and audio-url endpoints without returning 500', async () => {
+    const owner = await createBusiness()
+    const cookie = await sessionCookie(owner)
+    expect((await get('/feedback/not-a-uuid', cookie)).status).toBe(422)
+    expect((await get('/feedback/not-a-uuid/audio-url', cookie)).status).toBe(
+      422,
+    )
+  })
+
   it('rejects a forged session', async () => {
     const alice = await createBusiness()
     expect(
@@ -177,9 +191,13 @@ describe('owner data is private', () => {
 describe('customer submissions', () => {
   it('accepts a recording, spends a pulse and processes it after replying', async () => {
     const owner = await createBusiness({ pulsesRemaining: 3 })
+    const arrayBufferSpy = vi.spyOn(Blob.prototype, 'arrayBuffer')
     const response = await submit(owner.uniqueCode!)
     expect(response.status).toBe(200)
     const { feedbackId } = (await response.json()) as { feedbackId: string }
+
+    expect(arrayBufferSpy).toHaveBeenCalledTimes(1)
+    arrayBufferSpy.mockRestore()
 
     expect(await pulsesOf(owner.id)).toBe(2)
     expect(background.tasks).toHaveLength(1)
@@ -470,6 +488,36 @@ describe('login codes', () => {
     const ttl = row.expiresAt.getTime() - row.createdAt.getTime()
     expect(ttl).toBeGreaterThan(9.9 * 60_000)
     expect(ttl).toBeLessThan(10.1 * 60_000)
+  })
+
+  it('returns 500 and deletes only the failed OTP row when email delivery fails', async () => {
+    const [existing] = await db
+      .insert(otpCodes)
+      .values({
+        email: 'flaky@example.test',
+        code: '111111',
+        expiresAt: new Date(Date.now() + 10 * 60_000),
+      })
+      .returning()
+
+    sendOTPEmail.mockRejectedValueOnce(new Error('Resend outage'))
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const response = await postJson('/auth/send-otp', {
+      email: 'flaky@example.test',
+    })
+    quiet.mockRestore()
+
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({
+      success: false,
+      error: 'Failed to send email. Please try again.',
+    })
+    const remaining = await db
+      .select()
+      .from(otpCodes)
+      .where(eq(otpCodes.email, 'flaky@example.test'))
+    expect(remaining).toHaveLength(1)
+    expect(remaining[0].id).toBe(existing.id)
   })
 
   it('sends no code when the Turnstile check fails', async () => {

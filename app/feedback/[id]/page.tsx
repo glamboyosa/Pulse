@@ -14,6 +14,7 @@ import { feedback } from '@/db/schema'
 import { retryAnalysis } from '@/server/feedback-submission'
 import { ReplyBox } from '@/components/reply-box'
 import { SENTIMENT_STYLE, isSentiment } from '@/lib/sentiment'
+import { isUuid } from '@/lib/uuid'
 import { DeleteFeedbackButton } from '@/components/delete-feedback-button'
 
 interface FeedbackPageProps {
@@ -26,6 +27,10 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
 
   if (!user) {
     redirect('/login')
+  }
+
+  if (!isUuid(feedbackId)) {
+    notFound()
   }
 
   const feedbackRecord = await db

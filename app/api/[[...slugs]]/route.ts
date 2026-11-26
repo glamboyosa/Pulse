@@ -3,7 +3,7 @@ import { WebhookVerificationError, validateEvent } from '@polar-sh/sdk/webhooks'
 import { and, eq } from 'drizzle-orm'
 import { after } from 'next/server'
 
-import type { ResendWebhookEvent } from '@/types/resend'
+import type { ResendEmailReceivedData } from '@/types/resend'
 import type { PaidOrder } from '@/server/billing'
 import { db } from '@/db/index'
 import { feedback, otpCodes, users } from '@/db/schema'
@@ -174,16 +174,26 @@ const app = new Elysia({ prefix: '/api' })
       await enforceRateLimit(`otp:ip:${clientIp(request)}`, 10, HOUR_MS)
 
       const code = generateOTP()
-      await db.insert(otpCodes).values({
-        email,
-        code,
-        expiresAt: new Date(Date.now() + OTP_TTL_MS),
-      })
+      const [inserted] = await db
+        .insert(otpCodes)
+        .values({
+          email,
+          code,
+          expiresAt: new Date(Date.now() + OTP_TTL_MS),
+        })
+        .returning({ id: otpCodes.id })
 
       try {
         await sendOTPEmail({ to: email, otpCode: code })
       } catch (error) {
         console.error('[auth] failed to send OTP email', error)
+        await db
+          .delete(otpCodes)
+          .where(eq(otpCodes.id, inserted.id))
+          .catch((cleanupError: unknown) =>
+            console.error('[auth] failed to remove unsent OTP', cleanupError),
+          )
+        set.status = 500
         return {
           success: false,
           error: 'Failed to send email. Please try again.',
@@ -228,7 +238,7 @@ const app = new Elysia({ prefix: '/api' })
       const guarded = await guardSubmission(request, body)
       if (guarded instanceof Response) return guarded
 
-      const { feedbackId, business } = await submitFeedback({
+      const { feedbackId, business, audio } = await submitFeedback({
         widget: guarded.widget,
         code: body.code,
         audio: body.audio,
@@ -237,10 +247,6 @@ const app = new Elysia({ prefix: '/api' })
         spot: body.spot,
         contactEmail: contactEmailFrom(body.contactEmail),
       })
-      const audio = {
-        buffer: Buffer.from(await body.audio.arrayBuffer()),
-        type: body.audio.type.split(';')[0],
-      }
       after(() => processFeedback(feedbackId, business, { audio }))
       return { success: true, feedbackId }
     },
@@ -306,44 +312,52 @@ const app = new Elysia({ prefix: '/api' })
 
     return getFeedbackStats(user.id)
   })
-  .get('/feedback/:id', async ({ params, request }) => {
-    const user = await getUserFromSession(request)
-    if (!user) return json(401, { error: 'Unauthorized' })
+  .get(
+    '/feedback/:id',
+    async ({ params, request }) => {
+      const user = await getUserFromSession(request)
+      if (!user) return json(401, { error: 'Unauthorized' })
 
-    const f = (
-      await db
-        .select()
-        .from(feedback)
-        .where(and(eq(feedback.id, params.id), eq(feedback.userId, user.id)))
-        .limit(1)
-    ).at(0)
-    if (!f) return json(404, { error: 'Feedback not found' })
+      const f = (
+        await db
+          .select()
+          .from(feedback)
+          .where(and(eq(feedback.id, params.id), eq(feedback.userId, user.id)))
+          .limit(1)
+      ).at(0)
+      if (!f) return json(404, { error: 'Feedback not found' })
 
-    return {
-      id: f.id,
-      transcript: f.transcript,
-      sentiment: f.sentiment,
-      customerName: f.customerName,
-      status: f.status,
-      duration: f.duration,
-      createdAt: f.createdAt,
-    }
-  })
-  .get('/feedback/:id/audio-url', async ({ params, request }) => {
-    const user = await getUserFromSession(request)
-    if (!user) return json(401, { error: 'Unauthorized' })
+      return {
+        id: f.id,
+        transcript: f.transcript,
+        sentiment: f.sentiment,
+        customerName: f.customerName,
+        status: f.status,
+        duration: f.duration,
+        createdAt: f.createdAt,
+      }
+    },
+    { params: t.Object({ id: t.String({ format: 'uuid' }) }) },
+  )
+  .get(
+    '/feedback/:id/audio-url',
+    async ({ params, request }) => {
+      const user = await getUserFromSession(request)
+      if (!user) return json(401, { error: 'Unauthorized' })
 
-    const f = (
-      await db
-        .select({ audioKey: feedback.audioKey })
-        .from(feedback)
-        .where(and(eq(feedback.id, params.id), eq(feedback.userId, user.id)))
-        .limit(1)
-    ).at(0)
-    if (!f?.audioKey) return json(404, { error: 'Audio not found' })
+      const f = (
+        await db
+          .select({ audioKey: feedback.audioKey })
+          .from(feedback)
+          .where(and(eq(feedback.id, params.id), eq(feedback.userId, user.id)))
+          .limit(1)
+      ).at(0)
+      if (!f?.audioKey) return json(404, { error: 'Audio not found' })
 
-    return { audioUrl: await getAudioUrl(f.audioKey) }
-  })
+      return { audioUrl: await getAudioUrl(f.audioKey) }
+    },
+    { params: t.Object({ id: t.String({ format: 'uuid' }) }) },
+  )
   .get('/pulses', async ({ request }) => {
     const user = await getUserFromSession(request)
     if (!user) return json(401, { error: 'Unauthorized' })
@@ -627,9 +641,12 @@ const app = new Elysia({ prefix: '/api' })
   })
   // Forwards mail sent to the Pulse support address to the founder's inbox.
   .post('/webhook/resend', async ({ request }) => {
+    const secret = env.RESEND_WEBHOOK_SECRET
+    if (!secret) return json(500, { error: 'Webhook secret not configured' })
+
     const payload = await request.text()
     const resend = getResendClient()
-    let event: ResendWebhookEvent
+    let event: { type?: unknown; data?: unknown }
     try {
       event = resend.webhooks.verify({
         payload,
@@ -638,21 +655,36 @@ const app = new Elysia({ prefix: '/api' })
           timestamp: request.headers.get('svix-timestamp') || '',
           signature: request.headers.get('svix-signature') || '',
         },
-        webhookSecret: env.RESEND_WEBHOOK_SECRET || '',
-      }) as ResendWebhookEvent
+        webhookSecret: secret,
+      }) as { type?: unknown; data?: unknown }
     } catch {
       return json(400, { error: 'Invalid webhook' })
     }
 
-    const email = event.data
+    if (event.type !== 'email.received') {
+      return { received: true }
+    }
+
+    const email = event.data as Partial<ResendEmailReceivedData> | undefined
+    if (
+      !email ||
+      typeof email !== 'object' ||
+      typeof email.email_id !== 'string' ||
+      !email.email_id.trim()
+    ) {
+      return json(400, { error: 'Invalid webhook payload' })
+    }
+
     const content = await resend.emails.receiving.get(email.email_id)
     if (content.error) return json(500, { error: 'Failed to fetch email' })
 
+    const to = Array.isArray(email.to) ? email.to : []
+    const cc = Array.isArray(email.cc) ? email.cc : []
     const header = [
-      `From: ${email.from}`,
-      `To: ${email.to.join(', ')}`,
-      email.cc.length > 0 ? `Cc: ${email.cc.join(', ')}` : null,
-      `Date: ${new Date(email.created_at).toLocaleString()}`,
+      `From: ${email.from ?? ''}`,
+      `To: ${to.join(', ')}`,
+      cc.length > 0 ? `Cc: ${cc.join(', ')}` : null,
+      `Date: ${new Date(email.created_at ?? Date.now()).toLocaleString()}`,
     ]
       .filter(Boolean)
       .join('\n')
@@ -660,7 +692,7 @@ const app = new Elysia({ prefix: '/api' })
     const forwarded = await resend.emails.send({
       from: 'Pulse Forwarding <support@pulseapp.click>',
       to: 'ogbemudiatimothy@gmail.com',
-      replyTo: email.from,
+      replyTo: typeof email.from === 'string' ? email.from : undefined,
       subject: `[Forwarded] ${email.subject || '(No subject)'}`,
       html: `<pre style="font-family: Arial, sans-serif; background: #f5f5f5; padding: 12px;">${escapeHtml(header)}</pre>${content.data.html || `<pre>${escapeHtml(content.data.text || '')}</pre>`}`,
       text: `${header}\n\n${content.data.text || ''}`,
