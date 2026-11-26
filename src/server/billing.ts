@@ -10,6 +10,7 @@ import {
   PACKS,
   customPriceCents,
 } from '@/lib/pricing'
+import { isUuid } from '@/lib/uuid'
 
 export type PolarEnvironment = 'sandbox' | 'production'
 
@@ -175,8 +176,11 @@ export const creditPaidOrder = async (
     return { status: 'unmatched', reason: 'no pulse amount on order' }
   }
 
-  const externalId =
-    order.customer.externalId ?? (order.metadata.userId as string | undefined)
+  const externalId = isUuid(order.customer.externalId)
+    ? order.customer.externalId.toLowerCase()
+    : isUuid(order.metadata.userId)
+      ? order.metadata.userId.toLowerCase()
+      : null
 
   const result = await db.execute<{ user_id: string }>(sql`
     with buyer as (

@@ -193,6 +193,63 @@ describe('creditPaidOrder', () => {
     expect(await pulsesOf(owner.id)).toBe(11)
   })
 
+  it('falls back to email without failing when externalId is not a UUID or metadata.userId is not a string', async () => {
+    const owner = await createBusiness({ pulsesRemaining: 1 })
+    const result1 = await creditPaidOrder(
+      order({
+        metadata: { pulses: '10', userId: 12345 },
+        customer: { externalId: 'cus_not_a_uuid', email: owner.email },
+      }),
+    )
+    expect(result1).toEqual({
+      status: 'credited',
+      userId: owner.id,
+      pulses: 10,
+    })
+    expect(await pulsesOf(owner.id)).toBe(11)
+
+    const result2 = await creditPaidOrder(
+      order({
+        metadata: { pulses: '5', userId: true },
+        customer: { externalId: null, email: owner.email },
+      }),
+    )
+    expect(result2).toEqual({ status: 'credited', userId: owner.id, pulses: 5 })
+    expect(await pulsesOf(owner.id)).toBe(16)
+  })
+
+  it('prioritizes an uppercase valid UUID externalId over a different email', async () => {
+    const byId = await createBusiness({ pulsesRemaining: 0 })
+    const byEmail = await createBusiness({ pulsesRemaining: 0 })
+    const result = await creditPaidOrder(
+      order({
+        metadata: { pulses: '20' },
+        customer: {
+          externalId: byId.id.toUpperCase(),
+          email: byEmail.email,
+        },
+      }),
+    )
+    expect(result).toEqual({ status: 'credited', userId: byId.id, pulses: 20 })
+    expect(await pulsesOf(byId.id)).toBe(20)
+    expect(await pulsesOf(byEmail.id)).toBe(0)
+  })
+
+  it('uses a valid UUID metadata.userId when customer.externalId is not a UUID', async () => {
+    const owner = await createBusiness({ pulsesRemaining: 0 })
+    const result = await creditPaidOrder(
+      order({
+        metadata: { pulses: '15', userId: owner.id },
+        customer: {
+          externalId: 'cus_not_a_uuid',
+          email: 'different@example.test',
+        },
+      }),
+    )
+    expect(result).toEqual({ status: 'credited', userId: owner.id, pulses: 15 })
+    expect(await pulsesOf(owner.id)).toBe(15)
+  })
+
   it('credits a redelivered order only once', async () => {
     const owner = await createBusiness({ pulsesRemaining: 0 })
     const paid = order({
