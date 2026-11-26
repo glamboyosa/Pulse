@@ -14,12 +14,12 @@ export interface ResendEmailReceivedData {
   email_id: string
   created_at: string
   from: string
-  to: string[]
-  bcc: string[]
-  cc: string[]
+  to: Array<string>
+  bcc: Array<string>
+  cc: Array<string>
   message_id: string
   subject: string
-  attachments: ResendEmailAttachment[]
+  attachments: Array<ResendEmailAttachment>
 }
 
 export interface ResendEmailReceivedEvent {

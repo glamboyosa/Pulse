@@ -227,7 +227,12 @@
     document.addEventListener(
       'transitionend',
       function (event) {
-        if (/^background/.test(event.propertyName)) repaint()
+        if (
+          typeof event.propertyName === 'string' &&
+          event.propertyName.indexOf('background') === 0
+        ) {
+          repaint()
+        }
       },
       true,
     )

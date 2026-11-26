@@ -34,7 +34,6 @@ export function LoginForm({ next }: { next: string }) {
     undefined,
   )
 
-  // Update error state when loginState changes
   useEffect(() => {
     if (loginState?.error) {
       setError(loginState.error)
@@ -70,13 +69,6 @@ export function LoginForm({ next }: { next: string }) {
     }
   }
 
-  // Update error state when loginState changes
-  useEffect(() => {
-    if (loginState?.error) {
-      setError(loginState.error)
-    }
-  }, [loginState])
-
   if (step === 'otp') {
     return (
       <form action={loginFormAction} className="space-y-6">
@@ -109,7 +101,6 @@ export function LoginForm({ next }: { next: string }) {
                   aria-invalid={error ? true : undefined}
                   value={otpCode}
                   onChange={(value) => {
-                    // Only allow numbers, max 6 digits
                     const numericValue = value.replace(/\D/g, '').slice(0, 6)
                     setOtpCode(numericValue)
                   }}

@@ -68,8 +68,6 @@ const formatTime = (seconds: number) =>
 const cardClass = 'p-8 border-2 border-foreground shadow-brutal-lg bg-card'
 const primaryButton =
   'flex-1 text-lg font-bold border-2 border-foreground shadow-brutal hover:shadow-brutal-lg hover:-translate-x-0.5 hover:-translate-y-0.5 hover:before:translate-x-0.5 hover:before:translate-y-0.5 transition-[transform,box-shadow]'
-const outlineButton =
-  'font-bold border-2 border-foreground shadow-brutal-sm bg-transparent'
 
 const LEVEL_BARS = 16
 
@@ -294,6 +292,16 @@ export function FeedbackForm({
     }
     streamRef.current = stream
 
+    const fallbackToTyping = (message: string) => {
+      releaseMicrophone()
+      setCanRecord(false)
+      // The record button goes; focus follows to the text box.
+      switchedInput.current = true
+      setTyping(true)
+      setError(message)
+      setStage({ name: 'idle' })
+    }
+
     const mimeType = RECORDING_TYPES.find((type) =>
       MediaRecorder.isTypeSupported(type),
     )
@@ -301,15 +309,9 @@ export function FeedbackForm({
     try {
       recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
     } catch {
-      releaseMicrophone()
-      setCanRecord(false)
-      // The record button goes; focus follows to the text box.
-      switchedInput.current = true
-      setTyping(true)
-      setError(
+      fallbackToTyping(
         "This browser can't record audio, so type your feedback instead.",
       )
-      setStage({ name: 'idle' })
       return
     }
     const chunks: Array<Blob> = []
@@ -339,13 +341,9 @@ export function FeedbackForm({
     try {
       recorder.start()
     } catch {
-      releaseMicrophone()
-      setCanRecord(false)
-      // The record button goes; focus follows to the text box.
-      switchedInput.current = true
-      setTyping(true)
-      setError("Recording couldn't start here, so type your feedback instead.")
-      setStage({ name: 'idle' })
+      fallbackToTyping(
+        "Recording couldn't start here, so type your feedback instead.",
+      )
       return
     }
     setStage({ name: 'recording' })

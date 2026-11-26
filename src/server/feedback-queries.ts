@@ -1,9 +1,32 @@
-import { desc, eq } from 'drizzle-orm'
+import { and, avg, count, desc, eq, gte } from 'drizzle-orm'
 
 import type { Feedback } from '@/components/feedback-list'
 import { db } from '@/db/index'
 import { feedback, spots } from '@/db/schema'
 import { getAudioUrl } from '@/lib/storage/r2'
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+
+export const getFeedbackStats = async (userId: string) => {
+  const userFeedback = eq(feedback.userId, userId)
+  const weekAgo = new Date(Date.now() - WEEK_MS)
+  const [[totals], [thisWeek]] = await Promise.all([
+    db
+      .select({ count: count(), avgDuration: avg(feedback.duration) })
+      .from(feedback)
+      .where(userFeedback),
+    db
+      .select({ count: count() })
+      .from(feedback)
+      .where(and(userFeedback, gte(feedback.createdAt, weekAgo))),
+  ])
+
+  return {
+    totalFeedback: totals.count,
+    avgDuration: totals.avgDuration ? Number(totals.avgDuration) : 0,
+    thisWeekCount: thisWeek.count,
+  }
+}
 
 /**
  * An owner's feedback, newest first, with a fresh one-hour audio link for each.

@@ -1,6 +1,6 @@
 import { Elysia, t } from 'elysia'
 import { WebhookVerificationError, validateEvent } from '@polar-sh/sdk/webhooks'
-import { and, avg, count, eq, gte } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { after } from 'next/server'
 
 import type { ResendWebhookEvent } from '@/types/resend'
@@ -28,7 +28,7 @@ import {
   submitFeedback,
   submitTypedFeedback,
 } from '@/server/feedback-submission'
-import { listFeedback } from '@/server/feedback-queries'
+import { getFeedbackStats, listFeedback } from '@/server/feedback-queries'
 import { deleteFeedback, exportAccount } from '@/server/account-data'
 import { SpotError, archiveSpot, createSpot, listSpots } from '@/server/spots'
 import { ReplyError, contactEmailFrom, replyToFeedback } from '@/server/replies'
@@ -97,6 +97,42 @@ const json = (status: number, body: unknown) =>
     headers: { 'Content-Type': 'application/json' },
   })
 
+const submissionFields = {
+  code: t.String({ minLength: 1, maxLength: 64 }),
+  customerName: t.Optional(t.String({ maxLength: 200 })),
+  spot: t.Optional(t.String({ maxLength: 64 })),
+  contactEmail: t.Optional(t.String({ maxLength: 300 })),
+  turnstileToken: t.Optional(t.String({ maxLength: 2048 })),
+  widgetKey: t.Optional(t.String({ maxLength: 64 })),
+  // Generous, so oversized context is dropped by the parser rather
+  // than losing the customer's note to a validation error.
+  context: t.Optional(t.String({ maxLength: 16384 })),
+}
+
+const guardSubmission = async (
+  request: Request,
+  body: {
+    code: string
+    turnstileToken?: string
+    widgetKey?: string
+    context?: string
+  },
+) => {
+  const ip = clientIp(request)
+  if (!(await passesTurnstile(body.turnstileToken, ip))) {
+    return json(400, {
+      error: "We couldn't check you're human. Please try again.",
+    })
+  }
+  // Customers in one venue often share an IP, so the per-IP cap is loose;
+  // the per-business cap stops a script from draining a business's pulses.
+  await enforceRateLimit(`submit:ip:${ip}:${body.code}`, 10, 10 * 60 * 1000)
+  await enforceRateLimit(`submit:business:${body.code}`, 120, HOUR_MS)
+  const widget = await widgetFor(body)
+  if (widget === false) return json(403, { error: WIDGET_OFF })
+  return { widget }
+}
+
 const app = new Elysia({ prefix: '/api' })
   // Elysia ignores the status of a Response returned from onError, so the
   // status goes through `set`.
@@ -106,19 +142,18 @@ const app = new Elysia({ prefix: '/api' })
       set.headers['retry-after'] = String(error.retryAfterSeconds)
       return { error: error.message }
     }
-    if (error instanceof ReplyError) {
-      set.status = error.status
+    if (error instanceof CheckoutError) {
+      set.status = 400
       return { error: error.message }
     }
-    if (error instanceof BrandingError) {
-      set.status = error.status
-      return { error: error.message }
-    }
-    if (error instanceof WidgetError) {
-      set.status = error.status
-      return { error: error.message }
-    }
-    if (error instanceof VoucherError) {
+    if (
+      error instanceof SubmissionError ||
+      error instanceof SpotError ||
+      error instanceof ReplyError ||
+      error instanceof BrandingError ||
+      error instanceof WidgetError ||
+      error instanceof VoucherError
+    ) {
       set.status = error.status
       return { error: error.message }
     }
@@ -189,102 +224,55 @@ const app = new Elysia({ prefix: '/api' })
   // Public: a customer's recording, one request per submission.
   .post(
     '/feedback/submit',
-    async ({ body, request, set }) => {
-      const ip = clientIp(request)
-      if (!(await passesTurnstile(body.turnstileToken, ip))) {
-        set.status = 400
-        return { error: "We couldn't check you're human. Please try again." }
-      }
-      // Customers in one venue often share an IP, so the per-IP cap is loose;
-      // the per-business cap stops a script from draining a business's pulses.
-      await enforceRateLimit(`submit:ip:${ip}:${body.code}`, 10, 10 * 60 * 1000)
-      await enforceRateLimit(`submit:business:${body.code}`, 120, HOUR_MS)
-      const widget = await widgetFor(body)
-      if (widget === false) return json(403, { error: WIDGET_OFF })
+    async ({ body, request }) => {
+      const guarded = await guardSubmission(request, body)
+      if (guarded instanceof Response) return guarded
 
-      try {
-        const { feedbackId, business } = await submitFeedback({
-          widget,
-          code: body.code,
-          audio: body.audio,
-          durationSeconds: body.duration,
-          customerName: body.customerName?.trim().slice(0, 80) || null,
-          spot: body.spot,
-          contactEmail: contactEmailFrom(body.contactEmail),
-        })
-        const audio = {
-          buffer: Buffer.from(await body.audio.arrayBuffer()),
-          type: body.audio.type.split(';')[0],
-        }
-        after(() => processFeedback(feedbackId, business, { audio }))
-        return { success: true, feedbackId }
-      } catch (error) {
-        if (error instanceof SubmissionError) {
-          return json(error.status, { error: error.message })
-        }
-        throw error
+      const { feedbackId, business } = await submitFeedback({
+        widget: guarded.widget,
+        code: body.code,
+        audio: body.audio,
+        durationSeconds: body.duration,
+        customerName: body.customerName?.trim().slice(0, 80) || null,
+        spot: body.spot,
+        contactEmail: contactEmailFrom(body.contactEmail),
+      })
+      const audio = {
+        buffer: Buffer.from(await body.audio.arrayBuffer()),
+        type: body.audio.type.split(';')[0],
       }
+      after(() => processFeedback(feedbackId, business, { audio }))
+      return { success: true, feedbackId }
     },
     {
       body: t.Object({
-        code: t.String({ minLength: 1, maxLength: 64 }),
+        ...submissionFields,
         audio: t.File(),
         duration: t.Numeric({ minimum: 0 }),
-        customerName: t.Optional(t.String({ maxLength: 200 })),
-        spot: t.Optional(t.String({ maxLength: 64 })),
-        contactEmail: t.Optional(t.String({ maxLength: 300 })),
-        turnstileToken: t.Optional(t.String({ maxLength: 2048 })),
-        widgetKey: t.Optional(t.String({ maxLength: 64 })),
-        // Generous, so oversized context is dropped by the parser rather
-        // than losing the customer's note to a validation error.
-        context: t.Optional(t.String({ maxLength: 16384 })),
       }),
     },
   )
   .post(
     '/feedback/submit-text',
-    async ({ body, request, set }) => {
-      const ip = clientIp(request)
-      if (!(await passesTurnstile(body.turnstileToken, ip))) {
-        set.status = 400
-        return { error: "We couldn't check you're human. Please try again." }
-      }
-      // The same limits as recordings: one pulse per submission either way.
-      await enforceRateLimit(`submit:ip:${ip}:${body.code}`, 10, 10 * 60 * 1000)
-      await enforceRateLimit(`submit:business:${body.code}`, 120, HOUR_MS)
-      const widget = await widgetFor(body)
-      if (widget === false) return json(403, { error: WIDGET_OFF })
+    async ({ body, request }) => {
+      const guarded = await guardSubmission(request, body)
+      if (guarded instanceof Response) return guarded
 
-      try {
-        const { feedbackId, business } = await submitTypedFeedback({
-          widget,
-          code: body.code,
-          text: body.text,
-          customerName: body.customerName?.trim().slice(0, 80) || null,
-          spot: body.spot,
-          contactEmail: contactEmailFrom(body.contactEmail),
-        })
-        after(() => processFeedback(feedbackId, business, { typed: true }))
-        return { success: true, feedbackId }
-      } catch (error) {
-        if (error instanceof SubmissionError) {
-          return json(error.status, { error: error.message })
-        }
-        throw error
-      }
+      const { feedbackId, business } = await submitTypedFeedback({
+        widget: guarded.widget,
+        code: body.code,
+        text: body.text,
+        customerName: body.customerName?.trim().slice(0, 80) || null,
+        spot: body.spot,
+        contactEmail: contactEmailFrom(body.contactEmail),
+      })
+      after(() => processFeedback(feedbackId, business, { typed: true }))
+      return { success: true, feedbackId }
     },
     {
       body: t.Object({
-        code: t.String({ minLength: 1, maxLength: 64 }),
+        ...submissionFields,
         text: t.String({ maxLength: 5000 }),
-        customerName: t.Optional(t.String({ maxLength: 200 })),
-        spot: t.Optional(t.String({ maxLength: 64 })),
-        contactEmail: t.Optional(t.String({ maxLength: 300 })),
-        turnstileToken: t.Optional(t.String({ maxLength: 2048 })),
-        widgetKey: t.Optional(t.String({ maxLength: 64 })),
-        // Generous, so oversized context is dropped by the parser rather
-        // than losing the customer's note to a validation error.
-        context: t.Optional(t.String({ maxLength: 16384 })),
       }),
     },
   )
@@ -316,23 +304,7 @@ const app = new Elysia({ prefix: '/api' })
     const user = await getUserFromSession(request)
     if (!user) return json(401, { error: 'Unauthorized' })
 
-    const weekAgo = new Date(Date.now() - 7 * 24 * HOUR_MS)
-    const [totals] = await db
-      .select({ total: count(), avgDuration: avg(feedback.duration) })
-      .from(feedback)
-      .where(eq(feedback.userId, user.id))
-    const [week] = await db
-      .select({ count: count() })
-      .from(feedback)
-      .where(
-        and(eq(feedback.userId, user.id), gte(feedback.createdAt, weekAgo)),
-      )
-
-    return {
-      totalFeedback: totals.total,
-      avgDuration: totals.avgDuration ? Number(totals.avgDuration) : 0,
-      thisWeekCount: week.count,
-    }
+    return getFeedbackStats(user.id)
   })
   .get('/feedback/:id', async ({ params, request }) => {
     const user = await getUserFromSession(request)
@@ -385,24 +357,17 @@ const app = new Elysia({ prefix: '/api' })
       const user = await getUserFromSession(request)
       if (!user) return json(401, { error: 'Unauthorized' })
 
-      try {
-        const { url } = await createCheckout(
-          {
-            id: user.id,
-            email: user.email,
-            name: user.businessName || user.email.split('@')[0],
-          },
-          body.packId
-            ? { kind: 'pack', packId: body.packId }
-            : { kind: 'custom', pulses: body.pulses ?? 0 },
-        )
-        return { url }
-      } catch (error) {
-        if (error instanceof CheckoutError) {
-          return json(400, { error: error.message })
-        }
-        throw error
-      }
+      const { url } = await createCheckout(
+        {
+          id: user.id,
+          email: user.email,
+          name: user.businessName || user.email.split('@')[0],
+        },
+        body.packId
+          ? { kind: 'pack', packId: body.packId }
+          : { kind: 'custom', pulses: body.pulses ?? 0 },
+      )
+      return { url }
     },
     {
       body: t.Object({
@@ -595,14 +560,7 @@ const app = new Elysia({ prefix: '/api' })
     async ({ body, request }) => {
       const user = await getUserFromSession(request)
       if (!user) return json(401, { error: 'Unauthorized' })
-      try {
-        return { spot: await createSpot(user.id, body.name) }
-      } catch (error) {
-        if (error instanceof SpotError) {
-          return json(error.status, { error: error.message })
-        }
-        throw error
-      }
+      return { spot: await createSpot(user.id, body.name) }
     },
     { body: t.Object({ name: t.String({ maxLength: 200 }) }) },
   )

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 
-import { OnboardingForm } from '@/components/onboarding-form'
 import { getCurrentUser } from '../actions/auth'
+import { OnboardingForm } from '@/components/onboarding-form'
 
 export default async function OnboardingPage() {
   const user = await getCurrentUser()
@@ -10,7 +10,6 @@ export default async function OnboardingPage() {
     redirect('/login')
   }
 
-  // If already onboarded (has uniqueCode), redirect to dashboard
   if (user.uniqueCode) {
     redirect('/dashboard')
   }

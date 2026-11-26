@@ -13,7 +13,6 @@ import {
 import type { DigestContent } from '@/server/digest'
 import type { WidgetContext } from '@/server/widget'
 
-// Users table - extends authentication with business info
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
@@ -22,7 +21,7 @@ export const users = pgTable('users', {
   businessType: text('business_type'),
   uniqueCode: text('unique_code').unique(), // Unique code for QR/link (e.g., "acme-cafe")
   isVerified: boolean('is_verified').default(false).notNull(),
-  pulsesRemaining: integer('pulses_remaining').default(0).notNull(), // Credit system
+  pulsesRemaining: integer('pulses_remaining').default(0).notNull(),
   // Why a new account got no free pulses ('inbox' or 'connection'), so the
   // dashboard can say so and point to support.
   freePulsesWithheld: text('free_pulses_withheld'),
@@ -47,7 +46,6 @@ export const users = pgTable('users', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-// Feedback submissions from customers
 // A place a QR code points to: a branch, a table, an event. Owners archive
 // rather than delete, so old feedback keeps its label.
 export const spots = pgTable(
@@ -126,26 +124,24 @@ export const vouchers = pgTable(
   (table) => [unique().on(table.userId, table.code)],
 )
 
-// Pulse purchases for tracking credit purchases
 export const pulsePurchases = pgTable('pulse_purchases', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
     .references(() => users.id)
     .notNull(),
-  amount: integer('amount').notNull(), // Number of pulses purchased
+  amount: integer('amount').notNull(),
   price: integer('price').notNull(), // Price in cents
   // Polar order id. Unique so a redelivered webhook can't credit the same order twice.
   stripePaymentId: text('stripe_payment_id').unique(),
   refundedPulses: integer('refunded_pulses').default(0).notNull(),
-  status: text('status').default('completed').notNull(), // 'pending', 'completed', 'failed'
+  status: text('status').default('completed').notNull(), // 'completed', 'partially_refunded', 'refunded'
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-// OTP codes for email authentication
 export const otpCodes = pgTable('otp_codes', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull(),
-  code: text('code').notNull(), // 6-digit code
+  code: text('code').notNull(),
   expiresAt: timestamp('expires_at').notNull(),
   used: boolean('used').default(false).notNull(),
   attempts: integer('attempts').default(0).notNull(),
@@ -187,7 +183,6 @@ export const weeklyDigests = pgTable(
   (table) => [unique().on(table.userId, table.weekStart)],
 )
 
-// Types for TypeScript
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Feedback = typeof feedback.$inferSelect

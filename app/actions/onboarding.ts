@@ -20,14 +20,12 @@ export async function completeOnboardingAction(
     return { error: 'All fields are required' }
   }
 
-  // Get userId from session
   const session = await getSession()
 
   if (!session || !session.userId) {
     redirect('/login')
   }
 
-  // Check if unique code is already taken
   const existing = await db
     .select()
     .from(users)
@@ -38,7 +36,6 @@ export async function completeOnboardingAction(
     return { error: 'This unique code is already taken' }
   }
 
-  // Update user with onboarding data and mark as verified
   await db
     .update(users)
     .set({

@@ -21,7 +21,6 @@ export function AudioPlayer({
   const [isLoading, setIsLoading] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  // Fetch fresh audio URL on mount and when needed
   const fetchAudioUrl = useCallback(async () => {
     if (!audioKey) {
       setError('No audio key available')
@@ -64,10 +63,8 @@ export function AudioPlayer({
     }
   }, [audioKey, fetchAudioUrl])
 
-  // Handle audio errors and retry
   const handleAudioError = () => {
     if (audioKey) {
-      // Try to fetch a fresh URL and reload
       fetchAudioUrl().then(() => {
         if (audioRef.current && audioUrl) {
           audioRef.current.load()

@@ -19,17 +19,8 @@ export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
   const [feedbackUrl, setFeedbackUrl] = useState<string>('')
   const qrCodeRef = useRef<HTMLDivElement>(null)
 
-  // Get the current host URL on the client side
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const baseUrl = window.location.origin
-      setFeedbackUrl(`${baseUrl}/f/${uniqueCode}`)
-    } else {
-      // Fallback for SSR
-      const fallbackUrl =
-        process.env.NEXT_PUBLIC_APP_URL || 'https://pulseapp.click'
-      setFeedbackUrl(`${fallbackUrl}/f/${uniqueCode}`)
-    }
+    setFeedbackUrl(`${window.location.origin}/f/${uniqueCode}`)
   }, [uniqueCode])
 
   const handleCopy = async () => {
@@ -41,7 +32,6 @@ export function QRCodeSection({ uniqueCode }: QRCodeSectionProps) {
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
       console.error('Failed to copy to clipboard:', error)
-      // Fallback: try using the older clipboard API
       try {
         const textArea = document.createElement('textarea')
         textArea.value = feedbackUrl

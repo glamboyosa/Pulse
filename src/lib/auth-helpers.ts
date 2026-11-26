@@ -31,7 +31,6 @@ export async function getUserFromSession(request?: Request) {
     let sessionToken: string | undefined
 
     if (request) {
-      // Elysia context - get cookie from request headers
       const cookieHeader = request.headers.get('cookie') || ''
       const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
         const [key, value] = cookie.trim().split('=')
@@ -40,7 +39,6 @@ export async function getUserFromSession(request?: Request) {
       }, {} as Record<string, string>)
       sessionToken = cookies.session
     } else {
-      // Next.js context - use cookies() API
       const { cookies: cookieStore } = await import('next/headers')
       const cookieStoreInstance = await cookieStore()
       sessionToken = cookieStoreInstance.get('session')?.value
@@ -50,7 +48,6 @@ export async function getUserFromSession(request?: Request) {
       return null
     }
 
-    // Decrypt session token
     const { decrypt } = await import('../../lib/session')
     const session = await decrypt(sessionToken)
 

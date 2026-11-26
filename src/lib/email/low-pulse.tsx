@@ -7,12 +7,7 @@ interface SendLowPulseEmailParams {
   pulsesRemaining: number
 }
 
-/**
- * Send low pulse notification email
- * Thresholds:
- * - < 5 pulses: Critical (send immediately)
- * - < 10 pulses: Warning (can use after() for async)
- */
+/** Sends a low-balance alert; balances under 5 use critical styling. */
 export async function sendLowPulseEmail({
   to,
   userName,

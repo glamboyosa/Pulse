@@ -25,7 +25,7 @@ export const env = createEnv({
     CLOUDFLARE_SECRET_ACCESS_KEY: z.string().min(1).optional(),
     CLOUDFLARE_R2_BUCKET_NAME: z.string().min(1).optional(),
     SESSION_SECRET: z.string().min(32).optional(),
-    // Cloudflare Turnstile on the login form. Without it the check is off.
+    // Cloudflare Turnstile on login and feedback. Without it the check is off.
     TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
     // Gets an email on each new signup. Without it, no alerts.
     SIGNUP_ALERT_EMAIL: z.string().email().optional(),

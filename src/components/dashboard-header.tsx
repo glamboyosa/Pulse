@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { LogOut, Settings, Zap } from 'lucide-react'
 
 import { logoutAction } from '../../app/actions/auth'
@@ -18,13 +17,11 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
-  const router = useRouter()
   const pulsesRemaining = user.pulsesRemaining || 0
   const isLowPulse = pulsesRemaining <= 3
 
   const handleLogout = async () => {
     await logoutAction()
-    // logoutAction will redirect
   }
 
   return (

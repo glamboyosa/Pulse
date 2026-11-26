@@ -77,7 +77,6 @@ export async function loginAction(
     return { error: 'Invalid or expired code. Please request a new one.' }
   }
 
-  // Find or create user
   let user = await db
     .select()
     .from(users)
@@ -125,12 +124,8 @@ export async function loginAction(
 
   const userData = user[0]
 
-  // Create session - must complete before redirect
   await createSession(userData.id, userData.email)
 
-  // Redirect to dashboard or onboarding
-  // redirect() throws NEXT_REDIRECT which Next.js handles automatically
-  // In Server Actions, this returns a 303 redirect response
   if (!userData.uniqueCode) {
     redirect('/onboarding')
   }
@@ -185,7 +180,7 @@ export async function getCurrentUser() {
     businessType: user.businessType || null,
     uniqueCode: user.uniqueCode || null,
     isVerified: user.isVerified,
-    pulsesRemaining: Math.max(0, user.pulsesRemaining), // Ensure no negative values
+    pulsesRemaining: Math.max(0, user.pulsesRemaining),
     freePulsesWithheld: user.freePulsesWithheld,
   }
 }

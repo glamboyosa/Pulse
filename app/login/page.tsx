@@ -12,12 +12,9 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string | Array<string> }>
 }) {
   const next = dashboardReturnPath((await searchParams).next)
-  // If user is already logged in, redirect to dashboard or onboarding
   const user = await getCurrentUser()
 
   if (user) {
-    // If user has completed onboarding, go to dashboard
-    // Otherwise, go to onboarding
     if (user.uniqueCode) {
       redirect(next)
     } else {

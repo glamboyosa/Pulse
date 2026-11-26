@@ -1,15 +1,12 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { after } from 'next/server'
-import { and, avg, count, eq, gte } from 'drizzle-orm'
 
 import { getCurrentUser } from '../actions/auth'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { DashboardStats } from '@/components/dashboard-stats'
 import { FeedbackList } from '@/components/feedback-list'
 import { QRCodeSection } from '@/components/qr-code-section'
-import { db } from '@/db/index'
-import { feedback } from '@/db/schema'
 import { InsightsPanel } from '@/components/insights-panel'
 import {
   MIN_FEEDBACK_FOR_DIGEST,
@@ -18,7 +15,7 @@ import {
   latestDigest,
 } from '@/server/digest'
 import { retryStuckAnalyses } from '@/server/feedback-submission'
-import { listFeedback } from '@/server/feedback-queries'
+import { getFeedbackStats, listFeedback } from '@/server/feedback-queries'
 import { getInsights, themeTracks } from '@/server/insights'
 import { listSpots } from '@/server/spots'
 import { SpotsSection } from '@/components/spots-section'
@@ -46,19 +43,8 @@ export default async function DashboardPage({
   after(() => retryStuckAnalyses(user.id))
 
   const showInsights = (await searchParams).tab === 'insights'
-  const userFeedback = eq(feedback.userId, user.id)
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-  const [[totals], [thisWeek]] = await Promise.all([
-    db
-      .select({ count: count(), avgDuration: avg(feedback.duration) })
-      .from(feedback)
-      .where(userFeedback),
-    db
-      .select({ count: count() })
-      .from(feedback)
-      .where(and(userFeedback, gte(feedback.createdAt, weekAgo))),
-  ])
-  const hasFeedback = totals.count > 0
+  const stats = await getFeedbackStats(user.id)
+  const hasFeedback = stats.totalFeedback > 0
 
   const [insights, digest, canWriteDigest, formattedFeedback] = showInsights
     ? await Promise.all([
@@ -116,9 +102,9 @@ export default async function DashboardPage({
         )}
         <DashboardStats
           pulsesRemaining={user.pulsesRemaining || 0}
-          totalFeedback={totals.count}
-          avgDuration={totals.avgDuration ? Number(totals.avgDuration) : 0}
-          thisWeekCount={thisWeek.count}
+          totalFeedback={stats.totalFeedback}
+          avgDuration={stats.avgDuration}
+          thisWeekCount={stats.thisWeekCount}
         />
         <nav aria-label="Dashboard" className="flex gap-3 mt-8">
           <Link

@@ -168,11 +168,7 @@ export function FeedbackList({
   const [spotFilter, setSpotFilter] = useState('all')
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  const {
-    data: feedbackData,
-    isLoading: loading,
-    error: queryError,
-  } = useQuery({
+  const { data: feedbackData, error: queryError } = useQuery({
     queryKey: ['feedback'],
     queryFn: async () => {
       const response = await fetch('/api/feedback')
@@ -269,10 +265,6 @@ export function FeedbackList({
     )
   }
 
-  // If we have initialData, we don't need to show loading state
-  // The query will use initialData immediately and won't be in loading state
-
-  // Show empty state only if we know there's no feedback
   if (!hasFeedback || feedbackList.length === 0) {
     return (
       <div>

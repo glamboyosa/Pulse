@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { encrypt } from '../lib/session'

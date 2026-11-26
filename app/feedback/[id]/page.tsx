@@ -28,7 +28,6 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
     redirect('/login')
   }
 
-  // Get feedback record
   const feedbackRecord = await db
     .select()
     .from(feedback)
@@ -41,7 +40,6 @@ export default async function FeedbackPage({ params }: FeedbackPageProps) {
 
   const feedbackData = feedbackRecord[0]
 
-  // Verify the feedback belongs to the user
   if (feedbackData.userId !== user.id) {
     notFound()
   }
