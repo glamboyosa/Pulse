@@ -1,8 +1,9 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { Sentiment } from '@/lib/sentiment'
+import { JellyWave, usePrefersReducedMotion } from '@/components/jelly-wave'
 import { SENTIMENT_STYLE } from '@/lib/sentiment'
 
 type Example = {
@@ -74,32 +75,82 @@ const EXAMPLES: Array<Example> = [
   },
 ]
 
-/** Bar heights for a static waveform, so the card reads as a voice note. */
+/** Bar heights for the card's waveform, so it reads as a voice note. */
 const WAVE = [
   6, 14, 22, 12, 28, 18, 34, 24, 16, 30, 20, 10, 26, 32, 14, 22, 8, 18, 28, 12,
   24, 16, 30, 10, 20, 26, 12, 18,
-].map((height, position) => ({ id: `wave-${position}`, height, position }))
+]
+// The example "plays" for this long; at rest it shows this much played.
+const DEMO_MS = 3100
+const RESTING = 11 / WAVE.length
 
 const isEnglish = (language: string) => language.startsWith('English')
 
 /**
  * A code-built picture of what an owner sees for one piece of feedback. The
- * tabs below switch between customers; nothing changes on its own.
+ * tabs below switch between customers. Its voice note plays itself once when
+ * it scrolls into view, and again for each customer picked.
  */
 export function HeroMock() {
   const [active, setActive] = useState(0)
   const tabs = useRef<Array<HTMLButtonElement | null>>([])
   const example = EXAMPLES[active]
+  const reduced = usePrefersReducedMotion()
+  const [playRun, setPlayRun] = useState(0)
+  const startedAt = useRef(0)
+  const panel = useRef<HTMLDivElement>(null)
+
+  const play = () => {
+    startedAt.current = performance.now()
+    setPlayRun((run) => run + 1)
+  }
+  const playing = playRun > 0
+  const getProgress = () =>
+    playing
+      ? Math.min(1, (performance.now() - startedAt.current) / DEMO_MS)
+      : RESTING
+
+  useEffect(() => {
+    if (playRun === 0) return
+    const done = setTimeout(() => setPlayRun(0), DEMO_MS)
+    return () => clearTimeout(done)
+  }, [playRun])
+
+  // Plays itself once, when the card is mostly on screen.
+  useEffect(() => {
+    const element = panel.current
+    if (!element || reduced) return
+    let start: ReturnType<typeof setTimeout> | undefined
+    const seen = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return
+        seen.disconnect()
+        start = setTimeout(play, 350)
+      },
+      { threshold: 0.7 },
+    )
+    seen.observe(element)
+    return () => {
+      seen.disconnect()
+      clearTimeout(start)
+    }
+  }, [reduced])
+
+  const choose = (index: number) => {
+    setActive(index)
+    if (!reduced) play()
+  }
 
   const select = (index: number) => {
     const next = (index + EXAMPLES.length) % EXAMPLES.length
-    setActive(next)
+    choose(next)
     tabs.current[next]?.focus()
   }
 
   return (
     <div>
       <div
+        ref={panel}
         id="hero-example"
         role="tabpanel"
         aria-labelledby={`hero-tab-${active}`}
@@ -124,24 +175,31 @@ export function HeroMock() {
             </span>
           </div>
 
-          <div
-            aria-hidden="true"
-            className="mb-4 flex items-center gap-3 rounded-md border-2 border-foreground bg-secondary px-3 py-2"
-          >
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-foreground bg-accent">
-              <svg viewBox="0 0 10 12" className="ml-0.5 size-3">
-                <path d="M0 0l10 6-10 6z" fill="currentColor" />
-              </svg>
-            </span>
-            <div className="flex h-9 flex-1 items-center gap-[3px]">
-              {WAVE.map((bar) => (
-                <span
-                  key={bar.id}
-                  className={`w-full rounded-full ${bar.position < 11 ? 'bg-foreground' : 'bg-foreground/25'}`}
-                  style={{ height: bar.height }}
-                />
-              ))}
-            </div>
+          <div className="mb-4">
+            <JellyWave
+              heights={WAVE}
+              getProgress={getProgress}
+              restingProgress={RESTING}
+              playing={playing}
+              motion={!reduced}
+            >
+              {/* The demo has no sound, so it's left out for screen readers. */}
+              <button
+                type="button"
+                onClick={play}
+                tabIndex={-1}
+                aria-hidden="true"
+                className="relative flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-foreground bg-accent transition-transform duration-150 ease-out before:absolute before:-inset-1.5 active:scale-[0.96]"
+              >
+                <svg
+                  viewBox="0 0 10 12"
+                  className="ml-0.5 size-3"
+                  aria-hidden="true"
+                >
+                  <path d="M0 0l10 6-10 6z" fill="currentColor" />
+                </svg>
+              </button>
+            </JellyWave>
           </div>
 
           <p className="mb-3 font-display text-xl font-bold leading-snug md:text-2xl">
@@ -219,7 +277,7 @@ export function HeroMock() {
             aria-selected={i === active}
             aria-controls="hero-example"
             tabIndex={i === active ? 0 : -1}
-            onClick={() => setActive(i)}
+            onClick={() => choose(i)}
             onKeyDown={(event) => {
               if (event.key === 'ArrowRight') select(active + 1)
               if (event.key === 'ArrowLeft') select(active - 1)

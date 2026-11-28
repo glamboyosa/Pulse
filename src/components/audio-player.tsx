@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Pause, Play } from 'lucide-react'
+
+import { JellyWave, useWaveMotion } from '@/components/jelly-wave'
 
 interface AudioPlayerProps {
   feedbackId: string
@@ -18,6 +20,22 @@ const requestAudioUrl = async (feedbackId: string): Promise<string> => {
   if (data.audioUrl) return data.audioUrl
   if (data.error) throw new Error(data.error)
   throw new Error('No audio URL in response')
+}
+
+const BARS = 28
+
+/**
+ * Bar heights for a recording's waveform. We don't have the real one, so the
+ * shape comes from the recording's id: the same note always looks the same.
+ */
+const waveFor = (id: string) => {
+  let seed = 0
+  for (const char of id) seed = (seed * 31 + char.charCodeAt(0)) >>> 0
+  return Array.from({ length: BARS }, (_, i) => {
+    seed = (seed * 1664525 + 1013904223) >>> 0
+    const envelope = 0.55 + 0.45 * Math.sin((Math.PI * (i + 1)) / (BARS + 1))
+    return Math.round(6 + (seed / 2 ** 32) * 28 * envelope)
+  })
 }
 
 export function AudioPlayer({
@@ -38,6 +56,17 @@ export function AudioPlayer({
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const hasAutoRetriedRef = useRef(false)
   const requestIdRef = useRef(0)
+  const [playing, setPlaying] = useState(false)
+  const [seeks, setSeeks] = useState(0)
+  const [motion, setMotion] = useWaveMotion()
+  const [wave] = useState(() => waveFor(feedbackId))
+  const getProgress = () => {
+    const audio = audioRef.current
+    // Recordings from MediaRecorder can report an unknown length until played through.
+    return audio && Number.isFinite(audio.duration) && audio.duration > 0
+      ? audio.currentTime / audio.duration
+      : 0
+  }
 
   if (prevSourceKey !== sourceKey) {
     setPrevSourceKey(sourceKey)
@@ -170,7 +199,56 @@ export function AudioPlayer({
   }
 
   return (
-    <div className="bg-secondary border-2 border-foreground p-4">
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="flex-1">
+          <JellyWave
+            heights={wave}
+            getProgress={getProgress}
+            playing={playing}
+            motion={motion}
+            progressVersion={seeks}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                const audio = audioRef.current
+                if (!audio) return
+                if (audio.paused) {
+                  // A failure shows through the audio element's error handler.
+                  audio.play().catch(() => {})
+                } else audio.pause()
+              }}
+              aria-label={
+                playing ? 'Pause the recording' : 'Play the recording'
+              }
+              className="relative flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-foreground bg-accent transition-transform duration-150 ease-out before:absolute before:-inset-1.5 active:scale-[0.96]"
+            >
+              {playing ? (
+                <Pause
+                  className="size-3.5"
+                  fill="currentColor"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Play
+                  className="ml-0.5 size-3.5"
+                  fill="currentColor"
+                  aria-hidden="true"
+                />
+              )}
+            </button>
+          </JellyWave>
+        </div>
+        <button
+          type="button"
+          aria-pressed={motion}
+          onClick={() => setMotion(!motion)}
+          className={`min-h-11 shrink-0 cursor-pointer rounded-md border-2 border-foreground px-2.5 text-xs font-bold uppercase md:min-h-9 ${motion ? 'bg-foreground text-background' : 'bg-card'}`}
+        >
+          Wobble
+        </button>
+      </div>
       <audio
         ref={audioRef}
         src={audioUrl}
@@ -178,6 +256,11 @@ export function AudioPlayer({
         aria-label="Recording"
         className="w-full"
         onError={handleAudioError}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        onSeeked={() => setSeeks((count) => count + 1)}
+        onEmptied={() => setSeeks((count) => count + 1)}
       >
         Your browser does not support the audio element.
       </audio>
