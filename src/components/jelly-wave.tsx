@@ -8,8 +8,9 @@ const STIFFNESS = 220
 const COUPLING = STIFFNESS * 3
 const DAMPING = 7
 const SUBSTEPS = 4
-// How hard the playhead kicks a full-height bar as it passes.
-const KICK = 14
+// How hard the playhead pushes on a full-height bar, per second it spends
+// over it. A steady push, so it feels the same at any frame rate.
+const KICK = 840
 // The row is 36px tall inside its padding; bars may push past it to 52px and
 // the shell bulges around them.
 const INNER = 36
@@ -194,7 +195,6 @@ export const JellyWave = ({
 
     let frame = 0
     let lastTime = 0
-    let lastKicked = -1
     const step = (now: number) => {
       // The first frame after waking can start before wake() ran.
       const dt = Math.max(0, Math.min(0.033, (now - lastTime) / 1000))
@@ -202,11 +202,8 @@ export const JellyWave = ({
       if (motion) {
         if (playingRef.current) {
           const at = Math.floor(progressRef.current() * n)
-          if (at !== lastKicked && at < n) {
-            lastKicked = at
-            kick(at, (heights[at] / 34) * KICK, 1.2)
-          }
-        } else lastKicked = -1
+          if (at < n) kick(at, (heights[at] / 34) * KICK * dt, 1.2)
+        }
         if (held) {
           const r = box.getBoundingClientRect()
           const i = indexAt(held.x)
@@ -337,7 +334,7 @@ export const JellyWave = ({
           <span
             // Bars never reorder, so their place in the wave identifies them.
             key={`bar-${String(position)}`}
-            className="w-full max-w-2.5 rounded-full bg-foreground will-change-transform"
+            className="w-full max-w-3 rounded-full bg-foreground will-change-transform"
             style={{ height, opacity: position < restingPlayed ? 1 : 0.25 }}
           />
         ))}
